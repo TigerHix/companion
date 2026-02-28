@@ -42,7 +42,7 @@ vi.hoisted(() => {
 
 import { useStore } from "./store.js";
 import type { SessionState, PermissionRequest, ChatMessage, TaskItem, SdkSessionInfo, ProcessItem } from "./types.js";
-import type { CreationProgressEvent, PRStatusResponse, LinearIssue } from "./api.js";
+import type { CreationProgressEvent, PRStatusResponse } from "./api.js";
 
 function makeSession(id: string): SessionState {
   return {
@@ -630,7 +630,7 @@ describe("Auth actions", () => {
     const state = useStore.getState();
     expect(state.authToken).toBe("my-secret-token");
     expect(state.isAuthenticated).toBe(true);
-    expect(localStorage.getItem("companion_auth_token")).toBe("my-secret-token");
+    expect(localStorage.getItem("moku_auth_token")).toBe("my-secret-token");
   });
 
   it("logout: removes token from localStorage and sets isAuthenticated false", () => {
@@ -644,7 +644,7 @@ describe("Auth actions", () => {
     const state = useStore.getState();
     expect(state.authToken).toBeNull();
     expect(state.isAuthenticated).toBe(false);
-    expect(localStorage.getItem("companion_auth_token")).toBeNull();
+    expect(localStorage.getItem("moku_auth_token")).toBeNull();
   });
 });
 
@@ -1017,36 +1017,6 @@ describe("PR status", () => {
   });
 });
 
-// ─── Linear issues ───────────────────────────────────────────────────────────
-
-describe("Linear issues", () => {
-  const mockIssue: LinearIssue = {
-    id: "issue-1",
-    identifier: "ENG-123",
-    title: "Fix bug",
-    description: "Some description",
-    url: "https://linear.app/team/issue/ENG-123",
-    branchName: "fix/bug",
-    priorityLabel: "High",
-    stateName: "In Progress",
-    stateType: "started",
-    teamName: "Engineering",
-    teamKey: "ENG",
-    teamId: "team-1",
-  };
-
-  it("setLinkedLinearIssue: stores issue for a session", () => {
-    useStore.getState().setLinkedLinearIssue("s1", mockIssue);
-    expect(useStore.getState().linkedLinearIssues.get("s1")).toEqual(mockIssue);
-  });
-
-  it("setLinkedLinearIssue(null): removes the issue for a session", () => {
-    useStore.getState().setLinkedLinearIssue("s1", mockIssue);
-    useStore.getState().setLinkedLinearIssue("s1", null);
-    expect(useStore.getState().linkedLinearIssues.has("s1")).toBe(false);
-  });
-});
-
 // ─── Tool progress ───────────────────────────────────────────────────────────
 
 describe("Tool progress", () => {
@@ -1172,49 +1142,9 @@ describe("Connection and session status", () => {
   });
 });
 
-// ─── Update info ─────────────────────────────────────────────────────────────
+// ─── Editor tab ──────────────────────────────────────────────────────────────
 
-describe("Update info", () => {
-  it("setUpdateInfo: stores update info", () => {
-    const info = {
-      currentVersion: "1.0.0",
-      latestVersion: "1.1.0",
-      updateAvailable: true,
-      isServiceMode: false,
-      updateInProgress: false,
-      lastChecked: Date.now(),
-    };
-    useStore.getState().setUpdateInfo(info);
-    expect(useStore.getState().updateInfo).toEqual(info);
-  });
-
-  it("setUpdateInfo(null): clears update info", () => {
-    useStore.getState().setUpdateInfo({
-      currentVersion: "1.0.0",
-      latestVersion: "1.1.0",
-      updateAvailable: true,
-      isServiceMode: false,
-      updateInProgress: false,
-      lastChecked: Date.now(),
-    });
-    useStore.getState().setUpdateInfo(null);
-    expect(useStore.getState().updateInfo).toBeNull();
-  });
-
-  it("dismissUpdate: persists dismissed version to localStorage", () => {
-    useStore.getState().dismissUpdate("1.1.0");
-    expect(useStore.getState().updateDismissedVersion).toBe("1.1.0");
-    expect(localStorage.getItem("cc-update-dismissed")).toBe("1.1.0");
-  });
-
-  it("setUpdateOverlayActive: sets the overlay active state", () => {
-    useStore.getState().setUpdateOverlayActive(true);
-    expect(useStore.getState().updateOverlayActive).toBe(true);
-
-    useStore.getState().setUpdateOverlayActive(false);
-    expect(useStore.getState().updateOverlayActive).toBe(false);
-  });
-
+describe("Editor tab", () => {
   it("setEditorTabEnabled: sets the editor tab enabled state", () => {
     useStore.getState().setEditorTabEnabled(true);
     expect(useStore.getState().editorTabEnabled).toBe(true);
@@ -1437,15 +1367,9 @@ describe("Terminal actions", () => {
 // ─── removeSession: comprehensive cleanup ────────────────────────────────────
 
 describe("removeSession: comprehensive cleanup", () => {
-  it("cleans up all session-related maps including linkedLinearIssues, chatTabReentry, diffPanelSelectedFile, toolProgress, prStatus", () => {
-    // Set up a session with data in every possible map
+  it("cleans up all session-related maps including chatTabReentry, diffPanelSelectedFile, toolProgress, prStatus", () => {
     useStore.getState().addSession(makeSession("s1"));
     useStore.getState().setCurrentSession("s1");
-    useStore.getState().setLinkedLinearIssue("s1", {
-      id: "i1", identifier: "ENG-1", title: "t", description: "d",
-      url: "u", branchName: "b", priorityLabel: "p", stateName: "s",
-      stateType: "st", teamName: "tm", teamKey: "ENG", teamId: "t1",
-    });
     useStore.getState().markChatTabReentry("s1");
     useStore.getState().setDiffPanelSelectedFile("s1", "file.ts");
     useStore.getState().setToolProgress("s1", "t1", { toolName: "Bash", elapsedSeconds: 1 });
@@ -1460,7 +1384,6 @@ describe("removeSession: comprehensive cleanup", () => {
     useStore.getState().removeSession("s1");
 
     const state = useStore.getState();
-    expect(state.linkedLinearIssues.has("s1")).toBe(false);
     expect(state.chatTabReentryTickBySession.has("s1")).toBe(false);
     expect(state.diffPanelSelectedFile.has("s1")).toBe(false);
     expect(state.toolProgress.has("s1")).toBe(false);

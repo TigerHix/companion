@@ -25,7 +25,7 @@ export interface PersistedSession {
 
 // ─── Store ──────────────────────────────────────────────────────────────────
 
-const DEFAULT_DIR = join(tmpdir(), "vibe-sessions");
+const DEFAULT_DIR = join(tmpdir(), "moku-sessions");
 
 export class SessionStore {
   private dir: string;

@@ -1,5 +1,5 @@
 import { Component, type ReactNode } from "react";
-import { captureException } from "../analytics.js";
+
 
 interface Props {
   children: ReactNode;
@@ -23,7 +23,7 @@ export class SectionErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error) {
-    captureException(error, { section: this.props.label });
+    console.error(error);
   }
 
   render() {

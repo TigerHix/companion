@@ -19,11 +19,11 @@ export interface PromptUpdateFields {
   content?: string;
 }
 
-const COMPANION_DIR = join(homedir(), ".companion");
-const PROMPTS_FILE = join(COMPANION_DIR, "prompts.json");
+const MOKU_DIR = join(homedir(), ".moku");
+const PROMPTS_FILE = join(MOKU_DIR, "prompts.json");
 
 function ensureDir(): void {
-  mkdirSync(COMPANION_DIR, { recursive: true });
+  mkdirSync(MOKU_DIR, { recursive: true });
 }
 
 function normalizePath(path: string): string {

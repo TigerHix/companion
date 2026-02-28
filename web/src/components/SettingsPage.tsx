@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { api } from "../api.js";
 import { useStore } from "../store.js";
-import { getTelemetryPreferenceEnabled, setTelemetryPreferenceEnabled } from "../analytics.js";
+
 import { navigateToSession, navigateHome } from "../utils/routing.js";
 
 interface SettingsPageProps {
@@ -14,8 +14,6 @@ const CATEGORIES = [
   { id: "notifications", label: "Notifications" },
   { id: "openrouter", label: "OpenRouter" },
   { id: "ai-validation", label: "AI Validation" },
-  { id: "updates", label: "Updates" },
-  { id: "telemetry", label: "Telemetry" },
   { id: "environments", label: "Environments" },
 ] as const;
 
@@ -38,16 +36,8 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
   const toggleNotificationSound = useStore((s) => s.toggleNotificationSound);
   const notificationDesktop = useStore((s) => s.notificationDesktop);
   const setNotificationDesktop = useStore((s) => s.setNotificationDesktop);
-  const updateInfo = useStore((s) => s.updateInfo);
-  const setUpdateInfo = useStore((s) => s.setUpdateInfo);
-  const setUpdateOverlayActive = useStore((s) => s.setUpdateOverlayActive);
   const setStoreEditorTabEnabled = useStore((s) => s.setEditorTabEnabled);
   const notificationApiAvailable = typeof Notification !== "undefined";
-  const [checkingUpdates, setCheckingUpdates] = useState(false);
-  const [updatingApp, setUpdatingApp] = useState(false);
-  const [updateStatus, setUpdateStatus] = useState("");
-  const [updateError, setUpdateError] = useState("");
-  const [telemetryEnabled, setTelemetryEnabled] = useState(getTelemetryPreferenceEnabled());
   const [aiValidationEnabled, setAiValidationEnabled] = useState(false);
   const [aiValidationAutoApprove, setAiValidationAutoApprove] = useState(true);
   const [aiValidationAutoDeny, setAiValidationAutoDeny] = useState(true);
@@ -174,39 +164,6 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
       if (field === "aiValidationEnabled") setAiValidationEnabled(current);
       else if (field === "aiValidationAutoApprove") setAiValidationAutoApprove(current);
       else setAiValidationAutoDeny(current);
-    }
-  }
-
-  async function onCheckUpdates() {
-    setCheckingUpdates(true);
-    setUpdateStatus("");
-    setUpdateError("");
-    try {
-      const info = await api.forceCheckForUpdate();
-      setUpdateInfo(info);
-      if (info.updateAvailable && info.latestVersion) {
-        setUpdateStatus(`Update v${info.latestVersion} is available.`);
-      } else {
-        setUpdateStatus("You are up to date.");
-      }
-    } catch (err: unknown) {
-      setUpdateError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setCheckingUpdates(false);
-    }
-  }
-
-  async function onTriggerUpdate() {
-    setUpdatingApp(true);
-    setUpdateStatus("");
-    setUpdateError("");
-    try {
-      const res = await api.triggerUpdate();
-      setUpdateStatus(res.message);
-      setUpdateOverlayActive(true);
-    } catch (err: unknown) {
-      setUpdateError(err instanceof Error ? err.message : String(err));
-      setUpdatingApp(false);
     }
   }
 
@@ -647,92 +604,6 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                     </button>
                   </>
                 )}
-              </div>
-            </section>
-
-            {/* Updates */}
-            <section id="updates" ref={setSectionRef("updates")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Updates</h2>
-              <div className="space-y-3">
-                {updateInfo ? (
-                  <p className="text-xs text-cc-muted">
-                    Current version: v{updateInfo.currentVersion}
-                    {updateInfo.latestVersion ? ` • Latest: v${updateInfo.latestVersion}` : ""}
-                  </p>
-                ) : (
-                  <p className="text-xs text-cc-muted">Version information not loaded yet.</p>
-                )}
-
-                {updateError && (
-                  <div className="px-3 py-2 rounded-lg bg-cc-error/10 border border-cc-error/20 text-xs text-cc-error">
-                    {updateError}
-                  </div>
-                )}
-
-                {updateStatus && (
-                  <div className="px-3 py-2 rounded-lg bg-cc-success/10 border border-cc-success/20 text-xs text-cc-success">
-                    {updateStatus}
-                  </div>
-                )}
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={onCheckUpdates}
-                    disabled={checkingUpdates}
-                    className={`px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
-                      checkingUpdates
-                        ? "bg-cc-hover text-cc-muted cursor-not-allowed"
-                        : "bg-cc-hover hover:bg-cc-active text-cc-fg cursor-pointer"
-                    }`}
-                  >
-                    {checkingUpdates ? "Checking..." : "Check for updates"}
-                  </button>
-
-                  {updateInfo?.isServiceMode ? (
-                    <button
-                      type="button"
-                      onClick={onTriggerUpdate}
-                      disabled={updatingApp || updateInfo.updateInProgress || !updateInfo.updateAvailable}
-                      className={`px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
-                        updatingApp || updateInfo.updateInProgress || !updateInfo.updateAvailable
-                          ? "bg-cc-hover text-cc-muted cursor-not-allowed"
-                          : "bg-cc-primary hover:bg-cc-primary-hover text-white cursor-pointer"
-                      }`}
-                    >
-                      {updatingApp || updateInfo.updateInProgress ? "Updating..." : "Update & Restart"}
-                    </button>
-                  ) : (
-                    <p className="text-xs text-cc-muted self-center">
-                      Install service mode with <code className="font-mono-code bg-cc-code-bg px-1 py-0.5 rounded text-cc-code-fg">the-companion install</code> to enable one-click updates.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </section>
-
-            {/* Telemetry */}
-            <section id="telemetry" ref={setSectionRef("telemetry")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Telemetry</h2>
-              <div className="space-y-3">
-                <p className="text-xs text-cc-muted">
-                  Anonymous product analytics and crash reports via PostHog to improve reliability.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = !telemetryEnabled;
-                    setTelemetryPreferenceEnabled(next);
-                    setTelemetryEnabled(next);
-                  }}
-                  className="w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg text-sm bg-cc-hover text-cc-fg hover:bg-cc-active transition-colors cursor-pointer"
-                >
-                  <span>Usage analytics and errors</span>
-                  <span className="text-xs text-cc-muted">{telemetryEnabled ? "On" : "Off"}</span>
-                </button>
-                <p className="text-xs text-cc-muted">
-                  Browser Do Not Track is respected automatically.
-                </p>
               </div>
             </section>
 

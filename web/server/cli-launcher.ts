@@ -17,12 +17,12 @@ import { resolveBinary, getEnrichedPath } from "./path-resolver.js";
 import { containerManager } from "./container-manager.js";
 import {
   getLegacyCodexHome,
-  resolveCompanionCodexSessionHome,
+  resolveMokuCodexSessionHome,
 } from "./codex-home.js";
 
 /** Whether WebSocket transport is enabled for Codex sessions. */
 function isCodexWsTransportEnabled(): boolean {
-  const val = (process.env.COMPANION_CODEX_TRANSPORT || "ws").toLowerCase();
+  const val = (process.env.MOKU_CODEX_TRANSPORT || "ws").toLowerCase();
   return val === "ws" || val === "websocket";
 }
 
@@ -67,7 +67,7 @@ function sanitizeSpawnArgsForLog(args: string[]): string {
 }
 
 const CODEX_WS_PROXY_PATH = fileURLToPath(new URL("./codex-ws-proxy.cjs", import.meta.url));
-const CODEX_CONTAINER_WS_PORT = Number(process.env.COMPANION_CODEX_CONTAINER_WS_PORT || "4502");
+const CODEX_CONTAINER_WS_PORT = Number(process.env.MOKU_CODEX_CONTAINER_WS_PORT || "4502");
 
 export interface SdkSessionInfo {
   sessionId: string;
@@ -435,7 +435,7 @@ export class CliLauncher {
 
     // Allow overriding the host alias used by containerized Claude sessions.
     // Useful when host.docker.internal is unavailable in a given Docker setup.
-    const containerSdkHost = (process.env.COMPANION_CONTAINER_SDK_HOST || "host.docker.internal").trim()
+    const containerSdkHost = (process.env.MOKU_CONTAINER_SDK_HOST || "host.docker.internal").trim()
       || "host.docker.internal";
 
     // When running inside a container, the SDK URL should target the host alias
@@ -451,11 +451,11 @@ export class CliLauncher {
     if (
       isContainerized
       && options.permissionMode === "bypassPermissions"
-      && process.env.COMPANION_FORCE_BYPASS_IN_CONTAINER !== "1"
+      && process.env.MOKU_FORCE_BYPASS_IN_CONTAINER !== "1"
     ) {
       console.warn(
         `[cli-launcher] Session ${sessionId}: downgrading container permission mode ` +
-        `from bypassPermissions to acceptEdits (set COMPANION_FORCE_BYPASS_IN_CONTAINER=1 to force bypass).`,
+        `from bypassPermissions to acceptEdits (set MOKU_FORCE_BYPASS_IN_CONTAINER=1 to force bypass).`,
       );
       effectivePermissionMode = "acceptEdits";
       info.permissionMode = "acceptEdits";
@@ -583,7 +583,7 @@ export class CliLauncher {
 
   /**
    * Spawn a Codex app-server subprocess for a session.
-   * Transport (stdio vs WebSocket) is selected by `COMPANION_CODEX_TRANSPORT`.
+   * Transport (stdio vs WebSocket) is selected by `MOKU_CODEX_TRANSPORT`.
    */
   private prepareCodexHome(codexHome: string): void {
     mkdirSync(codexHome, { recursive: true });
@@ -633,7 +633,7 @@ export class CliLauncher {
 
   /**
    * Spawn Codex with WebSocket transport.
-   * Codex listens on `ws://127.0.0.1:PORT`, Companion connects as a client.
+   * Codex listens on `ws://127.0.0.1:PORT`, Moku connects as a client.
    */
   private async spawnCodexWs(sessionId: string, info: SdkSessionInfo, options: LaunchOptions): Promise<void> {
     const isContainerized = !!options.containerId;
@@ -691,7 +691,7 @@ export class CliLauncher {
     const args: string[] = ["app-server", "--listen", listenAddr];
     const internetEnabled = options.codexInternetAccess !== false;
     args.push("-c", `tools.webSearch=${internetEnabled ? "true" : "false"}`);
-    const codexHome = resolveCompanionCodexSessionHome(
+    const codexHome = resolveMokuCodexSessionHome(
       sessionId,
       options.codexHome,
     );
@@ -912,7 +912,7 @@ export class CliLauncher {
     const args: string[] = ["app-server"];
     const internetEnabled = options.codexInternetAccess !== false;
     args.push("-c", `tools.webSearch=${internetEnabled ? "true" : "false"}`);
-    const codexHome = resolveCompanionCodexSessionHome(
+    const codexHome = resolveMokuCodexSessionHome(
       sessionId,
       options.codexHome,
     );

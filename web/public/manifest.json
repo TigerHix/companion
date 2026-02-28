@@ -1,6 +1,6 @@
 {
-  "name": "The Companion",
-  "short_name": "Companion",
+  "name": "Moku",
+  "short_name": "Moku",
   "description": "Web UI for Claude Code and Codex",
   "start_url": "/",
   "scope": "/",

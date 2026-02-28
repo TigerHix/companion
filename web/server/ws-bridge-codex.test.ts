@@ -113,10 +113,6 @@ describe("attachCodexAdapterHandlers", () => {
     vi.mocked(settingsManager.getSettings).mockReturnValue({
       openrouterApiKey: "",
       openrouterModel: "openrouter/free",
-      linearApiKey: "",
-      linearAutoTransition: false,
-      linearAutoTransitionStateId: "",
-      linearAutoTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -864,10 +860,6 @@ describe("attachCodexAdapterHandlers", () => {
       vi.mocked(settingsManager.getSettings).mockReturnValue({
         openrouterApiKey: "test-api-key",
         openrouterModel: "openrouter/free",
-        linearApiKey: "",
-        linearAutoTransition: false,
-        linearAutoTransitionStateId: "",
-        linearAutoTransitionStateName: "",
         editorTabEnabled: false,
         aiValidationEnabled: true,
         aiValidationAutoApprove: true,
@@ -1027,10 +1019,6 @@ describe("attachCodexAdapterHandlers", () => {
       vi.mocked(settingsManager.getSettings).mockReturnValue({
         openrouterApiKey: "test-api-key",
         openrouterModel: "openrouter/free",
-        linearApiKey: "",
-        linearAutoTransition: false,
-        linearAutoTransitionStateId: "",
-        linearAutoTransitionStateName: "",
         editorTabEnabled: false,
         aiValidationEnabled: false,  // disabled
         aiValidationAutoApprove: true,
@@ -1060,10 +1048,6 @@ describe("attachCodexAdapterHandlers", () => {
       vi.mocked(settingsManager.getSettings).mockReturnValue({
         openrouterApiKey: "",  // empty
         openrouterModel: "openrouter/free",
-        linearApiKey: "",
-        linearAutoTransition: false,
-        linearAutoTransitionStateId: "",
-        linearAutoTransitionStateName: "",
         editorTabEnabled: false,
         aiValidationEnabled: true,
         aiValidationAutoApprove: true,
@@ -1158,10 +1142,6 @@ describe("attachCodexAdapterHandlers", () => {
       vi.mocked(settingsManager.getSettings).mockReturnValue({
         openrouterApiKey: "test-api-key",
         openrouterModel: "openrouter/free",
-        linearApiKey: "",
-        linearAutoTransition: false,
-        linearAutoTransitionStateId: "",
-        linearAutoTransitionStateName: "",
         editorTabEnabled: false,
         aiValidationEnabled: true,
         aiValidationAutoApprove: false,  // disabled
@@ -1201,10 +1181,6 @@ describe("attachCodexAdapterHandlers", () => {
       vi.mocked(settingsManager.getSettings).mockReturnValue({
         openrouterApiKey: "test-api-key",
         openrouterModel: "openrouter/free",
-        linearApiKey: "",
-        linearAutoTransition: false,
-        linearAutoTransitionStateId: "",
-        linearAutoTransitionStateName: "",
         editorTabEnabled: false,
         aiValidationEnabled: true,
         aiValidationAutoApprove: true,

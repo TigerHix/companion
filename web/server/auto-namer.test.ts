@@ -16,10 +16,6 @@ beforeEach(() => {
   vi.mocked(settingsManager.getSettings).mockReturnValue({
     openrouterApiKey: "or-key",
     openrouterModel: "openrouter/free",
-    linearApiKey: "",
-    linearAutoTransition: false,
-    linearAutoTransitionStateId: "",
-    linearAutoTransitionStateName: "",
     editorTabEnabled: false,
     aiValidationEnabled: false,
     aiValidationAutoApprove: true,
@@ -46,10 +42,6 @@ describe("generateSessionTitle", () => {
     vi.mocked(settingsManager.getSettings).mockReturnValue({
       openrouterApiKey: "",
       openrouterModel: "openrouter/free",
-      linearApiKey: "",
-      linearAutoTransition: false,
-      linearAutoTransitionStateId: "",
-      linearAutoTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -83,10 +75,6 @@ describe("generateSessionTitle", () => {
     vi.mocked(settingsManager.getSettings).mockReturnValue({
       openrouterApiKey: "or-key",
       openrouterModel: "openai/gpt-4o-mini",
-      linearApiKey: "",
-      linearAutoTransition: false,
-      linearAutoTransitionStateId: "",
-      linearAutoTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -161,10 +149,6 @@ describe("generateSessionTitle", () => {
     vi.mocked(settingsManager.getSettings).mockReturnValue({
       openrouterApiKey: "or-key",
       openrouterModel: "",
-      linearApiKey: "",
-      linearAutoTransition: false,
-      linearAutoTransitionStateId: "",
-      linearAutoTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,

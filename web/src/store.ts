@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { SessionState, PermissionRequest, ChatMessage, SdkSessionInfo, TaskItem, ProcessItem, ProcessStatus, McpServerDetail } from "./types.js";
-import type { UpdateInfo, PRStatusResponse, CreationProgressEvent, LinearIssue } from "./api.js";
+import type { PRStatusResponse, CreationProgressEvent } from "./api.js";
 import { type TaskPanelConfig, getInitialTaskPanelConfig, getDefaultConfig, persistTaskPanelConfig, SECTION_DEFINITIONS } from "./components/task-panel-sections.js";
 
 /** Delete a key from a Map, returning the same reference if the key wasn't present. */
@@ -30,7 +30,7 @@ export type QuickTerminalPlacement = "top" | "right" | "bottom" | "left";
 
 export type DiffBase = "last-commit" | "default-branch";
 
-const AUTH_STORAGE_KEY = "companion_auth_token";
+const AUTH_STORAGE_KEY = "moku_auth_token";
 
 interface AppState {
   // Auth
@@ -93,9 +93,6 @@ interface AppState {
   // PR status per session (pushed by server via WebSocket)
   prStatus: Map<string, PRStatusResponse>;
 
-  // Linear issues linked to sessions
-  linkedLinearIssues: Map<string, LinearIssue>;
-
   // MCP servers per session
   mcpServers: Map<string, McpServerDetail[]>;
 
@@ -104,11 +101,6 @@ interface AppState {
 
   // Sidebar project grouping
   collapsedProjects: Set<string>;
-
-  // Update info
-  updateInfo: UpdateInfo | null;
-  updateDismissedVersion: string | null;
-  updateOverlayActive: boolean;
 
   // Session creation progress (SSE streaming)
   creationProgress: CreationProgressEvent[] | null;
@@ -196,9 +188,6 @@ interface AppState {
   // PR status action
   setPRStatus: (sessionId: string, status: PRStatusResponse) => void;
 
-  // Linear issue actions
-  setLinkedLinearIssue: (sessionId: string, issue: LinearIssue | null) => void;
-
   // MCP actions
   setMcpServers: (sessionId: string, servers: McpServerDetail[]) => void;
 
@@ -217,10 +206,6 @@ interface AppState {
   setCliConnected: (sessionId: string, connected: boolean) => void;
   setSessionStatus: (sessionId: string, status: "idle" | "running" | "compacting" | null) => void;
 
-  // Update actions
-  setUpdateInfo: (info: UpdateInfo | null) => void;
-  dismissUpdate: (version: string) => void;
-  setUpdateOverlayActive: (active: boolean) => void;
   setEditorTabEnabled: (enabled: boolean) => void;
 
   // Diff panel actions
@@ -299,10 +284,6 @@ function getInitialNotificationDesktop(): boolean {
   return false;
 }
 
-function getInitialDismissedVersion(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("cc-update-dismissed") || null;
-}
 
 function getInitialCollapsedProjects(): Set<string> {
   if (typeof window === "undefined") return new Set();
@@ -355,7 +336,6 @@ export const useStore = create<AppState>((set) => ({
   sessionNames: getInitialSessionNames(),
   recentlyRenamed: new Set(),
   prStatus: new Map(),
-  linkedLinearIssues: new Map(),
   mcpServers: new Map(),
   toolProgress: new Map(),
   collapsedProjects: getInitialCollapsedProjects(),
@@ -363,9 +343,6 @@ export const useStore = create<AppState>((set) => ({
   creationError: null,
   sessionCreating: false,
   sessionCreatingBackend: null,
-  updateInfo: null,
-  updateDismissedVersion: getInitialDismissedVersion(),
-  updateOverlayActive: false,
   darkMode: getInitialDarkMode(),
   notificationSound: getInitialNotificationSound(),
   notificationDesktop: getInitialNotificationDesktop(),
@@ -539,7 +516,6 @@ export const useStore = create<AppState>((set) => ({
         mcpServers: deleteFromMap(s.mcpServers, sessionId),
         toolProgress: deleteFromMap(s.toolProgress, sessionId),
         prStatus: deleteFromMap(s.prStatus, sessionId),
-        linkedLinearIssues: deleteFromMap(s.linkedLinearIssues, sessionId),
         chatTabReentryTickBySession: deleteFromMap(s.chatTabReentryTickBySession, sessionId),
         sdkSessions: s.sdkSessions.filter((sdk) => sdk.sessionId !== sessionId),
         currentSessionId: s.currentSessionId === sessionId ? null : s.currentSessionId,
@@ -751,17 +727,6 @@ export const useStore = create<AppState>((set) => ({
       return { prStatus };
     }),
 
-  setLinkedLinearIssue: (sessionId, issue) =>
-    set((s) => {
-      const linkedLinearIssues = new Map(s.linkedLinearIssues);
-      if (issue) {
-        linkedLinearIssues.set(sessionId, issue);
-      } else {
-        linkedLinearIssues.delete(sessionId);
-      }
-      return { linkedLinearIssues };
-    }),
-
   setMcpServers: (sessionId, servers) =>
     set((s) => {
       const mcpServers = new Map(s.mcpServers);
@@ -834,12 +799,6 @@ export const useStore = create<AppState>((set) => ({
       return { sessionStatus };
     }),
 
-  setUpdateInfo: (info) => set({ updateInfo: info }),
-  dismissUpdate: (version) => {
-    localStorage.setItem("cc-update-dismissed", version);
-    set({ updateDismissedVersion: version });
-  },
-  setUpdateOverlayActive: (active) => set({ updateOverlayActive: active }),
   setEditorTabEnabled: (enabled) => set({ editorTabEnabled: enabled }),
 
   setActiveTab: (tab) => set({ activeTab: tab }),
@@ -955,7 +914,6 @@ export const useStore = create<AppState>((set) => ({
       mcpServers: new Map(),
       toolProgress: new Map(),
       prStatus: new Map(),
-      linkedLinearIssues: new Map(),
       taskPanelConfigMode: false,
       editorTabEnabled: false,
       activeTab: "chat" as const,

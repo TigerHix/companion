@@ -44,12 +44,6 @@ export const SECTION_DEFINITIONS: TaskPanelSectionDef[] = [
     backends: null,
   },
   {
-    id: "linear-issue",
-    label: "Linear Issue",
-    description: "Linked Linear ticket and comments",
-    backends: null,
-  },
-  {
     id: "mcp-servers",
     label: "MCP Servers",
     description: "Model Context Protocol server connections",

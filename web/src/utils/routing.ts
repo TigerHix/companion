@@ -4,8 +4,6 @@ export type Route =
   | { page: "home" }
   | { page: "session"; sessionId: string }
   | { page: "settings" }
-  | { page: "integrations" }
-  | { page: "integration-linear" }
   | { page: "prompts" }
   | { page: "terminal" }
   | { page: "environments" }
@@ -31,8 +29,6 @@ export function parseHash(hash: string): Route {
   ensureClipboardFallbackInstalled();
 
   if (hash === "#/settings") return { page: "settings" };
-  if (hash === "#/integrations") return { page: "integrations" };
-  if (hash === "#/integrations/linear") return { page: "integration-linear" };
   if (hash === "#/prompts") return { page: "prompts" };
   if (hash === "#/terminal") return { page: "terminal" };
   if (hash === "#/environments") return { page: "environments" };

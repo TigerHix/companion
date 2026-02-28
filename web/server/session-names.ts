@@ -9,7 +9,7 @@ import { homedir } from "node:os";
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
-const DEFAULT_PATH = join(homedir(), ".companion", "session-names.json");
+const DEFAULT_PATH = join(homedir(), ".moku", "session-names.json");
 
 // ─── Store ──────────────────────────────────────────────────────────────────
 

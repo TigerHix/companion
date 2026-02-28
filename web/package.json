@@ -1,13 +1,12 @@
 {
-  "name": "the-companion",
+  "name": "moku",
   "version": "0.64.3",
   "type": "module",
   "description": "Web UI for launching and interacting with Claude Code agents",
   "license": "MIT",
-  "author": "The Vibe Company",
+  "author": "Moku",
   "bin": {
-    "the-companion": "./bin/cli.ts",
-    "companion": "./bin/cli.ts"
+    "moku": "./bin/cli.ts"
   },
   "files": [
     "bin/",

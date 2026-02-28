@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useSyncExternalStore } from
 import { useStore } from "./store.js";
 import { connectSession } from "./ws.js";
 import { api } from "./api.js";
-import { capturePageView } from "./analytics.js";
 import { parseHash, navigateToSession } from "./utils/routing.js";
 import { LoginPage } from "./components/LoginPage.js";
 import { Sidebar } from "./components/Sidebar.js";
@@ -11,17 +10,12 @@ import { TopBar } from "./components/TopBar.js";
 import { HomePage } from "./components/HomePage.js";
 import { TaskPanel } from "./components/TaskPanel.js";
 import { DiffPanel } from "./components/DiffPanel.js";
-import { UpdateBanner } from "./components/UpdateBanner.js";
 import { SessionLaunchOverlay } from "./components/SessionLaunchOverlay.js";
 import { SessionTerminalDock } from "./components/SessionTerminalDock.js";
 import { SessionEditorPane } from "./components/SessionEditorPane.js";
-import { UpdateOverlay } from "./components/UpdateOverlay.js";
-
 // Lazy-loaded route-level pages (not needed for initial render)
 const Playground = lazy(() => import("./components/Playground.js").then((m) => ({ default: m.Playground })));
 const SettingsPage = lazy(() => import("./components/SettingsPage.js").then((m) => ({ default: m.SettingsPage })));
-const IntegrationsPage = lazy(() => import("./components/IntegrationsPage.js").then((m) => ({ default: m.IntegrationsPage })));
-const LinearSettingsPage = lazy(() => import("./components/LinearSettingsPage.js").then((m) => ({ default: m.LinearSettingsPage })));
 const PromptsPage = lazy(() => import("./components/PromptsPage.js").then((m) => ({ default: m.PromptsPage })));
 const EnvManager = lazy(() => import("./components/EnvManager.js").then((m) => ({ default: m.EnvManager })));
 const CronManager = lazy(() => import("./components/CronManager.js").then((m) => ({ default: m.CronManager })));
@@ -58,22 +52,15 @@ export default function App() {
   const sessionCreatingBackend = useStore((s) => s.sessionCreatingBackend);
   const creationProgress = useStore((s) => s.creationProgress);
   const creationError = useStore((s) => s.creationError);
-  const updateOverlayActive = useStore((s) => s.updateOverlayActive);
   const hash = useHash();
   const route = useMemo(() => parseHash(hash), [hash]);
   const isSettingsPage = route.page === "settings";
   const isPromptsPage = route.page === "prompts";
-  const isIntegrationsPage = route.page === "integrations";
-  const isLinearIntegrationPage = route.page === "integration-linear";
   const isTerminalPage = route.page === "terminal";
   const isEnvironmentsPage = route.page === "environments";
   const isScheduledPage = route.page === "scheduled";
   const isAgentsPage = route.page === "agents" || route.page === "agent-detail";
   const isSessionView = route.page === "session" || route.page === "home";
-
-  useEffect(() => {
-    capturePageView(hash || "#/");
-  }, [hash]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
@@ -138,18 +125,6 @@ export default function App() {
     return () => { cancelled = true; };
   }, [currentSessionId, sessionCwd, diffBase, changedFilesTick, setGitChangedFilesCount]);
 
-  // Poll for updates
-  useEffect(() => {
-    const check = () => {
-      api.checkForUpdate().then((info) => {
-        useStore.getState().setUpdateInfo(info);
-      }).catch(() => {});
-    };
-    check();
-    const interval = setInterval(check, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   // Auth gate: show login page when not authenticated
   if (!isAuthenticated) {
     return <LoginPage />;
@@ -184,7 +159,6 @@ export default function App() {
       {/* Main area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <TopBar />
-        <UpdateBanner />
         <div className="flex-1 overflow-hidden relative">
           {isSettingsPage && (
             <div className="absolute inset-0">
@@ -195,18 +169,6 @@ export default function App() {
           {isPromptsPage && (
             <div className="absolute inset-0">
               <Suspense fallback={<LazyFallback />}><PromptsPage embedded /></Suspense>
-            </div>
-          )}
-
-          {isIntegrationsPage && (
-            <div className="absolute inset-0">
-              <Suspense fallback={<LazyFallback />}><IntegrationsPage embedded /></Suspense>
-            </div>
-          )}
-
-          {isLinearIntegrationPage && (
-            <div className="absolute inset-0">
-              <Suspense fallback={<LazyFallback />}><LinearSettingsPage embedded /></Suspense>
             </div>
           )}
 
@@ -313,7 +275,6 @@ export default function App() {
           </div>
         </>
       )}
-      <UpdateOverlay active={updateOverlayActive} />
     </div>
   );
 }

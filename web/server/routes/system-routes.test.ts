@@ -9,34 +9,8 @@ vi.mock("../usage-limits.js", () => ({
   })),
 }));
 
-// ─── Mock update-checker ───────────────────────────────────────────────────
-vi.mock("../update-checker.js", () => ({
-  getUpdateState: vi.fn(() => ({
-    currentVersion: "1.0.0",
-    latestVersion: null,
-    lastChecked: 0,
-    isServiceMode: false,
-    checking: false,
-    updateInProgress: false,
-  })),
-  checkForUpdate: vi.fn(async () => {}),
-  isUpdateAvailable: vi.fn(() => false),
-  setUpdateInProgress: vi.fn(),
-}));
-
-// ─── Mock service ──────────────────────────────────────────────────────────
-vi.mock("../service.js", () => ({
-  refreshServiceDefinition: vi.fn(),
-}));
-
 import { Hono } from "hono";
 import { getUsageLimits } from "../usage-limits.js";
-import {
-  getUpdateState,
-  checkForUpdate,
-  isUpdateAvailable,
-  setUpdateInProgress,
-} from "../update-checker.js";
 import { registerSystemRoutes } from "./system-routes.js";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -87,7 +61,6 @@ beforeEach(() => {
     launcher: launcher as any,
     wsBridge: wsBridge as any,
     terminalManager: terminalManager as any,
-    updateCheckStaleMs: 60_000,
   });
   app.route("/api", api);
 });
@@ -183,156 +156,6 @@ describe("GET /api/sessions/:id/usage-limits", () => {
 
     expect(res.status).toBe(200);
     expect(getUsageLimits).toHaveBeenCalled();
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// GET /api/update-check
-// ═══════════════════════════════════════════════════════════════════════════
-
-describe("GET /api/update-check", () => {
-  it("calls checkForUpdate when lastChecked is 0 (stale)", async () => {
-    // lastChecked=0 means never checked, so it should trigger a refresh
-    vi.mocked(getUpdateState).mockReturnValue({
-      currentVersion: "1.0.0",
-      latestVersion: null,
-      lastChecked: 0,
-      isServiceMode: false,
-      checking: false,
-      updateInProgress: false,
-    });
-    vi.mocked(isUpdateAvailable).mockReturnValue(false);
-
-    const res = await app.request("/api/update-check");
-
-    expect(res.status).toBe(200);
-    expect(checkForUpdate).toHaveBeenCalled();
-    const json = await res.json();
-    expect(json.currentVersion).toBe("1.0.0");
-    expect(json.updateAvailable).toBe(false);
-  });
-
-  it("does NOT call checkForUpdate when lastChecked is recent (not stale)", async () => {
-    // Set lastChecked to "now" so it is within the 60s stale window
-    vi.mocked(getUpdateState).mockReturnValue({
-      currentVersion: "1.0.0",
-      latestVersion: "1.0.0",
-      lastChecked: Date.now(),
-      isServiceMode: false,
-      checking: false,
-      updateInProgress: false,
-    });
-    vi.mocked(isUpdateAvailable).mockReturnValue(false);
-
-    const res = await app.request("/api/update-check");
-
-    expect(res.status).toBe(200);
-    expect(checkForUpdate).not.toHaveBeenCalled();
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// POST /api/update-check
-// ═══════════════════════════════════════════════════════════════════════════
-
-describe("POST /api/update-check", () => {
-  it("always calls checkForUpdate regardless of staleness", async () => {
-    vi.mocked(getUpdateState).mockReturnValue({
-      currentVersion: "1.0.0",
-      latestVersion: "2.0.0",
-      lastChecked: Date.now(),
-      isServiceMode: true,
-      checking: false,
-      updateInProgress: false,
-    });
-    vi.mocked(isUpdateAvailable).mockReturnValue(true);
-
-    const res = await app.request("/api/update-check", { method: "POST" });
-
-    expect(res.status).toBe(200);
-    expect(checkForUpdate).toHaveBeenCalled();
-    const json = await res.json();
-    expect(json.updateAvailable).toBe(true);
-    expect(json.isServiceMode).toBe(true);
-  });
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// POST /api/update
-// ═══════════════════════════════════════════════════════════════════════════
-
-describe("POST /api/update", () => {
-  it("returns 400 when not running in service mode", async () => {
-    vi.mocked(getUpdateState).mockReturnValue({
-      currentVersion: "1.0.0",
-      latestVersion: "2.0.0",
-      lastChecked: Date.now(),
-      isServiceMode: false,
-      checking: false,
-      updateInProgress: false,
-    });
-
-    const res = await app.request("/api/update", { method: "POST" });
-
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json.error).toMatch(/service mode/i);
-  });
-
-  it("returns 400 when no update is available", async () => {
-    vi.mocked(getUpdateState).mockReturnValue({
-      currentVersion: "1.0.0",
-      latestVersion: "1.0.0",
-      lastChecked: Date.now(),
-      isServiceMode: true,
-      checking: false,
-      updateInProgress: false,
-    });
-    vi.mocked(isUpdateAvailable).mockReturnValue(false);
-
-    const res = await app.request("/api/update", { method: "POST" });
-
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json.error).toMatch(/no update/i);
-  });
-
-  it("returns 409 when an update is already in progress", async () => {
-    vi.mocked(getUpdateState).mockReturnValue({
-      currentVersion: "1.0.0",
-      latestVersion: "2.0.0",
-      lastChecked: Date.now(),
-      isServiceMode: true,
-      checking: false,
-      updateInProgress: true,
-    });
-    vi.mocked(isUpdateAvailable).mockReturnValue(true);
-
-    const res = await app.request("/api/update", { method: "POST" });
-
-    expect(res.status).toBe(409);
-    const json = await res.json();
-    expect(json.error).toMatch(/already in progress/i);
-  });
-
-  it("starts the update when all preconditions are met", async () => {
-    vi.mocked(getUpdateState).mockReturnValue({
-      currentVersion: "1.0.0",
-      latestVersion: "2.0.0",
-      lastChecked: Date.now(),
-      isServiceMode: true,
-      checking: false,
-      updateInProgress: false,
-    });
-    vi.mocked(isUpdateAvailable).mockReturnValue(true);
-
-    const res = await app.request("/api/update", { method: "POST" });
-
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json.ok).toBe(true);
-    expect(json.message).toMatch(/restart/i);
-    expect(setUpdateInProgress).toHaveBeenCalledWith(true);
   });
 });
 

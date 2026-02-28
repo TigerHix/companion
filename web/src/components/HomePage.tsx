@@ -4,12 +4,11 @@ import {
   api,
   createSessionStream,
   type ClaudeDiscoveredSession,
-  type CompanionEnv,
+  type MokuEnv,
   type GitRepoInfo,
   type GitBranchInfo,
   type BackendInfo,
   type ImagePullState,
-  type LinearIssue,
 } from "../api.js";
 import { connectSession, waitForConnection, sendToSession } from "../ws.js";
 import { disconnectSession } from "../ws.js";
@@ -21,7 +20,6 @@ import type { BackendType } from "../types.js";
 import { EnvManager } from "./EnvManager.js";
 import { FolderPicker } from "./FolderPicker.js";
 import { readFileAsBase64, type ImageAttachment } from "../utils/image.js";
-import { LinearSection } from "./home/LinearSection.js";
 import { BranchPicker } from "./home/BranchPicker.js";
 import { MentionMenu } from "./MentionMenu.js";
 import { useMentionMenu } from "../utils/use-mention-menu.js";
@@ -39,7 +37,7 @@ type ResumeCandidate = {
   createdAt: number;
   cwd: string;
   gitBranch?: string;
-  source: "companion" | "claude_disk";
+  source: "moku" | "claude_disk";
 };
 
 type SessionLaunchOverride = {
@@ -108,14 +106,12 @@ export function HomePage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [dynamicModels, setDynamicModels] = useState<ModelOption[] | null>(null);
-  const [linearConfigured, setLinearConfigured] = useState(false);
-  const [selectedLinearIssue, setSelectedLinearIssue] = useState<LinearIssue | null>(null);
 
   const MODELS = dynamicModels || getModelsForBackend(backend);
   const MODES = getModesForBackend(backend);
 
   // Environment state
-  const [envs, setEnvs] = useState<CompanionEnv[]>([]);
+  const [envs, setEnvs] = useState<MokuEnv[]>([]);
   const [selectedEnv, setSelectedEnv] = useState(() => localStorage.getItem("cc-selected-env") || "");
   const [showEnvDropdown, setShowEnvDropdown] = useState(false);
   const [showEnvManager, setShowEnvManager] = useState(false);
@@ -140,7 +136,7 @@ export function HomePage() {
   const [visibleResumeCandidateRows, setVisibleResumeCandidateRows] = useState(INITIAL_VISIBLE_SESSION_ROWS);
   const [resumeSearchQuery, setResumeSearchQuery] = useState("");
 
-  // Git branch state (owned here, driven by BranchPicker + LinearSection)
+  // Git branch state (owned here, driven by BranchPicker)
   const [gitRepoInfo, setGitRepoInfo] = useState<GitRepoInfo | null>(null);
   const [useWorktree, setUseWorktree] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState("");
@@ -194,9 +190,6 @@ export function HomePage() {
     }).catch(() => {});
     api.listEnvs().then(setEnvs).catch(() => {});
     api.getBackends().then(setBackends).catch(() => {});
-    api.getSettings().then((s) => {
-      setLinearConfigured(s.linearApiKeyConfigured);
-    }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // When backend changes, reset model and mode to defaults
@@ -364,7 +357,7 @@ export function HomePage() {
     setResumeCandidatesLoading(true);
     setResumeCandidatesError("");
     try {
-      const [companionSessions, discovered] = await Promise.all([
+      const [mokuSessions, discovered] = await Promise.all([
         api.listSessions(),
         api.discoverClaudeSessions(400).then((result) => result.sessions),
       ]);
@@ -377,7 +370,7 @@ export function HomePage() {
         }
       };
 
-      for (const session of companionSessions as SdkSessionInfo[]) {
+      for (const session of mokuSessions as SdkSessionInfo[]) {
         if (session.backendType === "codex") continue;
         if (!session.cliSessionId) continue;
         upsertCandidate({
@@ -388,7 +381,7 @@ export function HomePage() {
           createdAt: session.createdAt,
           cwd: session.cwd,
           gitBranch: session.gitBranch,
-          source: "companion",
+          source: "moku",
         });
       }
 
@@ -545,19 +538,7 @@ export function HomePage() {
   }
 
   function buildInitialMessage(msg: string): string {
-    if (!selectedLinearIssue) return msg;
-    const description = (selectedLinearIssue.description ?? "").trim();
-    const context = [
-      "Linear issue context:",
-      `- Identifier: ${selectedLinearIssue.identifier}`,
-      `- Title: ${selectedLinearIssue.title}`,
-      selectedLinearIssue.stateName ? `- State: ${selectedLinearIssue.stateName}` : "",
-      selectedLinearIssue.priorityLabel ? `- Priority: ${selectedLinearIssue.priorityLabel}` : "",
-      selectedLinearIssue.teamName ? `- Team: ${selectedLinearIssue.teamName}` : "",
-      `- URL: ${selectedLinearIssue.url}`,
-      description ? `- Description:\n${description}` : "",
-    ].filter(Boolean).join("\n");
-    return `${context}\n\nUser request:\n${msg}`;
+    return msg;
   }
 
   async function handleSend() {
@@ -697,17 +678,6 @@ export function HomePage() {
         });
       }
 
-      // Auto-link Linear issue if one was selected
-      if (selectedLinearIssue) {
-        api.linkLinearIssue(sessionId, selectedLinearIssue)
-          .then(() => useStore.getState().setLinkedLinearIssue(sessionId, selectedLinearIssue))
-          .catch(() => { /* fire-and-forget: linking is best-effort */ });
-        // Fire-and-forget: transition Linear issue to configured status
-        api.transitionLinearIssue(selectedLinearIssue.id).catch(() => {
-          /* fire-and-forget: status transition is best-effort */
-        });
-      }
-
       // Clear progress on success
       useStore.getState().clearCreation();
     } catch (e: unknown) {
@@ -785,23 +755,9 @@ export function HomePage() {
     setIsNewBranch(isNew);
   }, []);
 
-  const handleBranchFromIssue = useCallback((branch: string, isNew: boolean) => {
-    setSelectedBranch(branch);
-    setIsNewBranch(isNew);
-  }, []);
-
   const handleBranchesLoaded = useCallback((loadedBranches: GitBranchInfo[]) => {
     setBranches(loadedBranches);
   }, []);
-
-  const handleIssueSelect = useCallback((issue: LinearIssue | null) => {
-    setSelectedLinearIssue(issue);
-    if (!issue && gitRepoInfo) {
-      // Revert branch to current when clearing Linear issue
-      setSelectedBranch(gitRepoInfo.currentBranch);
-      setIsNewBranch(false);
-    }
-  }, [gitRepoInfo]);
 
   const canSend = text.trim().length > 0 && !sending;
 
@@ -810,9 +766,9 @@ export function HomePage() {
       <div className="w-full max-w-2xl">
         {/* Logo + Title */}
         <div className="flex flex-col items-center justify-center mb-3 sm:mb-4">
-          <img src={logoSrc} alt="The Companion" className="w-16 h-16 sm:w-20 sm:h-20 mb-2.5" />
+          <img src={logoSrc} alt="Moku" className="w-16 h-16 sm:w-20 sm:h-20 mb-2.5" />
           <h1 className="text-2xl sm:text-[2rem] font-semibold tracking-tight text-cc-fg">
-            The Companion
+            Moku
           </h1>
         </div>
 
@@ -863,23 +819,6 @@ export function HomePage() {
                 menuRef={mention.mentionMenuRef}
                 className="absolute left-2 right-2 bottom-full mb-1"
               />
-              {selectedLinearIssue && (
-                <div className="px-3 pt-3">
-                  <div className="inline-flex max-w-full items-center gap-2 rounded-md border border-cc-border bg-cc-hover/60 px-2.5 py-1.5 text-[11px] text-cc-muted">
-                    <span className="shrink-0">Linear</span>
-                    <span className="font-mono-code shrink-0">{selectedLinearIssue.identifier}</span>
-                    <span className="truncate">{selectedLinearIssue.title}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleIssueSelect(null)}
-                      className="shrink-0 rounded px-1 text-cc-muted hover:text-cc-fg hover:bg-cc-active transition-colors cursor-pointer"
-                      title="Remove Linear issue"
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-              )}
               <textarea
                 ref={textareaRef}
                 value={text}
@@ -1267,7 +1206,7 @@ export function HomePage() {
                       {visibleResumeCandidates.map((candidate) => {
                         const title = getResumeCandidateTitle(candidate);
                         const project = getResumeCandidateProject(candidate.cwd);
-                        const sourceLabel = candidate.source === "companion" ? "Companion" : "Claude";
+                        const sourceLabel = candidate.source === "moku" ? "Moku" : "Claude";
                         const selected = trimmedResumeSessionAt === candidate.resumeSessionId;
                         return (
                           <div
@@ -1359,14 +1298,6 @@ export function HomePage() {
             )}
           </div>
 
-          <LinearSection
-            cwd={cwd}
-            gitRepoInfo={gitRepoInfo}
-            linearConfigured={linearConfigured}
-            selectedLinearIssue={selectedLinearIssue}
-            onIssueSelect={handleIssueSelect}
-            onBranchFromIssue={handleBranchFromIssue}
-          />
         </div>
 
         {/* Branch behind remote warning */}

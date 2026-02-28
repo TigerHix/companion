@@ -1,6 +1,6 @@
-import type { ErrorInfo, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Component } from "react";
-import { captureException } from "../analytics.js";
+
 
 interface Props {
   children: ReactNode;
@@ -20,11 +20,8 @@ export class AppErrorBoundary extends Component<Props, State> {
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    captureException(error, {
-      source: "react_error_boundary",
-      componentStack: info.componentStack,
-    });
+  componentDidCatch(error: Error) {
+    console.error(error);
   }
 
   render() {

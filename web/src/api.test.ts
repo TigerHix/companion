@@ -1,14 +1,4 @@
 // @vitest-environment jsdom
-const { captureEventMock, captureExceptionMock } = vi.hoisted(() => ({
-  captureEventMock: vi.fn(),
-  captureExceptionMock: vi.fn(),
-}));
-
-vi.mock("./analytics.js", () => ({
-  captureEvent: captureEventMock,
-  captureException: captureExceptionMock,
-}));
-
 import { api } from "./api.js";
 
 const mockFetch = vi.fn();
@@ -25,8 +15,6 @@ function mockResponse(data: unknown, status = 200) {
 
 beforeEach(() => {
   mockFetch.mockReset();
-  captureEventMock.mockReset();
-  captureExceptionMock.mockReset();
 });
 
 // ===========================================================================
@@ -74,7 +62,7 @@ describe("createSession", () => {
       backend: "claude",
       cwd: "/repo",
       container: {
-        image: "companion-core:latest",
+        image: "moku-core:latest",
         ports: [3000, 5173],
       },
     });
@@ -84,7 +72,7 @@ describe("createSession", () => {
       backend: "claude",
       cwd: "/repo",
       container: {
-        image: "companion-core:latest",
+        image: "moku-core:latest",
         ports: [3000, 5173],
       },
     });
@@ -191,11 +179,6 @@ describe("post() error handling", () => {
     mockFetch.mockResolvedValueOnce(mockResponse({ error: "Session not found" }, 404));
 
     await expect(api.killSession("nonexistent")).rejects.toThrow("Session not found");
-    expect(captureEventMock).toHaveBeenCalledWith(
-      "api_request_failed",
-      expect.objectContaining({ method: "POST", path: "/sessions/nonexistent/kill", status: 404 }),
-    );
-    expect(captureExceptionMock).toHaveBeenCalled();
   });
 
   it("falls back to statusText when JSON body has no error field", async () => {
@@ -218,21 +201,12 @@ describe("get() error handling", () => {
     });
 
     await expect(api.listSessions()).rejects.toThrow("Forbidden");
-    expect(captureEventMock).toHaveBeenCalledWith(
-      "api_request_failed",
-      expect.objectContaining({ method: "GET", path: "/sessions", status: 403 }),
-    );
   });
 
   it("captures network failures", async () => {
     mockFetch.mockRejectedValueOnce(new Error("Network down"));
 
     await expect(api.listSessions()).rejects.toThrow("Network down");
-    expect(captureEventMock).toHaveBeenCalledWith(
-      "api_request_failed",
-      expect.objectContaining({ method: "GET", path: "/sessions" }),
-    );
-    expect(captureExceptionMock).toHaveBeenCalled();
   });
 });
 
@@ -299,7 +273,7 @@ describe("updateEnv", () => {
 // ===========================================================================
 describe("settings", () => {
   it("sends GET to /api/settings", async () => {
-    const settings = { openrouterApiKeyConfigured: true, openrouterModel: "openrouter/free", linearApiKeyConfigured: false };
+    const settings = { openrouterApiKeyConfigured: true, openrouterModel: "openrouter/free" };
     mockFetch.mockResolvedValueOnce(mockResponse(settings));
 
     const result = await api.getSettings();
@@ -310,76 +284,17 @@ describe("settings", () => {
   });
 
   it("sends PUT to /api/settings", async () => {
-    const settings = { openrouterApiKeyConfigured: true, openrouterModel: "openrouter/free", linearApiKeyConfigured: true };
+    const settings = { openrouterApiKeyConfigured: true, openrouterModel: "openrouter/free" };
     mockFetch.mockResolvedValueOnce(mockResponse(settings));
 
-    await api.updateSettings({ openrouterApiKey: "or-key", linearApiKey: "lin_api_123" });
+    await api.updateSettings({ openrouterApiKey: "or-key" });
 
     const [url, opts] = mockFetch.mock.calls[0];
     expect(url).toBe("/api/settings");
     expect(opts.method).toBe("PUT");
-    expect(JSON.parse(opts.body)).toEqual({ openrouterApiKey: "or-key", linearApiKey: "lin_api_123" });
+    expect(JSON.parse(opts.body)).toEqual({ openrouterApiKey: "or-key" });
   });
 
-  it("searches Linear issues with query + limit", async () => {
-    const data = { issues: [{ id: "1", identifier: "ENG-1", title: "Fix", description: "", url: "", branchName: "", priorityLabel: "", stateName: "", stateType: "", teamName: "", teamKey: "", teamId: "" }] };
-    mockFetch.mockResolvedValueOnce(mockResponse(data));
-
-    const result = await api.searchLinearIssues("auth bug", 5);
-    const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/linear/issues?query=auth%20bug&limit=5");
-    expect(result).toEqual(data);
-  });
-
-  it("surfaces backend error message for Linear issue search", async () => {
-    mockFetch.mockResolvedValueOnce(mockResponse({ error: "Linear token invalid" }, 502));
-
-    await expect(api.searchLinearIssues("auth bug", 5)).rejects.toThrow("Linear token invalid");
-  });
-
-  it("gets Linear connection status", async () => {
-    const data = {
-      connected: true,
-      viewerName: "Ada",
-      viewerEmail: "ada@example.com",
-      teamName: "Engineering",
-      teamKey: "ENG",
-    };
-    mockFetch.mockResolvedValueOnce(mockResponse(data));
-
-    const result = await api.getLinearConnection();
-    const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/linear/connection");
-    expect(result).toEqual(data);
-  });
-
-  it("transitions a Linear issue", async () => {
-    const data = { ok: true, skipped: false };
-    mockFetch.mockResolvedValueOnce(mockResponse(data));
-
-    const result = await api.transitionLinearIssue("issue-123");
-    const [url, opts] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/linear/issues/issue-123/transition");
-    expect(opts.method).toBe("POST");
-    expect(JSON.parse(opts.body)).toEqual({});
-    expect(result).toEqual(data);
-  });
-
-  it("surfaces backend error for Linear issue transition", async () => {
-    mockFetch.mockResolvedValueOnce(mockResponse({ error: "Linear transition failed" }, 502));
-
-    await expect(api.transitionLinearIssue("issue-123")).rejects.toThrow("Linear transition failed");
-  });
-
-  it("fetches Linear workflow states", async () => {
-    const data = { teams: [{ id: "t1", key: "ENG", name: "Engineering", states: [{ id: "s1", name: "In Progress", type: "started" }] }] };
-    mockFetch.mockResolvedValueOnce(mockResponse(data));
-
-    const result = await api.getLinearStates();
-    const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/linear/states");
-    expect(result).toEqual(data);
-  });
 });
 
 // ===========================================================================
@@ -442,10 +357,10 @@ describe("getCloudProviderPlan", () => {
     const plan = {
       provider: "modal",
       sessionId: "s1",
-      image: "companion-core:latest",
+      image: "moku-core:latest",
       cwd: "/repo",
       mappedPorts: [{ containerPort: 3000, hostPort: 49152 }],
-      commandPreview: "modal run companion_cloud.py --manifest /repo/.companion/cloud/environments/s1.json",
+      commandPreview: "modal run companion_cloud.py --manifest /repo/.moku/cloud/environments/s1.json",
     };
     mockFetch.mockResolvedValueOnce(mockResponse(plan));
 
@@ -762,7 +677,7 @@ describe("environment API", () => {
   });
 
   it("buildBaseImage sends POST to /api/docker/build-base", async () => {
-    const data = { ok: true, tag: "companion-base:latest" };
+    const data = { ok: true, tag: "moku-base:latest" };
     mockFetch.mockResolvedValueOnce(mockResponse(data));
 
     const result = await api.buildBaseImage();
@@ -774,7 +689,7 @@ describe("environment API", () => {
   });
 
   it("getBaseImageStatus sends GET to /api/docker/base-image", async () => {
-    const data = { exists: true, tag: "companion-base:latest" };
+    const data = { exists: true, tag: "moku-base:latest" };
     mockFetch.mockResolvedValueOnce(mockResponse(data));
 
     const result = await api.getBaseImageStatus();
@@ -809,154 +724,6 @@ describe("environment API", () => {
   });
 });
 
-// ===========================================================================
-// Linear project API
-// ===========================================================================
-describe("Linear project API", () => {
-  it("listLinearProjects sends GET to /api/linear/projects", async () => {
-    const data = { projects: [{ id: "p1", name: "Q1 Roadmap", state: "started" }] };
-    mockFetch.mockResolvedValueOnce(mockResponse(data));
-
-    const result = await api.listLinearProjects();
-
-    const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/linear/projects");
-    expect(result).toEqual(data);
-  });
-
-  it("getLinearProjectIssues sends GET with projectId and limit", async () => {
-    const data = { issues: [{ id: "i1", identifier: "ENG-1", title: "Task" }] };
-    mockFetch.mockResolvedValueOnce(mockResponse(data));
-
-    const result = await api.getLinearProjectIssues("proj-1", 10);
-
-    const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/linear/project-issues?projectId=proj-1&limit=10");
-    expect(result).toEqual(data);
-  });
-
-  it("getLinearProjectIssues uses default limit of 15", async () => {
-    mockFetch.mockResolvedValueOnce(mockResponse({ issues: [] }));
-
-    await api.getLinearProjectIssues("proj-1");
-
-    const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/linear/project-issues?projectId=proj-1&limit=15");
-  });
-
-  it("getLinearProjectMapping sends GET with repoRoot", async () => {
-    const data = { mapping: { repoRoot: "/repo", projectId: "p1", projectName: "Q1", createdAt: 1, updatedAt: 1 } };
-    mockFetch.mockResolvedValueOnce(mockResponse(data));
-
-    const result = await api.getLinearProjectMapping("/repo");
-
-    const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe(`/api/linear/project-mappings?repoRoot=${encodeURIComponent("/repo")}`);
-    expect(result).toEqual(data);
-  });
-
-  it("upsertLinearProjectMapping sends PUT to /api/linear/project-mappings", async () => {
-    const mapping = { repoRoot: "/repo", projectId: "p1", projectName: "Q1", createdAt: 1, updatedAt: 2 };
-    mockFetch.mockResolvedValueOnce(mockResponse({ mapping }));
-
-    const result = await api.upsertLinearProjectMapping({
-      repoRoot: "/repo",
-      projectId: "p1",
-      projectName: "Q1",
-    });
-
-    const [url, opts] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/linear/project-mappings");
-    expect(opts.method).toBe("PUT");
-    expect(JSON.parse(opts.body)).toEqual({ repoRoot: "/repo", projectId: "p1", projectName: "Q1" });
-    expect(result).toEqual({ mapping });
-  });
-
-  it("removeLinearProjectMapping sends DELETE with repoRoot body", async () => {
-    mockFetch.mockResolvedValueOnce(mockResponse({ ok: true }));
-
-    await api.removeLinearProjectMapping("/repo");
-
-    const [url, opts] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/linear/project-mappings");
-    expect(opts.method).toBe("DELETE");
-    expect(JSON.parse(opts.body)).toEqual({ repoRoot: "/repo" });
-  });
-});
-
-// ===========================================================================
-// Linear issue <-> session association
-// ===========================================================================
-describe("Linear issue-session linking", () => {
-  const mockIssue = {
-    id: "iss-1",
-    identifier: "ENG-1",
-    title: "Fix bug",
-    description: "",
-    url: "https://linear.app/ENG-1",
-    branchName: "fix-bug",
-    priorityLabel: "High",
-    stateName: "In Progress",
-    stateType: "started",
-    teamName: "Engineering",
-    teamKey: "ENG",
-    teamId: "t1",
-  };
-
-  it("linkLinearIssue sends PUT with issue body", async () => {
-    mockFetch.mockResolvedValueOnce(mockResponse({ ok: true }));
-
-    await api.linkLinearIssue("sess-1", mockIssue);
-
-    const [url, opts] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/sessions/sess-1/linear-issue");
-    expect(opts.method).toBe("PUT");
-    expect(JSON.parse(opts.body)).toEqual(mockIssue);
-  });
-
-  it("unlinkLinearIssue sends DELETE", async () => {
-    mockFetch.mockResolvedValueOnce(mockResponse({ ok: true }));
-
-    await api.unlinkLinearIssue("sess-1");
-
-    const [url, opts] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/sessions/sess-1/linear-issue");
-    expect(opts.method).toBe("DELETE");
-  });
-
-  it("getLinkedLinearIssue sends GET without refresh by default", async () => {
-    const data = { issue: mockIssue, comments: [], labels: [] };
-    mockFetch.mockResolvedValueOnce(mockResponse(data));
-
-    const result = await api.getLinkedLinearIssue("sess-1");
-
-    const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/sessions/sess-1/linear-issue");
-    expect(result).toEqual(data);
-  });
-
-  it("getLinkedLinearIssue sends GET with refresh=true", async () => {
-    mockFetch.mockResolvedValueOnce(mockResponse({ issue: null }));
-
-    await api.getLinkedLinearIssue("sess-1", true);
-
-    const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/sessions/sess-1/linear-issue?refresh=true");
-  });
-
-  it("addLinearComment sends POST with body text", async () => {
-    const comment = { id: "c1", body: "Hello", createdAt: "2026-01-01", userName: "Ada" };
-    mockFetch.mockResolvedValueOnce(mockResponse({ ok: true, comment }));
-
-    const result = await api.addLinearComment("iss-1", "Hello");
-
-    const [url, opts] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/linear/issues/iss-1/comments");
-    expect(opts.method).toBe("POST");
-    expect(JSON.parse(opts.body)).toEqual({ body: "Hello" });
-    expect(result).toEqual({ ok: true, comment });
-  });
-});
 
 // ===========================================================================
 // Git branch, fetch, pull, worktree, PR API
@@ -1094,7 +861,7 @@ describe("containers API", () => {
   });
 
   it("getContainerImages sends GET to /api/containers/images", async () => {
-    const images = ["node:20", "companion-core:latest"];
+    const images = ["node:20", "moku-core:latest"];
     mockFetch.mockResolvedValueOnce(mockResponse(images));
 
     const result = await api.getContainerImages();
@@ -1296,46 +1063,6 @@ describe("getUsageLimits", () => {
 
     const [url] = mockFetch.mock.calls[0];
     expect(url).toBe("/api/usage-limits");
-    expect(result).toEqual(data);
-  });
-});
-
-// ===========================================================================
-// Update checking API
-// ===========================================================================
-describe("update API", () => {
-  it("checkForUpdate sends GET to /api/update-check", async () => {
-    const data = { currentVersion: "0.60.0", latestVersion: "0.61.0", updateAvailable: true, isServiceMode: false, updateInProgress: false, lastChecked: 123 };
-    mockFetch.mockResolvedValueOnce(mockResponse(data));
-
-    const result = await api.checkForUpdate();
-
-    const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/update-check");
-    expect(result).toEqual(data);
-  });
-
-  it("forceCheckForUpdate sends POST to /api/update-check", async () => {
-    const data = { currentVersion: "0.60.0", latestVersion: "0.61.0", updateAvailable: true, isServiceMode: false, updateInProgress: false, lastChecked: 456 };
-    mockFetch.mockResolvedValueOnce(mockResponse(data));
-
-    const result = await api.forceCheckForUpdate();
-
-    const [url, opts] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/update-check");
-    expect(opts.method).toBe("POST");
-    expect(result).toEqual(data);
-  });
-
-  it("triggerUpdate sends POST to /api/update", async () => {
-    const data = { ok: true, message: "Update started" };
-    mockFetch.mockResolvedValueOnce(mockResponse(data));
-
-    const result = await api.triggerUpdate();
-
-    const [url, opts] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/update");
-    expect(opts.method).toBe("POST");
     expect(result).toEqual(data);
   });
 });
@@ -1787,10 +1514,6 @@ describe("put() error handling", () => {
     mockFetch.mockResolvedValueOnce(mockResponse({ error: "Env not found" }, 404));
 
     await expect(api.updateEnv("missing", { name: "X" })).rejects.toThrow("Env not found");
-    expect(captureEventMock).toHaveBeenCalledWith(
-      "api_request_failed",
-      expect.objectContaining({ method: "PUT", status: 404 }),
-    );
   });
 });
 
@@ -1799,10 +1522,6 @@ describe("patch() error handling", () => {
     mockFetch.mockResolvedValueOnce(mockResponse({ error: "Name too long" }, 400));
 
     await expect(api.renameSession("sess-1", "x".repeat(500))).rejects.toThrow("Name too long");
-    expect(captureEventMock).toHaveBeenCalledWith(
-      "api_request_failed",
-      expect.objectContaining({ method: "PATCH", status: 400 }),
-    );
   });
 });
 
@@ -1811,9 +1530,5 @@ describe("del() error handling", () => {
     mockFetch.mockResolvedValueOnce(mockResponse({ error: "Cannot delete active session" }, 409));
 
     await expect(api.deleteSession("active-sess")).rejects.toThrow("Cannot delete active session");
-    expect(captureEventMock).toHaveBeenCalledWith(
-      "api_request_failed",
-      expect.objectContaining({ method: "DELETE", status: 409 }),
-    );
   });
 });

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import { api, type CompanionEnv, type ImagePullState } from "../api.js";
+import { api, type MokuEnv, type ImagePullState } from "../api.js";
 
 interface Props {
   onClose?: () => void;
@@ -14,7 +14,7 @@ interface VarRow {
 
 type Tab = "variables" | "docker" | "ports" | "init";
 
-const DEFAULT_DOCKERFILE = `FROM the-companion:latest
+const DEFAULT_DOCKERFILE = `FROM moku:latest
 
 # Add project-specific dependencies here
 # RUN apt-get update && apt-get install -y ...
@@ -25,7 +25,7 @@ CMD ["sleep", "infinity"]
 `;
 
 export function EnvManager({ onClose, embedded = false }: Props) {
-  const [envs, setEnvs] = useState<CompanionEnv[]>([]);
+  const [envs, setEnvs] = useState<MokuEnv[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -132,7 +132,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
     }).catch(() => setDockerAvailable(false));
   }, [refresh]);
 
-  function startEdit(env: CompanionEnv) {
+  function startEdit(env: MokuEnv) {
     setEditingSlug(env.slug);
     setEditName(env.name);
     const rows = Object.entries(env.variables).map(([key, value]) => ({ key, value }));
@@ -318,7 +318,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
 
               <div className="flex items-center justify-between pt-1">
                 <p className="text-[11px] text-cc-muted">
-                  Stored in <code className="text-[10px]">~/.companion/envs/</code>
+                  Stored in <code className="text-[10px]">~/.moku/envs/</code>
                 </p>
                 <button
                   onClick={handleCreate}
@@ -580,7 +580,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
     baseImage: string,
     setBaseImage: (v: string) => void,
     slug?: string,
-    env?: CompanionEnv,
+    env?: MokuEnv,
   ) {
     const effectiveImg = env?.imageTag || baseImage;
     const imgState = effectiveImg ? imageStates[effectiveImg] : undefined;
@@ -632,9 +632,9 @@ export function EnvManager({ onClose, embedded = false }: Props) {
             className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
           >
             <option value="">None (local execution)</option>
-            <option value="the-companion:latest">the-companion:latest</option>
+            <option value="moku:latest">moku:latest</option>
             {availableImages
-              .filter((img) => img !== "the-companion:latest")
+              .filter((img) => img !== "moku:latest")
               .map((img) => (
                 <option key={img} value={img}>{img}</option>
               ))}
@@ -792,7 +792,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
 /* ─── Env Row (for embedded page — display only) ─────────────────── */
 
 interface EnvRowProps {
-  env: CompanionEnv;
+  env: MokuEnv;
   varCount: number;
   onStartEdit: () => void;
   onDelete: () => void;

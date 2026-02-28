@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { api, type AgentInfo, type AgentExport, type AgentExecution, type McpServerConfigAgent, type CompanionEnv } from "../api.js";
+import { api, type AgentInfo, type AgentExport, type AgentExecution, type McpServerConfigAgent, type MokuEnv } from "../api.js";
 import { getModelsForBackend, getDefaultModel, getAgentModesForBackend, getDefaultAgentMode } from "../utils/backends.js";
 import { FolderPicker } from "./FolderPicker.js";
 import { timeAgo } from "../utils/time-ago.js";
@@ -708,7 +708,7 @@ function AgentEditor({
     env: "",
   });
   const [availableSkills, setAvailableSkills] = useState<{ slug: string; name: string; description: string }[]>([]);
-  const [envProfiles, setEnvProfiles] = useState<CompanionEnv[]>([]);
+  const [envProfiles, setEnvProfiles] = useState<MokuEnv[]>([]);
   const [allowedToolInput, setAllowedToolInput] = useState("");
   const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [showModeDropdown, setShowModeDropdown] = useState(false);

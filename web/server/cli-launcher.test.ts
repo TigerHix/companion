@@ -143,10 +143,10 @@ let launcher: CliLauncher;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  delete process.env.COMPANION_CONTAINER_SDK_HOST;
-  delete process.env.COMPANION_FORCE_BYPASS_IN_CONTAINER;
+  delete process.env.MOKU_CONTAINER_SDK_HOST;
+  delete process.env.MOKU_FORCE_BYPASS_IN_CONTAINER;
   // Default to stdio for most tests; WS launcher behavior is covered explicitly below.
-  process.env.COMPANION_CODEX_TRANSPORT = "stdio";
+  process.env.MOKU_CODEX_TRANSPORT = "stdio";
   tempDir = mkdtempSync(join(tmpdir(), "launcher-test-"));
   store = new SessionStore(tempDir);
   launcher = new CliLauncher(3456);
@@ -158,7 +158,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete process.env.COMPANION_CODEX_TRANSPORT;
+  delete process.env.MOKU_CODEX_TRANSPORT;
   rmSync(tempDir, { recursive: true, force: true });
 });
 
@@ -226,7 +226,7 @@ describe("launch", () => {
       cwd: "/tmp/project",
       permissionMode: "bypassPermissions",
       containerId: "abc123def456",
-      containerName: "companion-test",
+      containerName: "moku-test",
     });
 
     const [cmdAndArgs] = mockSpawn.mock.calls[0];
@@ -237,12 +237,12 @@ describe("launch", () => {
     expect(bashCmd).not.toContain("bypassPermissions");
   });
 
-  it("uses COMPANION_CONTAINER_SDK_HOST for containerized sdk-url when set", () => {
-    process.env.COMPANION_CONTAINER_SDK_HOST = "172.17.0.1";
+  it("uses MOKU_CONTAINER_SDK_HOST for containerized sdk-url when set", () => {
+    process.env.MOKU_CONTAINER_SDK_HOST = "172.17.0.1";
     launcher.launch({
       cwd: "/tmp/project",
       containerId: "abc123def456",
-      containerName: "companion-test",
+      containerName: "moku-test",
     });
 
     const [cmdAndArgs] = mockSpawn.mock.calls[0];
@@ -320,12 +320,12 @@ describe("launch", () => {
     const info = launcher.launch({
       cwd: "/tmp/project",
       containerId: "abc123def456",
-      containerName: "companion-session-1",
+      containerName: "moku-session-1",
       containerImage: "ubuntu:22.04",
     });
 
     expect(info.containerId).toBe("abc123def456");
-    expect(info.containerName).toBe("companion-session-1");
+    expect(info.containerName).toBe("moku-session-1");
     expect(info.containerImage).toBe("ubuntu:22.04");
     expect(info.containerCwd).toBe("/workspace");
   });
@@ -336,7 +336,7 @@ describe("launch", () => {
       cwd: "/tmp/project",
       backendType: "codex",
       containerId: "abc123def456",
-      containerName: "companion-session-1",
+      containerName: "moku-session-1",
       containerImage: "ubuntu:22.04",
       containerCwd: "/workspace/repo",
     });
@@ -349,7 +349,7 @@ describe("launch", () => {
     launcher.launch({
       cwd: "/tmp/project",
       containerId: "abc123def456",
-      containerName: "companion-session-1",
+      containerName: "moku-session-1",
     });
 
     const [cmdAndArgs] = mockSpawn.mock.calls[0];
@@ -709,7 +709,7 @@ describe("relaunch", () => {
     launcher.launch({
       cwd: "/tmp/project",
       containerId: "abc123def456",
-      containerName: "companion-test",
+      containerName: "moku-test",
       env: { CLAUDE_CODE_OAUTH_TOKEN: "tok-test" },
     });
 
@@ -735,7 +735,7 @@ describe("relaunch", () => {
     launcher.launch({
       cwd: "/tmp/project",
       containerId: "abc123def456",
-      containerName: "companion-gone",
+      containerName: "moku-gone",
     });
 
     // Simulate container being removed
@@ -743,7 +743,7 @@ describe("relaunch", () => {
 
     const result = await launcher.relaunch("test-session-id");
     expect(result.ok).toBe(false);
-    expect(result.error).toContain("companion-gone");
+    expect(result.error).toContain("moku-gone");
     expect(result.error).toContain("removed externally");
 
     // Session should be marked as exited
@@ -770,7 +770,7 @@ describe("relaunch", () => {
     launcher.launch({
       cwd: "/tmp/project",
       containerId: "abc123def456",
-      containerName: "companion-stopped",
+      containerName: "moku-stopped",
     });
 
     // Container is stopped but can be restarted
@@ -790,7 +790,7 @@ describe("relaunch", () => {
     launcher.launch({
       cwd: "/tmp/project",
       containerId: "abc123def456",
-      containerName: "companion-dead",
+      containerName: "moku-dead",
     });
 
     mockIsContainerAlive.mockReturnValueOnce("stopped");
@@ -798,7 +798,7 @@ describe("relaunch", () => {
 
     const result = await launcher.relaunch("test-session-id");
     expect(result.ok).toBe(false);
-    expect(result.error).toContain("companion-dead");
+    expect(result.error).toContain("moku-dead");
     expect(result.error).toContain("stopped");
     expect(result.error).toContain("container start failed");
   });
@@ -807,7 +807,7 @@ describe("relaunch", () => {
     launcher.launch({
       cwd: "/tmp/project",
       containerId: "abc123def456",
-      containerName: "companion-nobin",
+      containerName: "moku-nobin",
     });
 
     mockIsContainerAlive.mockReturnValueOnce("running");
@@ -817,7 +817,7 @@ describe("relaunch", () => {
     expect(result.ok).toBe(false);
     expect(result.error).toContain("claude");
     expect(result.error).toContain("not found");
-    expect(result.error).toContain("companion-nobin");
+    expect(result.error).toContain("moku-nobin");
 
     const session = launcher.getSession("test-session-id");
     expect(session?.state).toBe("exited");
@@ -857,7 +857,7 @@ describe("codex websocket launcher", () => {
     // Verify the WS transport path launches two subprocesses:
     // 1) codex app-server --listen ...
     // 2) a Node sidecar proxy that bridges stdio <-> WebSocket
-    process.env.COMPANION_CODEX_TRANSPORT = "ws";
+    process.env.MOKU_CODEX_TRANSPORT = "ws";
     mockResolveBinary.mockReturnValue("/opt/fake/codex");
 
     const codexProc = createMockProc(2001);
@@ -899,7 +899,7 @@ describe("codex websocket launcher", () => {
 
   it("relaunch kills the old codex process and ws proxy before spawning replacements", async () => {
     // Verify the WS sidecar is treated as part of session lifecycle during relaunch.
-    process.env.COMPANION_CODEX_TRANSPORT = "ws";
+    process.env.MOKU_CODEX_TRANSPORT = "ws";
     mockResolveBinary.mockReturnValue("/opt/fake/codex");
 
     let resolveCodex1!: (code: number) => void;
@@ -953,11 +953,11 @@ describe("codex websocket launcher", () => {
   it("containerized codex ws mode ignores detached launcher exit and uses proxy exit for session liveness", async () => {
     // In container WS mode, docker exec -d exits immediately after launching Codex.
     // The session must remain alive until the proxy (actual transport) exits.
-    process.env.COMPANION_CODEX_TRANSPORT = "ws";
+    process.env.MOKU_CODEX_TRANSPORT = "ws";
     mockGetContainerById.mockReturnValue({
       containerId: "abc123def456",
-      name: "companion-codex",
-      image: "the-companion:latest",
+      name: "moku-codex",
+      image: "moku:latest",
       portMappings: [{ containerPort: 4502, hostPort: 55021 }],
       hostCwd: "/tmp/project",
       containerCwd: "/workspace",
@@ -983,7 +983,7 @@ describe("codex websocket launcher", () => {
       cwd: "/tmp/project",
       codexSandbox: "workspace-write",
       containerId: "abc123def456",
-      containerName: "companion-codex",
+      containerName: "moku-codex",
     });
 
     await new Promise((r) => setTimeout(r, 0));

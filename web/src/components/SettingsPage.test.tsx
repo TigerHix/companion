@@ -17,20 +17,10 @@ interface MockStoreState {
   notificationSound: boolean;
   notificationDesktop: boolean;
   diffBase: string;
-  updateInfo: {
-    currentVersion: string;
-    latestVersion: string | null;
-    updateAvailable: boolean;
-    isServiceMode: boolean;
-    updateInProgress: boolean;
-    lastChecked: number;
-  } | null;
   toggleDarkMode: ReturnType<typeof vi.fn>;
   toggleNotificationSound: ReturnType<typeof vi.fn>;
   setNotificationDesktop: ReturnType<typeof vi.fn>;
   setDiffBase: ReturnType<typeof vi.fn>;
-  setUpdateInfo: ReturnType<typeof vi.fn>;
-  setUpdateOverlayActive: ReturnType<typeof vi.fn>;
   setEditorTabEnabled: ReturnType<typeof vi.fn>;
 }
 
@@ -42,13 +32,10 @@ function createMockState(overrides: Partial<MockStoreState> = {}): MockStoreStat
     notificationSound: true,
     notificationDesktop: false,
     diffBase: "last-commit",
-    updateInfo: null,
     toggleDarkMode: vi.fn(),
     toggleNotificationSound: vi.fn(),
     setNotificationDesktop: vi.fn(),
     setDiffBase: vi.fn(),
-    setUpdateInfo: vi.fn(),
-    setUpdateOverlayActive: vi.fn(),
     setEditorTabEnabled: vi.fn(),
     ...overrides,
   };
@@ -57,33 +44,19 @@ function createMockState(overrides: Partial<MockStoreState> = {}): MockStoreStat
 const mockApi = {
   getSettings: vi.fn(),
   updateSettings: vi.fn(),
-  forceCheckForUpdate: vi.fn(),
-  triggerUpdate: vi.fn(),
   getAuthToken: vi.fn(),
   regenerateAuthToken: vi.fn(),
   getAuthQr: vi.fn(),
-};
-
-const mockTelemetry = {
-  getTelemetryPreferenceEnabled: vi.fn(),
-  setTelemetryPreferenceEnabled: vi.fn(),
 };
 
 vi.mock("../api.js", () => ({
   api: {
     getSettings: (...args: unknown[]) => mockApi.getSettings(...args),
     updateSettings: (...args: unknown[]) => mockApi.updateSettings(...args),
-    forceCheckForUpdate: (...args: unknown[]) => mockApi.forceCheckForUpdate(...args),
-    triggerUpdate: (...args: unknown[]) => mockApi.triggerUpdate(...args),
     getAuthToken: (...args: unknown[]) => mockApi.getAuthToken(...args),
     regenerateAuthToken: (...args: unknown[]) => mockApi.regenerateAuthToken(...args),
     getAuthQr: (...args: unknown[]) => mockApi.getAuthQr(...args),
   },
-}));
-
-vi.mock("../analytics.js", () => ({
-  getTelemetryPreferenceEnabled: (...args: unknown[]) => mockTelemetry.getTelemetryPreferenceEnabled(...args),
-  setTelemetryPreferenceEnabled: (...args: unknown[]) => mockTelemetry.setTelemetryPreferenceEnabled(...args),
 }));
 
 vi.mock("../store.js", () => {
@@ -101,30 +74,12 @@ beforeEach(() => {
   mockApi.getSettings.mockResolvedValue({
     openrouterApiKeyConfigured: true,
     openrouterModel: "openrouter/free",
-    linearApiKeyConfigured: false,
-    linearAutoTransition: false,
-    linearAutoTransitionStateName: "",
     editorTabEnabled: false,
   });
   mockApi.updateSettings.mockResolvedValue({
     openrouterApiKeyConfigured: true,
     openrouterModel: "openrouter/free",
-    linearApiKeyConfigured: false,
-    linearAutoTransition: false,
-    linearAutoTransitionStateName: "",
     editorTabEnabled: false,
-  });
-  mockApi.forceCheckForUpdate.mockResolvedValue({
-    currentVersion: "0.22.1",
-    latestVersion: null,
-    updateAvailable: false,
-    isServiceMode: false,
-    updateInProgress: false,
-    lastChecked: Date.now(),
-  });
-  mockApi.triggerUpdate.mockResolvedValue({
-    ok: true,
-    message: "Update started. Server will restart shortly.",
   });
   mockApi.getAuthToken.mockResolvedValue({ token: "abc123testtoken" });
   mockApi.regenerateAuthToken.mockResolvedValue({ token: "newtoken456" });
@@ -134,7 +89,6 @@ beforeEach(() => {
       { label: "Tailscale", url: "http://100.118.112.23:3456", qrDataUrl: "data:image/png;base64,TS_QR" },
     ],
   });
-  mockTelemetry.getTelemetryPreferenceEnabled.mockReturnValue(true);
 });
 
 describe("SettingsPage", () => {
@@ -165,9 +119,6 @@ describe("SettingsPage", () => {
     mockApi.getSettings.mockResolvedValueOnce({
       openrouterApiKeyConfigured: false,
       openrouterModel: "openrouter/free",
-      linearApiKeyConfigured: false,
-      linearAutoTransition: false,
-      linearAutoTransitionStateName: "",
       editorTabEnabled: false,
     });
 
@@ -297,9 +248,6 @@ describe("SettingsPage", () => {
     let resolveSave: ((value: {
       openrouterApiKeyConfigured: boolean;
       openrouterModel: string;
-      linearApiKeyConfigured: boolean;
-      linearAutoTransition: boolean;
-      linearAutoTransitionStateName: string;
       editorTabEnabled: boolean;
     }) => void) | undefined;
     mockApi.updateSettings.mockReturnValueOnce(
@@ -321,9 +269,6 @@ describe("SettingsPage", () => {
     resolveSave?.({
       openrouterApiKeyConfigured: true,
       openrouterModel: "openrouter/free",
-      linearApiKeyConfigured: false,
-      linearAutoTransition: false,
-      linearAutoTransitionStateName: "",
       editorTabEnabled: false,
     });
 
@@ -345,14 +290,6 @@ describe("SettingsPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Theme/i }));
     expect(mockState.toggleDarkMode).toHaveBeenCalledTimes(1);
-  });
-
-  it("toggles telemetry preference from settings", async () => {
-    render(<SettingsPage />);
-    await screen.findByText("OpenRouter key configured");
-
-    fireEvent.click(screen.getByRole("button", { name: /Usage analytics and errors/i }));
-    expect(mockTelemetry.setTelemetryPreferenceEnabled).toHaveBeenCalledWith(false);
   });
 
   it("navigates to environments page from settings", async () => {
@@ -381,53 +318,6 @@ describe("SettingsPage", () => {
     vi.unstubAllGlobals();
   });
 
-  it("checks for updates from settings and stores update info", async () => {
-    mockApi.forceCheckForUpdate.mockResolvedValueOnce({
-      currentVersion: "0.22.1",
-      latestVersion: "0.23.0",
-      updateAvailable: true,
-      isServiceMode: true,
-      updateInProgress: false,
-      lastChecked: Date.now(),
-    });
-
-    render(<SettingsPage />);
-    await screen.findByText("OpenRouter key configured");
-    fireEvent.click(screen.getByRole("button", { name: "Check for updates" }));
-
-    await waitFor(() => {
-      expect(mockApi.forceCheckForUpdate).toHaveBeenCalledTimes(1);
-      expect(mockState.setUpdateInfo).toHaveBeenCalledWith(expect.objectContaining({
-        latestVersion: "0.23.0",
-        updateAvailable: true,
-      }));
-    });
-    expect(await screen.findByText("Update v0.23.0 is available.")).toBeInTheDocument();
-  });
-
-  it("triggers app update from settings when service mode is enabled", async () => {
-    mockState = createMockState({
-      updateInfo: {
-        currentVersion: "0.22.1",
-        latestVersion: "0.23.0",
-        updateAvailable: true,
-        isServiceMode: true,
-        updateInProgress: false,
-        lastChecked: Date.now(),
-      },
-    });
-    render(<SettingsPage />);
-    await screen.findByText("OpenRouter key configured");
-
-    fireEvent.click(screen.getByRole("button", { name: "Update & Restart" }));
-
-    await waitFor(() => {
-      expect(mockApi.triggerUpdate).toHaveBeenCalledTimes(1);
-    });
-    expect(mockState.setUpdateOverlayActive).toHaveBeenCalledWith(true);
-    expect(await screen.findByText("Update started. Server will restart shortly.")).toBeInTheDocument();
-  });
-
   // Verify left sidebar nav renders category labels for quick navigation
   it("renders category navigation with all section labels", async () => {
     render(<SettingsPage />);
@@ -450,8 +340,6 @@ describe("SettingsPage", () => {
     expect(document.getElementById("authentication")).toBeInTheDocument();
     expect(document.getElementById("notifications")).toBeInTheDocument();
     expect(document.getElementById("openrouter")).toBeInTheDocument();
-    expect(document.getElementById("updates")).toBeInTheDocument();
-    expect(document.getElementById("telemetry")).toBeInTheDocument();
     expect(document.getElementById("environments")).toBeInTheDocument();
   });
 
@@ -581,9 +469,6 @@ describe("SettingsPage", () => {
     mockApi.getSettings.mockResolvedValueOnce({
       openrouterApiKeyConfigured: false,
       openrouterModel: "openrouter/free",
-      linearApiKeyConfigured: false,
-      linearAutoTransition: false,
-      linearAutoTransitionStateName: "",
       editorTabEnabled: false,
     });
 
@@ -605,9 +490,6 @@ describe("SettingsPage", () => {
     mockApi.updateSettings.mockResolvedValue({
       openrouterApiKeyConfigured: true,
       openrouterModel: "openrouter/free",
-      linearApiKeyConfigured: false,
-      linearAutoTransition: false,
-      linearAutoTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: true,
       aiValidationAutoApprove: true,
@@ -631,9 +513,6 @@ describe("SettingsPage", () => {
     mockApi.getSettings.mockResolvedValueOnce({
       openrouterApiKeyConfigured: true,
       openrouterModel: "openrouter/free",
-      linearApiKeyConfigured: false,
-      linearAutoTransition: false,
-      linearAutoTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: true,
       aiValidationAutoApprove: true,
@@ -653,9 +532,6 @@ describe("SettingsPage", () => {
     mockApi.getSettings.mockResolvedValueOnce({
       openrouterApiKeyConfigured: true,
       openrouterModel: "openrouter/free",
-      linearApiKeyConfigured: false,
-      linearAutoTransition: false,
-      linearAutoTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -675,9 +551,6 @@ describe("SettingsPage", () => {
     mockApi.getSettings.mockResolvedValueOnce({
       openrouterApiKeyConfigured: true,
       openrouterModel: "openrouter/free",
-      linearApiKeyConfigured: false,
-      linearAutoTransition: false,
-      linearAutoTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: true,
       aiValidationAutoApprove: true,
@@ -686,9 +559,6 @@ describe("SettingsPage", () => {
     mockApi.updateSettings.mockResolvedValue({
       openrouterApiKeyConfigured: true,
       openrouterModel: "openrouter/free",
-      linearApiKeyConfigured: false,
-      linearAutoTransition: false,
-      linearAutoTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: true,
       aiValidationAutoApprove: false,
@@ -712,9 +582,6 @@ describe("SettingsPage", () => {
     mockApi.getSettings.mockResolvedValueOnce({
       openrouterApiKeyConfigured: true,
       openrouterModel: "openrouter/free",
-      linearApiKeyConfigured: false,
-      linearAutoTransition: false,
-      linearAutoTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: true,
       aiValidationAutoApprove: true,
@@ -723,9 +590,6 @@ describe("SettingsPage", () => {
     mockApi.updateSettings.mockResolvedValue({
       openrouterApiKeyConfigured: true,
       openrouterModel: "openrouter/free",
-      linearApiKeyConfigured: false,
-      linearAutoTransition: false,
-      linearAutoTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: true,
       aiValidationAutoApprove: true,

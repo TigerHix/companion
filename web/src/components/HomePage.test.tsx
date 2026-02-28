@@ -16,16 +16,11 @@ const { mockApi, createSessionStreamMock, mockStoreState, mockStoreGetState } = 
     listSessions: vi.fn(),
     getRepoInfo: vi.fn(),
     listBranches: vi.fn(),
-    getLinearProjectMapping: vi.fn(),
-    getLinearProjectIssues: vi.fn(),
-    searchLinearIssues: vi.fn(),
     gitFetch: vi.fn(),
     getBackendModels: vi.fn(),
     getImageStatus: vi.fn(),
     pullImage: vi.fn(),
     gitPull: vi.fn(),
-    linkLinearIssue: vi.fn(),
-    transitionLinearIssue: vi.fn(),
     listPrompts: vi.fn(),
   },
   createSessionStreamMock: vi.fn(),
@@ -72,7 +67,6 @@ vi.mock("./FolderPicker.js", () => ({
     </div>
   ),
 }));
-vi.mock("./LinearLogo.js", () => ({ LinearLogo: () => <span>Linear</span> }));
 vi.mock("../utils/routing.js", () => ({
   navigateToSession: vi.fn(),
 }));
@@ -91,7 +85,6 @@ function buildStoreMock(overrides: Record<string, unknown> = {}) {
     setSessionName: vi.fn(),
     setPreviousPermissionMode: vi.fn(),
     appendMessage: vi.fn(),
-    setLinkedLinearIssue: vi.fn(),
     setCreationError: vi.fn(),
     clearCreationError: vi.fn(),
     ...overrides,
@@ -107,7 +100,7 @@ describe("HomePage", () => {
     mockApi.getHome.mockResolvedValue({ home: "/home/ubuntu", cwd: "/repo" });
     mockApi.listEnvs.mockResolvedValue([]);
     mockApi.getBackends.mockResolvedValue([{ id: "claude", name: "Claude", available: true }]);
-    mockApi.getSettings.mockResolvedValue({ linearApiKeyConfigured: true });
+    mockApi.getSettings.mockResolvedValue({});
     mockApi.getRepoInfo.mockResolvedValue({
       repoRoot: "/repo",
       repoName: "repo",
@@ -120,46 +113,8 @@ describe("HomePage", () => {
     ]);
     mockApi.listSessions.mockResolvedValue([]);
     mockApi.discoverClaudeSessions.mockResolvedValue({ sessions: [] });
-    mockApi.getLinearProjectMapping.mockResolvedValue({
-      mapping: { repoRoot: "/repo", projectId: "proj-1", projectName: "Platform", updatedAt: Date.now() },
-    });
-    mockApi.getLinearProjectIssues.mockResolvedValue({
-      issues: [
-        {
-          id: "issue-1",
-          identifier: "THE-147",
-          title: "Associer un ticket Linear",
-          description: "",
-          url: "https://linear.app/the/issue/THE-147",
-          branchName: "the-147-associer-un-ticket-linear",
-          priorityLabel: "Medium",
-          stateName: "Backlog",
-          stateType: "unstarted",
-          teamName: "The",
-          teamKey: "THE",
-          teamId: "team-1",
-        },
-      ],
-    });
-    mockApi.searchLinearIssues.mockResolvedValue({ issues: [] });
     mockApi.gitFetch.mockResolvedValue({ ok: true });
     mockApi.listPrompts.mockResolvedValue([]);
-  });
-
-  it("auto-sets branch from selected mapped Linear issue", async () => {
-    // Regression guard: selecting an issue from the mapped project list must
-    // update the branch picker to Linear's recommended branch.
-    render(<HomePage />);
-
-    const issueTitle = await screen.findByText(/THE-147/i);
-    const issueButton = issueTitle.closest("button");
-    expect(issueButton).toBeInTheDocument();
-    if (!issueButton) throw new Error("Issue button not found");
-    fireEvent.click(issueButton);
-
-    await waitFor(() => {
-      expect(screen.getByText("the-147-associer-un-ticket-linear")).toBeInTheDocument();
-    });
   });
 
   it("passes axe accessibility checks", async () => {
@@ -335,10 +290,10 @@ describe("HomePage", () => {
     render(<HomePage />);
 
     // Title
-    expect(screen.getByText("The Companion")).toBeInTheDocument();
+    expect(screen.getByText("Moku")).toBeInTheDocument();
 
     // Logo image (the claude logo is the default)
-    const logo = screen.getByAltText("The Companion");
+    const logo = screen.getByAltText("Moku");
     expect(logo).toBeInTheDocument();
     expect(logo).toHaveAttribute("src", "/logo.svg");
 
@@ -518,7 +473,7 @@ describe("HomePage", () => {
 
     // Logo should change to codex
     await waitFor(() => {
-      const logo = screen.getByAltText("The Companion");
+      const logo = screen.getByAltText("Moku");
       expect(logo).toHaveAttribute("src", "/logo-codex.svg");
     });
 
@@ -929,7 +884,7 @@ describe("HomePage", () => {
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
 
     // Logo should be the codex logo since backend was restored from localStorage
-    const logo = screen.getByAltText("The Companion");
+    const logo = screen.getByAltText("Moku");
     expect(logo).toHaveAttribute("src", "/logo-codex.svg");
   });
 
@@ -1141,7 +1096,7 @@ describe("HomePage", () => {
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
 
     // Component should still render without errors
-    expect(screen.getByText("The Companion")).toBeInTheDocument();
+    expect(screen.getByText("Moku")).toBeInTheDocument();
   });
 
   // ─── getHome fallback ──────────────────────────────────────────────────────

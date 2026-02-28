@@ -4,7 +4,7 @@ This file provides guidance to Claude Code & Codex when working with code in thi
 
 ## What This Is
 
-The Companion — a web UI for Claude Code & Codex. 
+Moku — a web UI for Claude Code & Codex. 
 It reverse-engineers the undocumented `--sdk-url` WebSocket protocol in the Claude Code CLI to provide a browser-based interface for running multiple Claude Code sessions with streaming, tool call visibility, and permission control.
 
 ## Development Commands
@@ -26,10 +26,6 @@ cd web && bun run build && bun run start
 cd web && bun run generate-token          # show current token
 cd web && bun run generate-token --force  # regenerate a new token
 
-# Landing page (thecompanion.sh) — idempotent: starts if down, no-op if up
-# IMPORTANT: Always use this script to run the landing page. Never cd into landing/ and run bun/vite manually.
-./scripts/landing-start.sh          # start
-./scripts/landing-start.sh --stop   # stop
 ```
 
 ## Testing
@@ -74,10 +70,10 @@ Browser (React) ←→ WebSocket ←→ Hono Server (Bun) ←→ WebSocket (NDJS
   - `index.ts` — Server bootstrap, Bun.serve with dual WebSocket upgrade (CLI vs browser)
   - `ws-bridge.ts` — Core message router. Maintains per-session state (CLI socket, browser sockets, message history, pending permissions). Parses NDJSON from CLI, translates to typed JSON for browsers.
   - `cli-launcher.ts` — Spawns/kills/relaunches Claude Code CLI processes. Handles `--resume` for session recovery. Persists session state across server restarts.
-  - `session-store.ts` — JSON file persistence to `$TMPDIR/vibe-sessions/`. Debounced writes.
+  - `session-store.ts` — JSON file persistence to `$TMPDIR/moku-sessions/`. Debounced writes.
   - `session-types.ts` — All TypeScript types for CLI messages (NDJSON), browser messages, session state, permissions.
   - `routes.ts` — REST API: session CRUD, filesystem browsing, environment management.
-  - `env-manager.ts` — CRUD for environment profiles stored in `~/.companion/envs/`.
+  - `env-manager.ts` — CRUD for environment profiles stored in `~/.moku/envs/`.
 
 - **`web/src/`** — React 19 frontend
   - `store.ts` — Zustand store. All state keyed by session ID (messages, streaming text, permissions, tasks, connection status).
@@ -87,7 +83,7 @@ Browser (React) ←→ WebSocket ←→ Hono Server (Bun) ←→ WebSocket (NDJS
   - `App.tsx` — Root layout with sidebar, chat view, task panel. Hash routing (`#/playground`).
   - `components/` — UI: `ChatView`, `MessageFeed`, `MessageBubble`, `ToolBlock`, `Composer`, `Sidebar`, `TopBar`, `HomePage`, `TaskPanel`, `PermissionBanner`, `EnvManager`, `Playground`.
 
-- **`web/bin/cli.ts`** — CLI entry point (`bunx the-companion`). Sets `__COMPANION_PACKAGE_ROOT` and imports the server.
+- **`web/bin/cli.ts`** — CLI entry point (`bunx moku`). Sets `__MOKU_PACKAGE_ROOT` and imports the server.
 
 ### WebSocket Protocol
 
@@ -97,17 +93,17 @@ Full protocol documentation is in `WEBSOCKET_PROTOCOL_REVERSED.md`.
 
 ### Session Lifecycle
 
-Sessions persist to disk (`$TMPDIR/vibe-sessions/`) and survive server restarts. On restart, live CLI processes are detected by PID and given a grace period to reconnect their WebSocket. If they don't, they're killed and relaunched with `--resume` using the CLI's internal session ID.
+Sessions persist to disk (`$TMPDIR/moku-sessions/`) and survive server restarts. On restart, live CLI processes are detected by PID and given a grace period to reconnect their WebSocket. If they don't, they're killed and relaunched with `--resume` using the CLI's internal session ID.
 
 ### Raw Protocol Recordings
 
 The server automatically records **all raw protocol messages** (both Claude Code NDJSON and Codex JSON-RPC) to JSONL files. This is useful for debugging, understanding the protocol, and building replay-based tests.
 
-- **Location**: `~/.companion/recordings/` (override with `COMPANION_RECORDINGS_DIR`)
+- **Location**: `~/.moku/recordings/` (override with `MOKU_RECORDINGS_DIR`)
 - **Format**: JSONL — one JSON object per line. First line is a header with session metadata, subsequent lines are raw message entries.
 - **File naming**: `{sessionId}_{backendType}_{ISO-timestamp}_{randomSuffix}.jsonl`
-- **Disable**: set `COMPANION_RECORD=0` or `COMPANION_RECORD=false`
-- **Rotation**: automatic cleanup when total lines exceed 1M (configurable via `COMPANION_RECORDINGS_MAX_LINES`)
+- **Disable**: set `MOKU_RECORD=0` or `MOKU_RECORD=false`
+- **Rotation**: automatic cleanup when total lines exceed 1M (configurable via `MOKU_RECORDINGS_MAX_LINES`)
 
 Each entry captures:
 ```json

@@ -1,5 +1,5 @@
 {
-  "name": "the-companion",
+  "name": "moku",
   "version": "0.64.3",
   "private": true,
   "description": "Web UI for Claude Code agents",
@@ -9,10 +9,10 @@
     "start": "cd web && bun run start",
     "prepare": "husky"
   },
-  "author": "The Vibe Company",
+  "author": "Moku",
   "license": "MIT",
   "dependencies": {
-    "the-companion": "^0.2.2"
+    "moku": "^0.2.2"
   },
   "devDependencies": {
     "husky": "^9.1.7"

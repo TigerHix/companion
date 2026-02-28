@@ -1,14 +1,14 @@
 <p align="center">
-  <img src="screenshot.png" alt="The Companion" width="100%" />
+  <img src="screenshot.png" alt="Moku" width="100%" />
 </p>
 
-<h1 align="center">The Companion</h1>
+<h1 align="center">Moku</h1>
 <p align="center"><strong>Web UI for Claude Code and Codex sessions.</strong></p>
 <p align="center">Run multiple agents, inspect every tool call, and gate risky actions with explicit approvals.</p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/the-companion"><img src="https://img.shields.io/npm/v/the-companion.svg" alt="npm version" /></a>
-  <a href="https://www.npmjs.com/package/the-companion"><img src="https://img.shields.io/npm/dm/the-companion.svg" alt="npm downloads" /></a>
+  <a href="https://www.npmjs.com/package/moku"><img src="https://img.shields.io/npm/v/moku.svg" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/moku"><img src="https://img.shields.io/npm/dm/moku.svg" alt="npm downloads" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License" /></a>
 </p>
 
@@ -19,7 +19,7 @@
 ### Try it instantly
 
 ```bash
-bunx the-companion
+bunx moku
 ```
 
 Open [http://localhost:3456](http://localhost:3456).
@@ -27,13 +27,13 @@ Open [http://localhost:3456](http://localhost:3456).
 ### Install globally
 
 ```bash
-bun install -g the-companion
+bun install -g moku
 
 # Register as a background service (launchd on macOS, systemd on Linux)
-the-companion install
+moku install
 
 # Start the service
-the-companion start
+moku start
 ```
 
 Open [http://localhost:3456](http://localhost:3456). The server runs in the background and survives reboots.
@@ -42,15 +42,15 @@ Open [http://localhost:3456](http://localhost:3456). The server runs in the back
 
 | Command | Description |
 |---|---|
-| `the-companion` | Start server in foreground (default) |
-| `the-companion serve` | Start server in foreground (explicit) |
-| `the-companion install` | Register as a background service (launchd/systemd) |
-| `the-companion start` | Start the background service |
-| `the-companion stop` | Stop the background service |
-| `the-companion restart` | Restart the background service |
-| `the-companion uninstall` | Remove the background service |
-| `the-companion status` | Show service status |
-| `the-companion logs` | Tail service log files |
+| `moku` | Start server in foreground (default) |
+| `moku serve` | Start server in foreground (explicit) |
+| `moku install` | Register as a background service (launchd/systemd) |
+| `moku start` | Start the background service |
+| `moku stop` | Stop the background service |
+| `moku restart` | Restart the background service |
+| `moku uninstall` | Remove the background service |
+| `moku status` | Show service status |
+| `moku logs` | Tail service log files |
 
 **Options:** `--port <n>` overrides the default port (3456).
 
@@ -70,7 +70,7 @@ Open [http://localhost:3456](http://localhost:3456). The server runs in the back
 ```text
 Browser (React)
   <-> ws://localhost:3456/ws/browser/:session
-Companion server (Bun + Hono)
+Moku server (Bun + Hono)
   <-> ws://localhost:3456/ws/cli/:session
 Claude Code / Codex CLI
 ```
@@ -79,7 +79,7 @@ The bridge uses the CLI `--sdk-url` websocket path and NDJSON events.
 
 ## Authentication
 
-The server auto-generates an auth token on first start, stored at `~/.companion/auth.json`. You can also manage tokens manually:
+The server auto-generates an auth token on first start, stored at `~/.moku/auth.json`. You can also manage tokens manually:
 
 ```bash
 # Show the current token (or auto-generate one)
@@ -92,7 +92,7 @@ cd web && bun run generate-token --force
 Or set a token via environment variable (takes priority over the file):
 
 ```bash
-COMPANION_AUTH_TOKEN="my-secret-token" bunx the-companion
+MOKU_AUTH_TOKEN="my-secret-token" bunx moku
 ```
 
 ## Development

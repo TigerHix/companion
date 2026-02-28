@@ -441,12 +441,6 @@ describe("Sidebar", () => {
     expect(window.location.hash).toBe("#/settings");
   });
 
-  it("navigates to integrations page when Integrations is clicked", () => {
-    render(<Sidebar />);
-    fireEvent.click(screen.getByTitle("Integrations"));
-    expect(window.location.hash).toBe("#/integrations");
-  });
-
   it("navigates to prompts page when Prompts is clicked", () => {
     render(<Sidebar />);
     fireEvent.click(screen.getByTitle("Prompts"));
@@ -745,7 +739,6 @@ describe("Sidebar", () => {
     expect(gridElement).toBeTruthy();
     // Short labels should be visible
     expect(screen.getByText("Envs")).toBeInTheDocument();
-    expect(screen.getByText("Integr.")).toBeInTheDocument();
     expect(screen.getByText("Agents")).toBeInTheDocument();
   });
 
@@ -827,7 +820,6 @@ describe("Sidebar", () => {
     render(<Sidebar />);
     // Footer nav items should have descriptive titles from NAV_ITEMS
     expect(screen.getByTitle("Prompts")).toBeInTheDocument();
-    expect(screen.getByTitle("Integrations")).toBeInTheDocument();
     expect(screen.getByTitle("Settings")).toBeInTheDocument();
   });
 
@@ -1467,16 +1459,6 @@ describe("Sidebar", () => {
 
     const settingsBtn = screen.getByTitle("Settings");
     expect(settingsBtn).toHaveClass("bg-cc-active");
-  });
-
-  it("integrations nav button shows active for both integrations and integration-linear pages", () => {
-    // Verifies that the Integrations nav button correctly uses activePages
-    // to highlight for sub-pages like integration-linear.
-    window.location.hash = "#/integrations";
-    render(<Sidebar />);
-
-    const integrationsBtn = screen.getByTitle("Integrations");
-    expect(integrationsBtn).toHaveClass("bg-cc-active");
   });
 
   // ─── Close sidebar button (mobile) ─────────────────────────────────────────

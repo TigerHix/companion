@@ -1,1 +1,0 @@
-cd web && bun run typecheck && bun run test -- --coverage
