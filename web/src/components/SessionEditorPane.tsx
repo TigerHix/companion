@@ -17,6 +17,7 @@ import { yaml } from "@codemirror/lang-yaml";
 import { Fzf } from "fzf";
 import { api, type TreeNode } from "../api.js";
 import { useStore } from "../store.js";
+import { Button } from "@/components/ui/button";
 
 const IMAGE_EXTENSIONS = new Set([
   "png", "jpg", "jpeg", "gif", "webp", "svg", "avif", "ico", "bmp", "tiff", "tif",
@@ -117,9 +118,9 @@ function flattenTree(nodes: TreeNode[], cwd: string): { path: string; relPath: s
 function gitStatusColor(status: string | undefined): string {
   if (!status) return "";
   switch (status) {
-    case "M": return "text-cc-warning";
-    case "A": return "text-cc-success";
-    case "D": return "text-cc-error line-through";
+    case "M": return "text-warning";
+    case "A": return "text-success";
+    case "D": return "text-destructive line-through";
     default: return "";
   }
 }
@@ -140,18 +141,20 @@ function TreeEntry({ node, depth, cwd, selectedPath, onSelect, gitStatus }: Tree
     const dirHasChanges = gitStatus ? [...gitStatus.keys()].some((p) => p.startsWith(`${node.path}/`)) : false;
     return (
       <div>
-        <button
+        <Button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className={`w-full flex items-center gap-1.5 py-1.5 pr-2 text-left text-xs hover:text-cc-fg hover:bg-cc-hover rounded cursor-pointer ${
-            dirHasChanges ? "text-cc-warning/70" : "text-cc-muted"
+          variant="ghost"
+          size="xs"
+          className={`w-full justify-start py-1.5 pr-2 text-left ${
+            dirHasChanges ? "text-warning/70" : "text-muted-foreground"
           }`}
           style={{ paddingLeft: `${8 + depth * 12}px` }}
           aria-label={`Toggle ${relPath(cwd, node.path)}`}
         >
           <span className="w-3 inline-flex justify-center">{open ? "▾" : "▸"}</span>
           <span className="truncate">{node.name}</span>
-        </button>
+        </Button>
         {open && node.children?.map((child) => (
           <TreeEntry
             key={child.path}
@@ -171,17 +174,19 @@ function TreeEntry({ node, depth, cwd, selectedPath, onSelect, gitStatus }: Tree
   const fileStatus = gitStatus?.get(node.path);
   const statusColor = gitStatusColor(fileStatus);
   return (
-    <button
+    <Button
       type="button"
       onClick={() => onSelect(node.path)}
-      className={`w-full py-1.5 pr-2 text-left text-xs rounded truncate cursor-pointer ${
-        selected ? "bg-cc-active text-cc-fg" : statusColor || "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
+      variant="ghost"
+      size="xs"
+      className={`w-full justify-start py-1.5 pr-2 text-left truncate ${
+        selected ? "bg-accent text-foreground" : statusColor || "text-muted-foreground hover:text-foreground hover:bg-accent"
       }`}
       style={{ paddingLeft: `${26 + depth * 12}px` }}
       title={relPath(cwd, node.path)}
     >
       {node.name}
-    </button>
+    </Button>
   );
 }
 
@@ -448,7 +453,7 @@ export function SessionEditorPane({ sessionId }: SessionEditorPaneProps) {
 
   if (!cwd) {
     return (
-      <div className="h-full flex items-center justify-center p-4 text-sm text-cc-muted">
+      <div className="h-full flex items-center justify-center p-4 text-sm text-muted-foreground">
         Editor unavailable while session is reconnecting.
       </div>
     );
@@ -477,16 +482,18 @@ export function SessionEditorPane({ sessionId }: SessionEditorPaneProps) {
   // ── Tree panel (reused in both desktop sidebar and mobile master view) ──
   const treePanel = (
     <div className="flex-1 min-h-0 flex flex-col">
-      <div className="shrink-0 px-3 py-2 border-b border-cc-border flex items-center justify-between">
-        <span className="text-xs text-cc-muted font-medium">Files</span>
+      <div className="shrink-0 px-3 py-2 border-b border-border flex items-center justify-between">
+        <span className="text-xs text-muted-foreground font-medium">Files</span>
         <div className="flex items-center gap-0.5">
-          <button
+          <Button
             type="button"
             onClick={searchActive ? closeSearch : openSearch}
-            className={`flex items-center justify-center w-6 h-6 rounded transition-colors cursor-pointer ${
+            variant="ghost"
+            size="icon-xs"
+            className={`${
               searchActive
-                ? "text-cc-fg bg-cc-hover"
-                : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
+                ? "text-foreground bg-accent"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent"
             }`}
             aria-label="Search files"
             title="Search files (Ctrl+P)"
@@ -494,23 +501,25 @@ export function SessionEditorPane({ sessionId }: SessionEditorPaneProps) {
             <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
               <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.156a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
             </svg>
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={refreshTree}
             disabled={loadingTree}
-            className="flex items-center justify-center w-6 h-6 rounded text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+            variant="ghost"
+            size="icon-xs"
+            className="text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-40"
             aria-label="Refresh file tree"
             title="Refresh file tree"
           >
             <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 ${loadingTree ? "animate-spin" : ""}`}>
               <path d="M13.65 2.35a1 1 0 0 0-1.3 0L11 3.7A5.99 5.99 0 0 0 2 8a1 1 0 1 0 2 0 4 4 0 0 1 6.29-3.29L8.65 6.35a1 1 0 0 0 .7 1.7H13a1 1 0 0 0 1-1V3.4a1 1 0 0 0-.35-.7z M14 8a1 1 0 1 0-2 0 4 4 0 0 1-6.29 3.29l1.64-1.64a1 1 0 0 0-.7-1.7H3.05a1 1 0 0 0-1 1v3.65a1 1 0 0 0 1.7.7L5 11.7A5.99 5.99 0 0 0 14 8z" />
             </svg>
-          </button>
+          </Button>
         </div>
       </div>
       {searchActive && (
-        <div className="shrink-0 border-b border-cc-border">
+        <div className="shrink-0 border-b border-border">
           <div className="px-2 py-1.5">
             <input
               ref={searchInputRef}
@@ -520,29 +529,31 @@ export function SessionEditorPane({ sessionId }: SessionEditorPaneProps) {
               onKeyDown={handleSearchKeyDown}
               placeholder="Search files..."
               aria-label="Search files"
-              className="w-full px-2 py-1 text-xs rounded bg-cc-bg border border-cc-border text-cc-fg placeholder:text-cc-muted focus:outline-none focus:border-cc-primary"
+              className="w-full px-2 py-1 text-xs rounded bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
             />
           </div>
           <div className="max-h-[300px] overflow-auto p-1">
             {searchResults.length === 0 && searchQuery.trim() && (
-              <div className="px-2 py-2 text-xs text-cc-muted">No files found.</div>
+              <div className="px-2 py-2 text-xs text-muted-foreground">No files found.</div>
             )}
             {searchResults.map((item, i) => {
               const sColor = gitStatusColor(gitStatus.get(item.path));
               return (
-              <button
-                key={item.path}
-                type="button"
-                onClick={() => selectSearchResult(item.path)}
-                className={`w-full text-left px-2 py-1.5 text-xs rounded truncate cursor-pointer ${
-                  i === searchSelectedIndex
-                    ? "bg-cc-active text-cc-fg"
-                    : sColor || "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
-                }`}
-                title={item.relPath}
-              >
-                {item.relPath}
-              </button>
+                <Button
+                  key={item.path}
+                  type="button"
+                  onClick={() => selectSearchResult(item.path)}
+                  variant="ghost"
+                  size="xs"
+                  className={`w-full justify-start px-2 py-1.5 text-left truncate ${
+                    i === searchSelectedIndex
+                      ? "bg-accent text-foreground"
+                      : sColor || "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  }`}
+                  title={item.relPath}
+                >
+                  {item.relPath}
+                </Button>
               );
             })}
           </div>
@@ -550,12 +561,12 @@ export function SessionEditorPane({ sessionId }: SessionEditorPaneProps) {
       )}
       {!searchActive && (
         <div className="flex-1 min-h-0 overflow-auto p-1.5">
-          {loadingTree && <div className="px-2 py-2 text-xs text-cc-muted">Loading files...</div>}
+          {loadingTree && <div className="px-2 py-2 text-xs text-muted-foreground">Loading files...</div>}
           {!loadingTree && tree.length === 0 && !error && (
-            <div className="px-2 py-2 text-xs text-cc-muted">No editable files found.</div>
+            <div className="px-2 py-2 text-xs text-muted-foreground">No editable files found.</div>
           )}
           {!loadingTree && error && !selectedPath && (
-            <div className="m-2 px-3 py-2 rounded-lg bg-cc-error/10 border border-cc-error/30 text-xs text-cc-error">
+            <div className="m-2 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive">
               {error}
             </div>
           )}
@@ -578,53 +589,52 @@ export function SessionEditorPane({ sessionId }: SessionEditorPaneProps) {
   // ── Editor / image viewer panel ──
   const editorPanel = selectedPath ? (
     <div className="flex-1 min-h-0 flex flex-col">
-      <div className="shrink-0 px-3 py-2 border-b border-cc-border bg-cc-sidebar flex items-center justify-between gap-3">
+      <div className="shrink-0 px-3 py-2 border-b border-border bg-sidebar flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           {/* Back button — mobile only */}
-          <button
+          <Button
             type="button"
             onClick={handleBack}
-            className="sm:hidden flex items-center justify-center w-8 h-8 rounded text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer shrink-0"
+            variant="ghost"
+            size="icon-sm"
+            className="shrink-0 sm:hidden"
             aria-label="Back to file tree"
           >
             <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
               <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
             </svg>
-          </button>
+          </Button>
           <div className="min-w-0">
-            <p className="text-[11px] text-cc-muted truncate">{relPath(cwd, selectedPath)}</p>
-            {dirty && <p className="text-[10px] text-amber-500">Unsaved changes</p>}
-            {saved && <p className="text-[10px] text-cc-success">Saved</p>}
+            <p className="text-[11px] text-muted-foreground truncate">{relPath(cwd, selectedPath)}</p>
+            {dirty && <p className="text-[10px] text-warning">Unsaved changes</p>}
+            {saved && <p className="text-[10px] text-success">Saved</p>}
           </div>
         </div>
         {/* Save button — hidden for images (read-only) */}
         {!isImage && (
-          <button
+          <Button
             type="button"
             onClick={saveCurrentFile}
             disabled={!selectedPath || saving || loadingFile || !dirty}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors shrink-0 ${
-              !selectedPath || saving || loadingFile || !dirty
-                ? "bg-cc-hover text-cc-muted cursor-not-allowed"
-                : "bg-cc-primary text-white hover:bg-cc-primary-hover cursor-pointer"
-            }`}
+            size="sm"
+            className="shrink-0"
           >
             {saving ? "Saving..." : "Save"}
-          </button>
+          </Button>
         )}
       </div>
 
       {error && (
-        <div className="m-3 px-3 py-2 rounded-lg bg-cc-error/10 border border-cc-error/30 text-xs text-cc-error">
+        <div className="m-3 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive">
           {error}
         </div>
       )}
 
       <div className="flex-1 min-h-0">
         {loadingFile ? (
-          <div className="h-full flex items-center justify-center text-sm text-cc-muted">Loading file...</div>
+          <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Loading file...</div>
         ) : imageUrl ? (
-          <div className="h-full flex items-center justify-center p-4 bg-cc-bg overflow-auto">
+          <div className="h-full flex items-center justify-center p-4 bg-background overflow-auto">
             <img
               src={imageUrl}
               alt={relPath(cwd, selectedPath)}
@@ -651,14 +661,14 @@ export function SessionEditorPane({ sessionId }: SessionEditorPaneProps) {
   ) : null;
 
   return (
-    <div className="h-full min-h-0 flex bg-cc-bg">
+    <div className="h-full min-h-0 flex bg-background">
       {/* Desktop: side-by-side */}
-      <aside className="hidden sm:flex w-[240px] shrink-0 border-r border-cc-border bg-cc-sidebar/60 flex-col min-h-0">
+      <aside className="hidden sm:flex w-[240px] shrink-0 border-r border-border bg-sidebar/60 flex-col min-h-0">
         {treePanel}
       </aside>
       <div className="hidden sm:flex flex-1 min-h-0 flex-col">
         {editorPanel || (
-          <div className="h-full flex items-center justify-center text-sm text-cc-muted">
+          <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
             Select a file to start editing.
           </div>
         )}

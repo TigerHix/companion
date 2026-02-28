@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 
 
 interface Props {
@@ -29,17 +30,20 @@ export class SectionErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="px-4 py-3 border-b border-cc-border">
+        <div className="px-4 py-3 border-b border-border">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-cc-error">
+            <span className="text-xs text-destructive">
               {this.props.label ? `${this.props.label} failed to load` : "Section failed to load"}
             </span>
-            <button
-              className="text-[10px] text-cc-muted hover:text-cc-fg px-2 py-0.5 rounded bg-cc-hover cursor-pointer"
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="h-auto bg-accent px-2 py-0.5 text-[10px] text-muted-foreground"
               onClick={() => this.setState({ hasError: false })}
             >
               Retry
-            </button>
+            </Button>
           </div>
         </div>
       );

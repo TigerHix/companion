@@ -37,8 +37,8 @@ describe("SessionCreationProgress", () => {
       { step: "resolving_env", label: "Resolved", status: "done" },
     ];
     const { container } = render(<SessionCreationProgress steps={steps} />);
-    // Done steps have a green checkmark SVG with the cc-success class
-    const svg = container.querySelector(".text-cc-success");
+    // Done steps have a green checkmark SVG with the success class
+    const svg = container.querySelector(".text-success");
     expect(svg).not.toBeNull();
   });
 
@@ -47,8 +47,8 @@ describe("SessionCreationProgress", () => {
       { step: "building_image", label: "Build failed", status: "error" },
     ];
     const { container } = render(<SessionCreationProgress steps={steps} />);
-    // Error steps have a red X SVG with the cc-error class
-    const svg = container.querySelector(".text-cc-error");
+    // Error steps have a red X SVG with the destructive class
+    const svg = container.querySelector(".text-destructive");
     expect(svg).not.toBeNull();
   });
 
@@ -71,7 +71,7 @@ describe("SessionCreationProgress", () => {
     ];
     const { container } = render(<SessionCreationProgress steps={steps} />);
     // Error box has a specific bg class; should not be present
-    const errorBox = container.querySelector(".bg-cc-error\\/5");
+    const errorBox = container.querySelector(".bg-destructive\\/5");
     expect(errorBox).toBeNull();
   });
 
@@ -83,8 +83,8 @@ describe("SessionCreationProgress", () => {
     render(<SessionCreationProgress steps={steps} />);
     const doneLabel = screen.getByText("Done step");
     const activeLabel = screen.getByText("Active step");
-    // Done labels have text-cc-muted, active labels have font-medium
-    expect(doneLabel.className).toContain("text-cc-muted");
+    // Done labels have text-muted-foreground, active labels have font-medium
+    expect(doneLabel.className).toContain("text-muted-foreground");
     expect(activeLabel.className).toContain("font-medium");
   });
 

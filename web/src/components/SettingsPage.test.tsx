@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
 // IntersectionObserver is not available in jsdom — provide a no-op mock
@@ -159,7 +159,7 @@ describe("SettingsPage", () => {
 
   it("falls back model to openrouter/free when blank", async () => {
     render(<SettingsPage />);
-    await screen.findByText("OpenRouter key configured");
+    await screen.findByLabelText("OpenRouter Model");
     fireEvent.change(screen.getByLabelText("OpenRouter Model"), {
       target: { value: "   " },
     });
@@ -197,7 +197,7 @@ describe("SettingsPage", () => {
     render(<SettingsPage />);
     await screen.findByText("OpenRouter key configured");
 
-    fireEvent.click(screen.getByRole("button", { name: /Enable Editor tab \(CodeMirror\)/i }));
+    fireEvent.click(screen.getByRole("switch", { name: /Enable Editor tab \(CodeMirror\)/i }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => {
@@ -240,7 +240,7 @@ describe("SettingsPage", () => {
 
   it("hides Back button in embedded mode", async () => {
     render(<SettingsPage embedded />);
-    await screen.findByText("OpenRouter key configured");
+    await screen.findByText("Settings");
     expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument();
   });
 
@@ -279,7 +279,7 @@ describe("SettingsPage", () => {
     render(<SettingsPage />);
     await screen.findByText("OpenRouter key configured");
 
-    fireEvent.click(screen.getByRole("button", { name: /Sound/i }));
+    fireEvent.click(screen.getByRole("switch", { name: /Sound/i }));
     expect(mockState.toggleNotificationSound).toHaveBeenCalledTimes(1);
   });
 
@@ -309,7 +309,7 @@ describe("SettingsPage", () => {
 
     render(<SettingsPage />);
     await screen.findByText("OpenRouter key configured");
-    fireEvent.click(screen.getByRole("button", { name: /Desktop Alerts/i }));
+    fireEvent.click(screen.getByRole("switch", { name: /Desktop Alerts/i }));
 
     await waitFor(() => {
       expect(requestPermission).toHaveBeenCalledTimes(1);
@@ -444,7 +444,7 @@ describe("SettingsPage", () => {
 
   // ─── AI Validation section tests ──────────────────────────────────
 
-  // The AI Validation section renders with its heading and the toggle button
+  // The AI Validation section renders with its heading and the main switch
   // when an OpenRouter key is configured (configured === true).
   it("renders AI Validation section with toggle when OpenRouter key is configured", async () => {
     render(<SettingsPage />);
@@ -454,13 +454,13 @@ describe("SettingsPage", () => {
     const section = document.getElementById("ai-validation");
     expect(section).toBeInTheDocument();
 
-    // The main toggle button should be enabled (not disabled) when key is configured
-    const toggleBtn = screen.getByRole("button", { name: /AI Validation Mode/i });
+    // Query within the section to avoid unrelated button matches elsewhere in the page.
+    const toggleBtn = within(section as HTMLElement).getByRole("switch", { name: /AI Validation Mode/i });
     expect(toggleBtn).toBeInTheDocument();
-    expect(toggleBtn).not.toBeDisabled();
+    expect(toggleBtn).not.toHaveAttribute("aria-disabled", "true");
 
     // It should show "Off" by default since aiValidationEnabled defaults to false
-    expect(toggleBtn).toHaveTextContent("Off");
+    expect(within(section as HTMLElement).getByText("Off")).toBeInTheDocument();
   });
 
   // When no OpenRouter API key is configured, the AI Validation toggle should
@@ -475,8 +475,8 @@ describe("SettingsPage", () => {
     render(<SettingsPage />);
     await screen.findByText("OpenRouter key not configured");
 
-    const toggleBtn = screen.getByRole("button", { name: /AI Validation Mode/i });
-    expect(toggleBtn).toBeDisabled();
+    const toggleBtn = screen.getByRole("switch", { name: /AI Validation Mode/i });
+    expect(toggleBtn).toHaveAttribute("aria-disabled", "true");
 
     // Warning message should be shown
     expect(
@@ -499,7 +499,7 @@ describe("SettingsPage", () => {
     render(<SettingsPage />);
     await screen.findByText("OpenRouter key configured");
 
-    fireEvent.click(screen.getByRole("button", { name: /AI Validation Mode/i }));
+    fireEvent.click(screen.getByRole("switch", { name: /AI Validation Mode/i }));
 
     await waitFor(() => {
       expect(mockApi.updateSettings).toHaveBeenCalledWith({ aiValidationEnabled: true });
@@ -523,8 +523,8 @@ describe("SettingsPage", () => {
     await screen.findByText("OpenRouter key configured");
 
     // Sub-toggles should be visible
-    expect(screen.getByRole("button", { name: /Auto-approve safe tools/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Auto-deny dangerous tools/i })).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: /Auto-approve safe tools/i })).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: /Auto-deny dangerous tools/i })).toBeInTheDocument();
   });
 
   // Sub-toggles should NOT appear when AI Validation is disabled.
@@ -541,8 +541,8 @@ describe("SettingsPage", () => {
     render(<SettingsPage />);
     await screen.findByText("OpenRouter key configured");
 
-    expect(screen.queryByRole("button", { name: /Auto-approve safe tools/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Auto-deny dangerous tools/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: /Auto-approve safe tools/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: /Auto-deny dangerous tools/i })).not.toBeInTheDocument();
   });
 
   // Clicking the auto-approve toggle should call updateSettings with the
@@ -569,7 +569,7 @@ describe("SettingsPage", () => {
     await screen.findByText("OpenRouter key configured");
 
     // Auto-approve is currently "On" (true), clicking should toggle to false
-    fireEvent.click(screen.getByRole("button", { name: /Auto-approve safe tools/i }));
+    fireEvent.click(screen.getByRole("switch", { name: /Auto-approve safe tools/i }));
 
     await waitFor(() => {
       expect(mockApi.updateSettings).toHaveBeenCalledWith({ aiValidationAutoApprove: false });
@@ -600,7 +600,7 @@ describe("SettingsPage", () => {
     await screen.findByText("OpenRouter key configured");
 
     // Auto-deny is currently "On" (true), clicking should toggle to false
-    fireEvent.click(screen.getByRole("button", { name: /Auto-deny dangerous tools/i }));
+    fireEvent.click(screen.getByRole("switch", { name: /Auto-deny dangerous tools/i }));
 
     await waitFor(() => {
       expect(mockApi.updateSettings).toHaveBeenCalledWith({ aiValidationAutoDeny: false });
@@ -615,16 +615,16 @@ describe("SettingsPage", () => {
     render(<SettingsPage />);
     await screen.findByText("OpenRouter key configured");
 
-    const toggleBtn = screen.getByRole("button", { name: /AI Validation Mode/i });
-    // Initially off
-    expect(toggleBtn).toHaveTextContent("Off");
+    const toggleBtn = screen.getByRole("switch", { name: /AI Validation Mode/i });
+    const section = document.getElementById("ai-validation");
+    expect(section).toHaveTextContent("Off");
 
     // Click to enable — optimistic update sets it to "On"
     fireEvent.click(toggleBtn);
 
     // After the API rejects, the toggle should revert back to "Off"
     await waitFor(() => {
-      expect(toggleBtn).toHaveTextContent("Off");
+      expect(section).toHaveTextContent("Off");
     });
   });
 

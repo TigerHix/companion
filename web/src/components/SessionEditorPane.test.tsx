@@ -473,15 +473,15 @@ describe("SessionEditorPane", () => {
 
     // Modified file should have the warning color class (theme token)
     const modifiedBtns = await screen.findAllByText("modified.ts");
-    expect(modifiedBtns[0].className).toContain("text-cc-warning");
+    expect(modifiedBtns[0].className).toContain("text-warning");
 
     // New/added file should have the success color class (theme token)
     const addedBtns = await screen.findAllByText("new-file.ts");
-    expect(addedBtns[0].className).toContain("text-cc-success");
+    expect(addedBtns[0].className).toContain("text-success");
 
     // Clean file should NOT have git color classes
     const cleanBtns = await screen.findAllByText("clean.ts");
-    expect(cleanBtns[0].className).not.toContain("text-cc-warning");
-    expect(cleanBtns[0].className).not.toContain("text-cc-success");
+    expect(cleanBtns[0].className).not.toContain("text-warning");
+    expect(cleanBtns[0].className).not.toContain("text-success");
   });
 });

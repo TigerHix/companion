@@ -10,6 +10,20 @@ if (typeof window !== "undefined") {
   expect.extend({ toHaveNoViolations: matchers.toHaveNoViolations });
 }
 
+// Polyfill scrollIntoView for jsdom (used by cmdk and other components)
+if (typeof window !== "undefined" && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}
+
+// Polyfill ResizeObserver for jsdom (used by cmdk and other components)
+if (typeof window !== "undefined" && !globalThis.ResizeObserver) {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as any;
+}
+
 if (typeof window !== "undefined") {
   Object.defineProperty(window, "matchMedia", {
     writable: true,

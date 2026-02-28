@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useSyncExternalStore } from "react";
+import { Button } from "@/components/ui/button";
 
 interface TerminalAccessoryBarProps {
   /** Write raw data to the terminal PTY */
@@ -127,46 +128,52 @@ export function TerminalAccessoryBar({ onWrite, onPaste }: TerminalAccessoryBarP
 
   return (
     <div
-      className="fixed left-0 right-0 z-50 flex items-center gap-1 px-2 py-1.5 overflow-x-auto border-t border-cc-border bg-cc-card"
+      className="fixed left-0 right-0 z-50 flex items-center gap-1 px-2 py-1.5 overflow-x-auto border-t border-border bg-card"
       style={{ bottom: keyboardOffset }}
       /* Prevent buttons from stealing focus away from xterm's hidden textarea */
       onMouseDown={(e) => e.preventDefault()}
       onTouchStart={(e) => e.preventDefault()}
     >
       {/* Ctrl modifier toggle */}
-      <button
+      <Button
         type="button"
-        className={`shrink-0 h-7 min-w-[36px] px-2 rounded text-[11px] font-semibold font-mono-code transition-colors ${
+        variant="ghost"
+        size="xs"
+        className={`shrink-0 h-7 min-w-[36px] px-2 font-semibold font-mono ${
           ctrlActive
-            ? "bg-cc-primary text-white"
-            : "bg-cc-hover text-cc-fg"
+            ? "bg-primary text-white"
+            : "bg-accent text-foreground"
         }`}
         onClick={toggleCtrl}
       >
         Ctrl
-      </button>
+      </Button>
 
       {KEYS.map((key) => (
-        <button
+        <Button
           key={key.label}
           type="button"
-          className="shrink-0 h-7 min-w-[32px] px-2 rounded bg-cc-hover text-cc-fg text-[11px] font-semibold font-mono-code active:bg-cc-active transition-colors"
+          variant="ghost"
+          size="xs"
+          className="shrink-0 h-7 min-w-[32px] px-2 bg-accent text-foreground text-[11px] font-semibold font-mono"
           onClick={() => handleKey(key.data)}
         >
           {key.label}
-        </button>
+        </Button>
       ))}
 
       {/* Paste button */}
       {onPaste && (
-        <button
+        <Button
           type="button"
-          className="shrink-0 h-7 min-w-[36px] px-2 rounded bg-cc-hover text-cc-fg text-[11px] font-semibold font-mono-code active:bg-cc-active transition-colors"
+          variant="ghost"
+          size="xs"
+          className="shrink-0 h-7 min-w-[36px] px-2 bg-accent text-foreground text-[11px] font-semibold font-mono"
           onClick={onPaste}
           title="Paste from clipboard"
         >
           Paste
-        </button>
+        </Button>
       )}
     </div>
   );

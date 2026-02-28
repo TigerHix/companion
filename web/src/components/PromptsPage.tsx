@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, type SavedPrompt } from "../api.js";
 import { useStore } from "../store.js";
 import { navigateHome, navigateToSession } from "../utils/routing.js";
+import { Button } from "@/components/ui/button";
 
 interface PromptsPageProps {
   embedded?: boolean;
@@ -105,18 +106,19 @@ export function PromptsPage({ embedded = false }: PromptsPageProps) {
   }
 
   return (
-    <div className={`${embedded ? "h-full" : "h-[100dvh]"} bg-cc-bg text-cc-fg font-sans-ui antialiased overflow-y-auto`}>
+    <div className={`${embedded ? "h-full" : "h-[100dvh]"} bg-background text-foreground font-sans antialiased overflow-y-auto`}>
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-safe">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-2">
           <div className="min-w-0">
-            <h1 className="text-lg font-semibold text-cc-fg">Saved Prompts</h1>
-            <p className="mt-0.5 text-[13px] text-cc-muted leading-relaxed">
-              Create reusable prompts — insert with <code className="text-cc-fg text-xs bg-cc-hover rounded px-1 py-0.5">@title</code> in the composer.
+            <h1 className="text-lg font-semibold text-foreground">Saved Prompts</h1>
+            <p className="mt-0.5 text-[13px] text-muted-foreground leading-relaxed">
+              Create reusable prompts — insert with <code className="text-foreground text-xs bg-accent rounded px-1 py-0.5">@title</code> in the composer.
             </p>
           </div>
           {!embedded && (
-            <button
+            <Button
+              type="button"
               onClick={() => {
                 if (currentSessionId) {
                   navigateToSession(currentSessionId);
@@ -124,17 +126,18 @@ export function PromptsPage({ embedded = false }: PromptsPageProps) {
                   navigateHome();
                 }
               }}
-              className="px-3 py-2.5 min-h-[44px] rounded-lg text-sm text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer shrink-0"
+              variant="ghost"
+              className="min-h-[44px] text-sm text-muted-foreground shrink-0"
             >
               Back
-            </button>
+            </Button>
           )}
         </div>
 
         {/* Toolbar: search + create CTA */}
         <div className="flex items-center gap-2 mt-4 mb-5">
           <div className="relative flex-1 min-w-0">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cc-muted pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8" />
               <path d="m21 21-4.35-4.35" />
             </svg>
@@ -142,33 +145,34 @@ export function PromptsPage({ embedded = false }: PromptsPageProps) {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by title or content..."
-              className="w-full pl-9 pr-3 py-2.5 min-h-[44px] text-sm bg-cc-card rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
+              className="w-full pl-9 pr-3 py-2.5 min-h-[44px] text-sm bg-card rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-shadow"
             />
           </div>
-          <button
+          <Button
+            type="button"
             onClick={() => setShowCreate(!showCreate)}
-            className={`flex items-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors cursor-pointer shrink-0 ${
+            className={`min-h-[44px] shrink-0 text-sm ${
               showCreate
-                ? "bg-cc-active text-cc-fg"
-                : "bg-cc-primary hover:bg-cc-primary-hover text-white"
+                ? "bg-accent text-foreground"
+                : "bg-primary hover:bg-primary/90 text-white"
             }`}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
               {showCreate ? <path d="M18 6 6 18M6 6l12 12" /> : <path d="M12 5v14M5 12h14" />}
             </svg>
             <span className="hidden sm:inline">{showCreate ? "Cancel" : "New Prompt"}</span>
-          </button>
+          </Button>
         </div>
 
         {/* Inline create form */}
         {showCreate && (
           <form
             onSubmit={handleCreate}
-            className="mb-6 rounded-xl bg-cc-card p-4 sm:p-5 space-y-3"
+            className="mb-6 rounded-xl bg-card p-4 sm:p-5 space-y-3"
             style={{ animation: "fadeSlideIn 150ms ease-out" }}
           >
             <div>
-              <label className="block text-xs font-medium text-cc-muted mb-1" htmlFor="prompt-name">
+              <label className="block text-xs font-medium text-muted-foreground mb-1" htmlFor="prompt-name">
                 Title
               </label>
               <input
@@ -177,11 +181,11 @@ export function PromptsPage({ embedded = false }: PromptsPageProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="review-pr"
-                className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
+                className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-background rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-shadow"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-cc-muted mb-1" htmlFor="prompt-content">
+              <label className="block text-xs font-medium text-muted-foreground mb-1" htmlFor="prompt-content">
                 Content
               </label>
               <textarea
@@ -190,49 +194,49 @@ export function PromptsPage({ embedded = false }: PromptsPageProps) {
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="Review this PR and summarize risks, regressions, and missing tests."
                 rows={4}
-                className="w-full px-3 py-2.5 text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 resize-y transition-shadow"
+                className="w-full px-3 py-2.5 text-sm bg-background rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 resize-y transition-shadow"
               />
             </div>
 
             {error && (
-              <div className="px-3 py-2 rounded-lg bg-cc-error/10 text-xs text-cc-error">
+              <div className="px-3 py-2 rounded-lg bg-destructive/10 text-xs text-destructive">
                 {error}
               </div>
             )}
 
             <div className="flex items-center justify-between pt-1">
-              <p className="text-[11px] text-cc-muted">
+              <p className="text-[11px] text-muted-foreground">
                 Stored in <code className="text-[10px]">~/.moku/prompts.json</code>
               </p>
-              <button
+              <Button
                 type="submit"
                 disabled={saving || !name.trim() || !content.trim()}
-                className={`px-4 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
+                className={`min-h-[44px] text-sm ${
                   saving || !name.trim() || !content.trim()
-                    ? "bg-cc-hover text-cc-muted cursor-not-allowed"
-                    : "bg-cc-primary hover:bg-cc-primary-hover text-white cursor-pointer"
+                    ? "bg-accent text-muted-foreground cursor-not-allowed"
+                    : "bg-primary hover:bg-primary/90 text-white cursor-pointer"
                 }`}
               >
                 {saving ? "Saving..." : "Create Prompt"}
-              </button>
+              </Button>
             </div>
           </form>
         )}
 
         {/* Stats */}
-        <div className="flex items-center gap-2 mb-3 text-[12px] text-cc-muted">
+        <div className="flex items-center gap-2 mb-3 text-[12px] text-muted-foreground">
           <span>{visiblePrompts === totalPrompts ? `${totalPrompts} prompt${totalPrompts !== 1 ? "s" : ""}` : `${visiblePrompts} of ${totalPrompts}`}</span>
-          <span className="text-cc-border">·</span>
+          <span className="text-border">·</span>
           <span>global scope</span>
         </div>
 
         {/* Prompt list */}
         {loading ? (
-          <div className="py-12 text-center text-sm text-cc-muted">Loading prompts...</div>
+          <div className="py-12 text-center text-sm text-muted-foreground">Loading prompts...</div>
         ) : prompts.length === 0 ? (
-          <div className="py-12 text-center text-sm text-cc-muted">No prompts yet.</div>
+          <div className="py-12 text-center text-sm text-muted-foreground">No prompts yet.</div>
         ) : filteredPrompts.length === 0 ? (
-          <div className="py-12 text-center text-sm text-cc-muted">No prompts match your search.</div>
+          <div className="py-12 text-center text-sm text-muted-foreground">No prompts match your search.</div>
         ) : (
           <div className="space-y-1">
             {filteredPrompts.map((prompt) => (
@@ -295,49 +299,52 @@ function PromptRow({
   if (isEditing) {
     return (
       <div
-        className="rounded-xl bg-cc-card p-4 space-y-3"
+        className="rounded-xl bg-card p-4 space-y-3"
         style={{ animation: "fadeSlideIn 150ms ease-out" }}
       >
         <input
           value={editName}
           onChange={(e) => onEditNameChange(e.target.value)}
           placeholder="Prompt title"
-          className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
+          className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-background rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-shadow"
         />
         <textarea
           value={editContent}
           onChange={(e) => onEditContentChange(e.target.value)}
           rows={4}
-          className="w-full px-3 py-2.5 text-sm bg-cc-bg rounded-lg text-cc-fg focus:outline-none focus:ring-1 focus:ring-cc-primary/40 resize-y transition-shadow"
+          className="w-full px-3 py-2.5 text-sm bg-background rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 resize-y transition-shadow"
         />
         <div className="flex justify-end gap-2">
-          <button
+          <Button
+            type="button"
             onClick={onCancelEdit}
-            className="px-3 py-2.5 min-h-[44px] text-sm rounded-lg text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+            variant="ghost"
+            className="min-h-[44px] text-sm text-muted-foreground"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
             onClick={onSaveEdit}
             disabled={!editName.trim() || !editContent.trim()}
-            className={`px-4 py-2.5 min-h-[44px] text-sm rounded-lg font-medium transition-colors ${
+            className={`min-h-[44px] text-sm ${
               editName.trim() && editContent.trim()
-                ? "bg-cc-primary hover:bg-cc-primary-hover text-white cursor-pointer"
-                : "bg-cc-hover text-cc-muted cursor-not-allowed"
+                ? "bg-primary hover:bg-primary/90 text-white cursor-pointer"
+                : "bg-accent text-muted-foreground cursor-not-allowed"
             }`}
           >
             Save
-          </button>
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="group flex items-start gap-3 px-3 py-3 min-h-[44px] rounded-lg hover:bg-cc-hover/60 transition-colors">
+    <div className="group flex items-start gap-3 px-3 py-3 min-h-[44px] rounded-lg hover:bg-accent/60 transition-colors">
       {/* Icon */}
-      <div className="shrink-0 mt-0.5 w-7 h-7 rounded-md bg-cc-primary/10 flex items-center justify-center">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5 text-cc-primary">
+      <div className="shrink-0 mt-0.5 w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5 text-primary">
           <path d="M7 8h10M7 12h6M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V5Z" />
         </svg>
       </div>
@@ -345,35 +352,40 @@ function PromptRow({
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-cc-fg truncate">{prompt.name}</span>
-          <span className="text-[10px] uppercase tracking-wider text-cc-muted opacity-60">{prompt.scope}</span>
+          <span className="text-sm font-medium text-foreground truncate">{prompt.name}</span>
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground opacity-60">{prompt.scope}</span>
         </div>
-        <p className="mt-0.5 text-xs text-cc-muted line-clamp-2 leading-relaxed">{prompt.content}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2 leading-relaxed">{prompt.content}</p>
       </div>
 
       {/* Actions — visible on hover (desktop) or always (mobile/touch) */}
       <div className="shrink-0 flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-        <button
+        <Button
+          type="button"
           onClick={onStartEdit}
-          className="p-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 sm:p-1.5 rounded-md text-cc-muted hover:text-cc-fg hover:bg-cc-active transition-colors cursor-pointer"
+          variant="ghost"
+          size="icon-sm"
+          className="min-h-[44px] min-w-[44px] text-muted-foreground hover:text-foreground sm:min-h-0 sm:min-w-0"
           aria-label="Edit"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z" />
           </svg>
-        </button>
-        <button
+        </Button>
+        <Button
+          type="button"
           onClick={onDelete}
-          className="p-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 sm:p-1.5 rounded-md text-cc-muted hover:text-cc-error hover:bg-cc-error/10 transition-colors cursor-pointer"
+          variant="ghost"
+          size="icon-sm"
+          className="min-h-[44px] min-w-[44px] text-muted-foreground hover:text-destructive hover:bg-destructive/10 sm:min-h-0 sm:min-w-0"
           aria-label="Delete"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
             <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z" />
           </svg>
-        </button>
+        </Button>
       </div>
     </div>
   );
 }
-

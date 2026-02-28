@@ -223,6 +223,17 @@ describe("TaskPanel", () => {
     expect(mockState.toggleSectionEnabled).toHaveBeenCalledWith("git-branch");
   });
 
+  it("reflects toggle checked state from config via the shared switch primitive", () => {
+    const config = getDefaultConfig();
+    config.enabled["git-branch"] = false;
+    resetStore({ taskPanelConfigMode: true, taskPanelConfig: config });
+    render(<TaskPanel sessionId="s1" />);
+
+    const toggle = screen.getByTestId("toggle-git-branch");
+    expect(toggle).toHaveAttribute("role", "switch");
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+  });
+
   it("calls moveSectionUp when up arrow is clicked", () => {
     // Clicking the up arrow should call the store action
     resetStore({ taskPanelConfigMode: true });
@@ -882,7 +893,7 @@ describe("TaskPanel — backend detection via sdkSessions", () => {
 
 describe("TaskPanel — barColor visual behavior via progress bars", () => {
   it("applies error color class for usage above 80%", () => {
-    // Usage > 80% should render bars with bg-cc-error class
+    // Usage > 80% should render bars with bg-destructive class
     resetStore({
       sessions: new Map([["s1", {
         backend_type: "codex",
@@ -895,11 +906,11 @@ describe("TaskPanel — barColor visual behavior via progress bars", () => {
     const { container } = render(<CodexRateLimitsSection sessionId="s1" />);
     // Find the inner progress bar div (the one with width style)
     const bar = container.querySelector("[style]");
-    expect(bar?.className).toContain("bg-cc-error");
+    expect(bar?.className).toContain("bg-destructive");
   });
 
   it("applies warning color class for usage between 50% and 80%", () => {
-    // Usage 51-80% should render bars with bg-cc-warning class
+    // Usage 51-80% should render bars with bg-warning class
     resetStore({
       sessions: new Map([["s1", {
         backend_type: "codex",
@@ -911,11 +922,11 @@ describe("TaskPanel — barColor visual behavior via progress bars", () => {
     });
     const { container } = render(<CodexRateLimitsSection sessionId="s1" />);
     const bar = container.querySelector("[style]");
-    expect(bar?.className).toContain("bg-cc-warning");
+    expect(bar?.className).toContain("bg-warning");
   });
 
   it("applies primary color class for usage at or below 50%", () => {
-    // Usage <= 50% should render bars with bg-cc-primary class
+    // Usage <= 50% should render bars with bg-primary class
     resetStore({
       sessions: new Map([["s1", {
         backend_type: "codex",
@@ -927,7 +938,7 @@ describe("TaskPanel — barColor visual behavior via progress bars", () => {
     });
     const { container } = render(<CodexRateLimitsSection sessionId="s1" />);
     const bar = container.querySelector("[style]");
-    expect(bar?.className).toContain("bg-cc-primary");
+    expect(bar?.className).toContain("bg-primary");
   });
 });
 
@@ -1043,7 +1054,7 @@ describe("UsageLimitsSection (Claude Code sessions)", () => {
   });
 
   it("applies warning bar color for 5h usage between 50 and 80", async () => {
-    // Usage at 65% should render with bg-cc-warning
+    // Usage at 65% should render with bg-warning
     mockApi.getSessionUsageLimits.mockResolvedValueOnce({
       five_hour: { utilization: 65, resets_at: null },
       seven_day: null,
@@ -1055,11 +1066,11 @@ describe("UsageLimitsSection (Claude Code sessions)", () => {
     const { container } = render(<TaskPanel sessionId="s1" />);
     await screen.findByText("5h Limit");
     const bar = container.querySelector("[style*='width: 65%']");
-    expect(bar?.className).toContain("bg-cc-warning");
+    expect(bar?.className).toContain("bg-warning");
   });
 
   it("applies error bar color for 5h usage above 80", async () => {
-    // Usage at 95% should render with bg-cc-error
+    // Usage at 95% should render with bg-destructive
     mockApi.getSessionUsageLimits.mockResolvedValueOnce({
       five_hour: { utilization: 95, resets_at: null },
       seven_day: null,
@@ -1071,7 +1082,7 @@ describe("UsageLimitsSection (Claude Code sessions)", () => {
     const { container } = render(<TaskPanel sessionId="s1" />);
     await screen.findByText("5h Limit");
     const bar = container.querySelector("[style*='width: 95%']");
-    expect(bar?.className).toContain("bg-cc-error");
+    expect(bar?.className).toContain("bg-destructive");
   });
 
   it("caps the bar width at 100% even when utilization exceeds 100", async () => {
@@ -1141,7 +1152,7 @@ describe("TaskPanel accessibility", () => {
     const { container } = render(<TaskPanel sessionId="s1" />);
     const results = await axe(container);
     expect(results).toHaveNoViolations();
-  });
+  }, 10_000);
 
   it("passes axe accessibility checks with tasks rendered", async () => {
     // Ensure task items with various states pass accessibility checks

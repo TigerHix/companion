@@ -4,6 +4,10 @@ import { getModelsForBackend, getDefaultModel, getAgentModesForBackend, getDefau
 import { FolderPicker } from "./FolderPicker.js";
 import { timeAgo } from "../utils/time-ago.js";
 import type { Route } from "../utils/routing.js";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -433,13 +437,13 @@ export function AgentsPage({ route }: Props) {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-cc-bg">
+    <div className="h-full overflow-y-auto bg-background">
       <div className="max-w-4xl mx-auto p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-lg font-semibold text-cc-fg">Agents</h1>
-            <p className="text-xs text-cc-muted mt-0.5">Reusable autonomous session configs. Run manually, via webhook, or on a schedule.</p>
+            <h1 className="text-lg font-semibold text-foreground">Agents</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">Reusable autonomous session configs. Run manually, via webhook, or on a schedule.</p>
           </div>
           <div className="flex gap-2">
             <input
@@ -449,37 +453,42 @@ export function AgentsPage({ route }: Props) {
               onChange={handleImport}
               className="hidden"
             />
-            <button
+            <Button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-1.5 text-xs rounded-lg border border-cc-border text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+              variant="outline"
+              size="sm"
+              className="text-xs"
             >
               Import
-            </button>
-            <button
+            </Button>
+            <Button
+              type="button"
               onClick={startCreate}
-              className="px-3 py-1.5 text-xs rounded-lg bg-cc-primary text-white hover:bg-cc-primary-hover transition-colors cursor-pointer"
+              size="sm"
+              className="text-xs"
             >
               + New Agent
-            </button>
+            </Button>
           </div>
         </div>
 
         {error && (
-          <div className="mb-4 px-3 py-2 rounded-lg bg-cc-error/10 border border-cc-error/30 text-cc-error text-xs">
+          <div className="mb-4 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs">
             {error}
           </div>
         )}
 
         {/* Agent Cards */}
         {loading ? (
-          <div className="text-sm text-cc-muted">Loading...</div>
+          <div className="text-sm text-muted-foreground">Loading...</div>
         ) : agents.length === 0 ? (
           <div className="text-center py-16">
-            <div className="mb-3 flex justify-center text-cc-muted">
+            <div className="mb-3 flex justify-center text-muted-foreground">
               <AgentIcon icon="bot" className="w-8 h-8" />
             </div>
-            <p className="text-sm text-cc-muted">No agents yet</p>
-            <p className="text-xs text-cc-muted mt-1">Create an agent to get started, or import a shared JSON config.</p>
+            <p className="text-sm text-muted-foreground">No agents yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Create an agent to get started, or import a shared JSON config.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -502,41 +511,38 @@ export function AgentsPage({ route }: Props) {
       </div>
 
       {/* Run Input Modal */}
-      {runInputAgent && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={() => setRunInputAgent(null)}
-        >
-          <div
-            className="bg-cc-card rounded-[14px] shadow-2xl p-6 w-full max-w-lg border border-cc-border"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-sm font-medium text-cc-fg mb-1">Run {runInputAgent.name}</h3>
-            <p className="text-xs text-cc-muted mb-3">This agent's prompt uses {"{{input}}"} — provide the input below.</p>
-            <textarea
+      <Dialog
+        open={!!runInputAgent}
+        onOpenChange={(open) => {
+          if (!open) setRunInputAgent(null);
+        }}
+      >
+        {runInputAgent && (
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Run {runInputAgent.name}</DialogTitle>
+              <DialogDescription>
+                This agent&apos;s prompt uses {"{{input}}"}; provide the input below.
+              </DialogDescription>
+            </DialogHeader>
+            <Textarea
               value={runInput}
               onChange={(e) => setRunInput(e.target.value)}
               placeholder="Enter input for the agent..."
-              className="w-full px-3 py-2 rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg text-sm resize-none h-24 focus:outline-none focus:ring-1 focus:ring-cc-primary"
+              className="min-h-24 resize-none text-sm"
               autoFocus
             />
-            <div className="flex justify-end gap-2 mt-3">
-              <button
-                onClick={() => setRunInputAgent(null)}
-                className="px-3 py-1.5 text-xs rounded-lg border border-cc-border text-cc-muted hover:text-cc-fg transition-colors cursor-pointer"
-              >
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRunInputAgent(null)}>
                 Cancel
-              </button>
-              <button
-                onClick={() => handleRun(runInputAgent, runInput)}
-                className="px-3 py-1.5 text-xs rounded-lg bg-cc-primary text-white hover:bg-cc-primary-hover transition-colors cursor-pointer"
-              >
+              </Button>
+              <Button onClick={() => handleRun(runInputAgent, runInput)}>
                 Run
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }
@@ -574,57 +580,64 @@ function AgentCard({
   }
 
   return (
-    <div className="rounded-xl border border-cc-border bg-cc-card p-4 hover:border-cc-primary/30 transition-colors">
+    <div className="rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-colors">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="flex-shrink-0 text-cc-primary">
+          <div className="flex-shrink-0 text-primary">
             <AgentIcon icon={agent.icon || "bot"} className="w-5 h-5" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-medium text-cc-fg truncate">{agent.name}</h3>
-              <span className={`px-1.5 py-0.5 text-[10px] rounded-full font-medium ${agent.enabled ? "bg-cc-success/15 text-cc-success" : "bg-cc-muted/15 text-cc-muted"}`}>
+              <h3 className="text-sm font-medium text-foreground truncate">{agent.name}</h3>
+              <span className={`px-1.5 py-0.5 text-[10px] rounded-full font-medium ${agent.enabled ? "bg-success/15 text-success" : "bg-muted-foreground/15 text-muted-foreground"}`}>
                 {agent.enabled ? "Enabled" : "Disabled"}
               </span>
-              <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-cc-hover text-cc-muted">
+              <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-accent text-muted-foreground">
                 {agent.backendType === "codex" ? "Codex" : "Claude"}
               </span>
             </div>
             {agent.description && (
-              <p className="text-xs text-cc-muted mt-0.5 truncate">{agent.description}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{agent.description}</p>
             )}
           </div>
         </div>
 
         <div className="flex items-center gap-1.5 flex-shrink-0 ml-3">
-          <button
+          <Button
+            type="button"
             onClick={onRun}
-            className="px-2.5 py-1 text-xs rounded-lg bg-cc-primary text-white hover:bg-cc-primary-hover transition-colors cursor-pointer"
+            size="xs"
             title="Run agent"
           >
             Run
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
             onClick={onEdit}
-            className="p-1.5 rounded-lg text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+            variant="ghost"
+            size="icon-xs"
             title="Edit"
           >
             <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
               <path d="M11.013 1.427a1.75 1.75 0 012.474 0l1.086 1.086a1.75 1.75 0 010 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 01-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61z" />
             </svg>
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
             onClick={onExport}
-            className="p-1.5 rounded-lg text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+            variant="ghost"
+            size="icon-xs"
             title="Export JSON"
           >
             <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
               <path d="M3.5 13a.5.5 0 01-.5-.5V11h1v1h8v-1h1v1.5a.5.5 0 01-.5.5h-9zM8 2a.5.5 0 01.5.5v6.793l2.146-2.147a.5.5 0 01.708.708l-3 3a.5.5 0 01-.708 0l-3-3a.5.5 0 01.708-.708L7.5 9.293V2.5A.5.5 0 018 2z" />
             </svg>
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
             onClick={onToggle}
-            className="p-1.5 rounded-lg text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+            variant="ghost"
+            size="icon-xs"
             title={agent.enabled ? "Disable" : "Enable"}
           >
             <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
@@ -634,38 +647,44 @@ function AgentCard({
                 <path d="M11 3a5 5 0 010 10H5A5 5 0 015 3h6zM5 6a2 2 0 100 4 2 2 0 000-4z" />
               )}
             </svg>
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
             onClick={onDelete}
-            className="p-1.5 rounded-lg text-cc-muted hover:text-cc-error hover:bg-cc-error/10 transition-colors cursor-pointer"
+            variant="ghost"
+            size="icon-xs"
+            className="hover:text-destructive hover:bg-destructive/10"
             title="Delete"
           >
             <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
               <path d="M5.5 5.5a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm-7-3A1.5 1.5 0 015 1h6a1.5 1.5 0 011.5 1.5H14a.5.5 0 010 1h-.554L12.2 14.118A1.5 1.5 0 0110.706 15H5.294a1.5 1.5 0 01-1.494-.882L2.554 3.5H2a.5.5 0 010-1h1.5z" />
             </svg>
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Trigger badges + stats */}
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-cc-border/50">
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
         <div className="flex items-center gap-1.5 flex-wrap">
           {triggers.map((t, i) => (
-            <span key={i} className="px-2 py-0.5 text-[10px] rounded-full bg-cc-hover text-cc-muted">
+            <span key={i} className="px-2 py-0.5 text-[10px] rounded-full bg-accent text-muted-foreground">
               {t}
             </span>
           ))}
           {agent.triggers?.webhook?.enabled && (
-            <button
+            <Button
+              type="button"
               onClick={onCopyWebhook}
-              className="px-2 py-0.5 text-[10px] rounded-full bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors cursor-pointer"
+              variant="ghost"
+              size="xs"
+              className="status-chip status-chip-primary h-auto rounded-full px-2 py-0.5 text-[10px] font-normal"
               title="Copy webhook URL"
             >
               {copiedWebhook ? "Copied!" : "Copy URL"}
-            </button>
+            </Button>
           )}
         </div>
-        <div className="flex items-center gap-3 text-[10px] text-cc-muted">
+        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
           {agent.totalRuns > 0 && <span>{agent.totalRuns} run{agent.totalRuns !== 1 ? "s" : ""}</span>}
           {agent.lastRunAt && <span>Last: {timeAgo(agent.lastRunAt)}</span>}
           {agent.nextRunAt && <span>Next: {timeAgo(agent.nextRunAt)}</span>}
@@ -838,46 +857,54 @@ function AgentEditor({
 
   // Common pill class
   const pill = "flex items-center gap-1.5 px-2 py-1 text-xs rounded-md transition-colors cursor-pointer";
-  const pillDefault = `${pill} text-cc-muted hover:text-cc-fg hover:bg-cc-hover`;
-  const pillActive = `${pill} text-cc-primary bg-cc-primary/10 hover:bg-cc-primary/15`;
+  const pillDefault = `${pill} text-muted-foreground hover:text-foreground hover:bg-accent`;
+  const pillActive = `${pill} text-primary bg-primary/10 hover:bg-primary/15`;
 
   return (
-    <div className="h-full overflow-y-auto bg-cc-bg">
+    <div className="h-full overflow-y-auto bg-background">
       <div className="max-w-3xl mx-auto p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <button
+        <div className="flex items-center gap-3">
+            <Button
+              type="button"
               onClick={onCancel}
-              className="p-1.5 rounded-lg text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Back to agents"
             >
               <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4">
                 <path d="M11 2L5 8l6 6" stroke="currentColor" strokeWidth="2" fill="none" />
               </svg>
-            </button>
-            <h1 className="text-lg font-semibold text-cc-fg">
+            </Button>
+            <h1 className="text-lg font-semibold text-foreground">
               {editingId ? "Edit Agent" : "New Agent"}
             </h1>
           </div>
           <div className="flex gap-2">
-            <button
+            <Button
+              type="button"
               onClick={onCancel}
-              className="px-3 py-1.5 text-xs rounded-lg border border-cc-border text-cc-muted hover:text-cc-fg transition-colors cursor-pointer"
+              variant="outline"
+              size="sm"
+              className="text-xs"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              type="button"
               onClick={onSave}
               disabled={saving || !form.name.trim() || !form.prompt.trim()}
-              className="px-3 py-1.5 text-xs rounded-lg bg-cc-primary text-white hover:bg-cc-primary-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+              size="sm"
+              className="text-xs"
             >
               {saving ? "Saving..." : editingId ? "Save" : "Create"}
-            </button>
+            </Button>
           </div>
         </div>
 
         {error && (
-          <div className="mb-4 px-3 py-2 rounded-lg bg-cc-error/10 border border-cc-error/30 text-cc-error text-xs">
+          <div className="mb-4 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-xs">
             {error}
           </div>
         )}
@@ -887,28 +914,30 @@ function AgentEditor({
           <div className="flex gap-3 items-start">
             {/* Icon picker popover */}
             <div ref={iconPickerRef} className="relative flex-shrink-0">
-              <button
+              <Button
                 type="button"
                 onClick={() => setIconPickerOpen(!iconPickerOpen)}
-                className="w-10 h-10 rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg flex items-center justify-center hover:border-cc-primary/50 focus:outline-none focus:ring-1 focus:ring-cc-primary transition-colors"
+                variant="outline"
+                size="icon-lg"
+                className="rounded-lg"
                 aria-label="Choose agent icon"
               >
                 <AgentIcon icon={form.icon || "bot"} className="w-5 h-5" />
-              </button>
+              </Button>
               {iconPickerOpen && (
-                <div className="absolute top-12 left-0 z-50 bg-cc-card border border-cc-border rounded-lg shadow-lg p-2 grid grid-cols-6 gap-1 w-[216px]">
+                <div className="absolute top-12 left-0 z-50 bg-card border border-border rounded-lg shadow-lg p-2 grid grid-cols-6 gap-1 w-[216px]">
                   {AGENT_ICON_OPTIONS.map((ic) => (
-                    <button
+                    <Button
                       key={ic}
                       type="button"
                       onClick={() => { updateField("icon", ic); setIconPickerOpen(false); }}
-                      className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors ${
-                        form.icon === ic ? "bg-cc-primary/20 ring-1 ring-cc-primary" : "hover:bg-cc-hover"
-                      }`}
+                      variant="ghost"
+                      size="icon-sm"
+                      className={form.icon === ic ? "bg-primary/20 ring-1 ring-primary hover:bg-primary/20" : ""}
                       title={ic}
                     >
-                      <AgentIcon icon={ic} className="w-4 h-4 text-cc-fg" />
-                    </button>
+                      <AgentIcon icon={ic} className="w-4 h-4 text-foreground" />
+                    </Button>
                   ))}
                 </div>
               )}
@@ -918,13 +947,13 @@ function AgentEditor({
                 value={form.name}
                 onChange={(e) => updateField("name", e.target.value)}
                 placeholder="Agent name *"
-                className="w-full px-3 py-2 rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg text-sm focus:outline-none focus:ring-1 focus:ring-cc-primary"
+                className="w-full px-3 py-2 rounded-lg bg-card border border-border text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary"
               />
               <input
                 value={form.description}
                 onChange={(e) => updateField("description", e.target.value)}
                 placeholder="Short description (optional)"
-                className="w-full px-3 py-1.5 rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg text-xs focus:outline-none focus:ring-1 focus:ring-cc-primary"
+                className="w-full px-3 py-1.5 rounded-lg bg-card border border-border text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
           </div>
@@ -935,53 +964,65 @@ function AgentEditor({
               value={form.prompt}
               onChange={(e) => updateField("prompt", e.target.value)}
               placeholder={"System prompt *\nWrite the agent's instructions here.\nUse {{input}} as a placeholder for trigger-provided input."}
-              className="w-full px-3 py-2 rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg text-sm resize-none h-40 font-mono-code focus:outline-none focus:ring-1 focus:ring-cc-primary"
+              className="w-full px-3 py-2 rounded-lg bg-card border border-border text-foreground text-sm resize-none h-40 font-mono focus:outline-none focus:ring-1 focus:ring-primary"
             />
-            <p className="text-[10px] text-cc-muted mt-1">
-              Use <code className="px-1 py-0.5 rounded bg-cc-hover">{"{{input}}"}</code> where trigger input should be inserted.
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Use <code className="px-1 py-0.5 rounded bg-accent">{"{{input}}"}</code> where trigger input should be inserted.
             </p>
           </div>
 
           {/* ── Controls Row ── */}
           <div className="flex items-center gap-1 sm:gap-2 flex-wrap" data-testid="controls-row">
             {/* Backend toggle */}
-            <div className="flex items-center bg-cc-hover/50 rounded-lg p-0.5">
-              <button
+            <div className="flex items-center bg-accent/50 rounded-lg p-0.5">
+              <Button
+                type="button"
                 onClick={() => handleBackendChange("claude")}
-                className={`flex items-center gap-1 px-2 py-1 text-xs rounded-md transition-colors cursor-pointer ${form.backendType === "claude" ? "bg-cc-card text-cc-fg font-medium shadow-sm" : "text-cc-muted hover:text-cc-fg"}`}
+                variant="ghost"
+                size="xs"
+                className={form.backendType === "claude" ? "bg-card text-foreground font-medium shadow-sm hover:bg-card" : "text-muted-foreground hover:text-foreground"}
               >
                 Claude
-              </button>
-              <button
+              </Button>
+              <Button
+                type="button"
                 onClick={() => handleBackendChange("codex")}
-                className={`flex items-center gap-1 px-2 py-1 text-xs rounded-md transition-colors cursor-pointer ${form.backendType === "codex" ? "bg-cc-card text-cc-fg font-medium shadow-sm" : "text-cc-muted hover:text-cc-fg"}`}
+                variant="ghost"
+                size="xs"
+                className={form.backendType === "codex" ? "bg-card text-foreground font-medium shadow-sm hover:bg-card" : "text-muted-foreground hover:text-foreground"}
               >
                 Codex
-              </button>
+              </Button>
             </div>
 
             {/* Model dropdown pill */}
             <div className="relative" ref={modelDropdownRef}>
-              <button
+              <Button
+                type="button"
                 onClick={() => { setShowModelDropdown(!showModelDropdown); setShowModeDropdown(false); setShowEnvDropdown(false); }}
                 aria-expanded={showModelDropdown}
+                variant="ghost"
+                size="xs"
                 className={pillDefault}
               >
                 <span>{selectedModel?.icon}</span>
                 <span>{selectedModel?.label}</span>
                 <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50"><path d="M4 6l4 4 4-4" /></svg>
-              </button>
+              </Button>
               {showModelDropdown && (
-                <div className="absolute left-0 top-full mt-1 w-48 bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-10 py-1">
+                <div className="absolute left-0 top-full mt-1 w-48 bg-card border border-border rounded-[10px] shadow-lg z-10 py-1">
                   {models.map((m) => (
-                    <button
+                    <Button
                       key={m.value}
+                      type="button"
                       onClick={() => { updateField("model", m.value); setShowModelDropdown(false); }}
-                      className={`w-full px-3 py-2 text-xs text-left hover:bg-cc-hover transition-colors cursor-pointer flex items-center gap-2 ${m.value === form.model ? "text-cc-primary font-medium" : "text-cc-fg"}`}
+                      variant="ghost"
+                      size="sm"
+                      className={`w-full justify-start text-xs ${m.value === form.model ? "text-primary font-medium" : "text-foreground"}`}
                     >
                       <span>{m.icon}</span>
                       {m.label}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               )}
@@ -989,39 +1030,48 @@ function AgentEditor({
 
             {/* Mode dropdown pill */}
             <div className="relative" ref={modeDropdownRef}>
-              <button
+              <Button
+                type="button"
                 onClick={() => { setShowModeDropdown(!showModeDropdown); setShowModelDropdown(false); setShowEnvDropdown(false); }}
                 aria-expanded={showModeDropdown}
+                variant="ghost"
+                size="xs"
                 className={pillDefault}
               >
                 <span>{selectedMode?.label}</span>
                 <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50"><path d="M4 6l4 4 4-4" /></svg>
-              </button>
+              </Button>
               {showModeDropdown && (
-                <div className="absolute left-0 top-full mt-1 w-48 bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-10 py-1">
+                <div className="absolute left-0 top-full mt-1 w-48 bg-card border border-border rounded-[10px] shadow-lg z-10 py-1">
                   {modes.map((m) => (
-                    <button
+                    <Button
                       key={m.value}
+                      type="button"
                       onClick={() => { updateField("permissionMode", m.value); setShowModeDropdown(false); }}
-                      className={`w-full px-3 py-2 text-xs text-left hover:bg-cc-hover transition-colors cursor-pointer flex items-center gap-2 ${m.value === form.permissionMode ? "text-cc-primary font-medium" : "text-cc-fg"}`}
+                      variant="ghost"
+                      size="sm"
+                      className={`w-full justify-start text-xs ${m.value === form.permissionMode ? "text-primary font-medium" : "text-foreground"}`}
                     >
                       {m.label}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               )}
             </div>
 
             {/* Folder pill */}
-            <button
+            <Button
+              type="button"
               onClick={() => setShowFolderPicker(true)}
+              variant="ghost"
+              size="xs"
               className={form.cwd ? pillActive : pillDefault}
               title={form.cwd || "Temporary directory"}
             >
               <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 opacity-60">
                 <path d="M1 3.5A1.5 1.5 0 012.5 2h3.879a1.5 1.5 0 011.06.44l1.122 1.12A1.5 1.5 0 009.62 4H13.5A1.5 1.5 0 0115 5.5v7a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 011 12.5v-9z" />
               </svg>
-              <span className="max-w-[120px] sm:max-w-[200px] truncate font-mono-code">{folderLabel}</span>
+              <span className="max-w-[120px] sm:max-w-[200px] truncate font-mono">{folderLabel}</span>
               {form.cwd && (
                 <svg
                   viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50 hover:opacity-100"
@@ -1030,40 +1080,40 @@ function AgentEditor({
                   <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z" />
                 </svg>
               )}
-            </button>
+            </Button>
 
             {/* Branch pill — only visible when folder is set */}
             {form.cwd && (
               showBranchInput ? (
                 <div className="flex items-center gap-1">
-                  <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-cc-muted opacity-60">
+                  <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-muted-foreground opacity-60">
                     <path d="M9.5 3.25a2.25 2.25 0 113 2.122V6.5A2.5 2.5 0 0110 9H6a1 1 0 00-1 1v1.128a2.251 2.251 0 11-1.5 0V5.372a2.25 2.25 0 111.5 0v1.836A2.492 2.492 0 016 7h4a1 1 0 001-1v-.878A2.25 2.25 0 019.5 3.25z" />
                   </svg>
                   <input
                     value={form.branch}
                     onChange={(e) => updateField("branch", e.target.value)}
                     placeholder="branch name"
-                    className="w-28 px-1.5 py-1 text-xs rounded-md bg-cc-input-bg border border-cc-border text-cc-fg font-mono-code focus:outline-none focus:ring-1 focus:ring-cc-primary"
+                    className="w-28 px-1.5 py-1 text-xs rounded-md bg-card border border-border text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary"
                     autoFocus
                     onBlur={() => { if (!form.branch) setShowBranchInput(false); }}
                   />
                   {form.branch && (
                     <>
-                      <label className="flex items-center gap-1 text-[10px] text-cc-muted cursor-pointer" title="Create branch if it doesn't exist">
-                        <input
-                          type="checkbox"
+                      <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground cursor-pointer" title="Create branch if it doesn't exist">
+                        <Switch
+                          size="sm"
                           checked={form.createBranch}
-                          onChange={(e) => updateField("createBranch", e.target.checked)}
-                          className="rounded w-3 h-3"
+                          onCheckedChange={(checked) => updateField("createBranch", checked)}
+                          aria-label="Create branch"
                         />
                         create
                       </label>
-                      <label className="flex items-center gap-1 text-[10px] text-cc-muted cursor-pointer" title="Use git worktree">
-                        <input
-                          type="checkbox"
+                      <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground cursor-pointer" title="Use git worktree">
+                        <Switch
+                          size="sm"
                           checked={form.useWorktree}
-                          onChange={(e) => updateField("useWorktree", e.target.checked)}
-                          className="rounded w-3 h-3"
+                          onCheckedChange={(checked) => updateField("useWorktree", checked)}
+                          aria-label="Use git worktree"
                         />
                         worktree
                       </label>
@@ -1071,8 +1121,11 @@ function AgentEditor({
                   )}
                 </div>
               ) : (
-                <button
+                <Button
+                  type="button"
                   onClick={() => setShowBranchInput(true)}
+                  variant="ghost"
+                  size="xs"
                   className={pillDefault}
                   title="Set a git branch"
                 >
@@ -1080,15 +1133,18 @@ function AgentEditor({
                     <path d="M9.5 3.25a2.25 2.25 0 113 2.122V6.5A2.5 2.5 0 0110 9H6a1 1 0 00-1 1v1.128a2.251 2.251 0 11-1.5 0V5.372a2.25 2.25 0 111.5 0v1.836A2.492 2.492 0 016 7h4a1 1 0 001-1v-.878A2.25 2.25 0 019.5 3.25z" />
                   </svg>
                   <span>branch</span>
-                </button>
+                </Button>
               )
             )}
 
             {/* Env profile pill */}
             <div className="relative" ref={envDropdownRef}>
-              <button
+              <Button
+                type="button"
                 onClick={() => { setShowEnvDropdown(!showEnvDropdown); setShowModelDropdown(false); setShowModeDropdown(false); }}
                 aria-expanded={showEnvDropdown}
+                variant="ghost"
+                size="xs"
                 className={form.envSlug ? pillActive : pillDefault}
               >
                 <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 opacity-60">
@@ -1096,23 +1152,29 @@ function AgentEditor({
                 </svg>
                 <span>{selectedEnv?.name || "None"}</span>
                 <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50"><path d="M4 6l4 4 4-4" /></svg>
-              </button>
+              </Button>
               {showEnvDropdown && (
-                <div className="absolute left-0 top-full mt-1 w-48 bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-10 py-1">
-                  <button
+                <div className="absolute left-0 top-full mt-1 w-48 bg-card border border-border rounded-[10px] shadow-lg z-10 py-1">
+                  <Button
+                    type="button"
                     onClick={() => { updateField("envSlug", ""); setShowEnvDropdown(false); }}
-                    className={`w-full px-3 py-2 text-xs text-left hover:bg-cc-hover transition-colors cursor-pointer ${!form.envSlug ? "text-cc-primary font-medium" : "text-cc-fg"}`}
+                    variant="ghost"
+                    size="sm"
+                    className={`w-full justify-start text-xs ${!form.envSlug ? "text-primary font-medium" : "text-foreground"}`}
                   >
                     None
-                  </button>
+                  </Button>
                   {envProfiles.map((env) => (
-                    <button
+                    <Button
                       key={env.slug}
+                      type="button"
                       onClick={() => { updateField("envSlug", env.slug); setShowEnvDropdown(false); }}
-                      className={`w-full px-3 py-2 text-xs text-left hover:bg-cc-hover transition-colors cursor-pointer ${form.envSlug === env.slug ? "text-cc-primary font-medium" : "text-cc-fg"}`}
+                      variant="ghost"
+                      size="sm"
+                      className={`w-full justify-start text-xs ${form.envSlug === env.slug ? "text-primary font-medium" : "text-foreground"}`}
                     >
                       {env.name}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               )}
@@ -1120,8 +1182,11 @@ function AgentEditor({
 
             {/* Internet pill — codex only */}
             {form.backendType === "codex" && (
-              <button
+              <Button
+                type="button"
                 onClick={() => updateField("codexInternetAccess", !form.codexInternetAccess)}
+                variant="ghost"
+                size="xs"
                 className={form.codexInternetAccess ? pillActive : pillDefault}
                 title="Allow internet access (Codex)"
               >
@@ -1129,7 +1194,7 @@ function AgentEditor({
                   <path d="M0 8a8 8 0 1116 0A8 8 0 010 8zm7.5-6.923c-.67.204-1.335.82-1.887 1.855A7.97 7.97 0 005.145 4H7.5V1.077zM4.09 4a9.267 9.267 0 01.64-1.539 6.7 6.7 0 01.597-.933A6.504 6.504 0 002.536 4H4.09zm-.582 3.5c.03-.877.138-1.718.312-2.5H1.674a6.51 6.51 0 00-.656 2.5h2.49zM4.847 5a12.5 12.5 0 00-.338 2.5H7.5V5H4.847zM8.5 5v2.5h2.99a12.495 12.495 0 00-.337-2.5H8.5zM4.51 8.5a12.5 12.5 0 00.337 2.5H7.5V8.5H4.51zm3.99 0V11h2.653c.187-.765.306-1.608.338-2.5H8.5zM5.145 12c.138.386.295.744.468 1.068.552 1.035 1.218 1.65 1.887 1.855V12H5.145zm.182 2.472a6.696 6.696 0 01-.597-.933A9.268 9.268 0 014.09 12H2.536a6.504 6.504 0 002.79 2.472zM3.82 11a13.652 13.652 0 01-.312-2.5h-2.49c.062.89.291 1.733.656 2.5H3.82zm6.853 3.472A6.504 6.504 0 0013.464 12H11.91a9.27 9.27 0 01-.64 1.539 6.688 6.688 0 01-.597.933zM8.5 14.923c.67-.204 1.335-.82 1.887-1.855.173-.324.33-.682.468-1.068H8.5v2.923zm3.68-3.923c.174-.782.282-1.623.312-2.5H15c-.094.89-.323 1.733-.656 2.5h-2.163zM12.18 8.5c-.03-.877-.138-1.718-.312-2.5h2.158c.365.767.594 1.61.656 2.5H12.18zm-1.508-4.5h2.792a6.504 6.504 0 00-2.79-2.472c.218.284.418.598.597.933.226.423.424.896.59 1.539z" />
                 </svg>
                 <span>Internet</span>
-              </button>
+              </Button>
             )}
           </div>
 
@@ -1146,22 +1211,28 @@ function AgentEditor({
 
           {/* ── Triggers ── */}
           <section>
-            <h2 className="text-xs text-cc-muted mb-2">Triggers</h2>
+            <h2 className="text-xs text-muted-foreground mb-2">Triggers</h2>
             <div className="flex items-center gap-2 flex-wrap">
               {/* Webhook toggle pill */}
-              <button
+              <Button
+                type="button"
                 onClick={() => updateField("webhookEnabled", !form.webhookEnabled)}
+                variant="ghost"
+                size="xs"
                 className={form.webhookEnabled ? pillActive : pillDefault}
               >
                 <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 opacity-60">
                   <path d="M8.543 2.232a.75.75 0 00-1.085 0l-5.25 5.5A.75.75 0 002.75 9H4v4a1 1 0 001 1h6a1 1 0 001-1V9h1.25a.75.75 0 00.543-1.268l-5.25-5.5z" />
                 </svg>
                 Webhook
-              </button>
+              </Button>
 
               {/* Schedule toggle pill */}
-              <button
+              <Button
+                type="button"
                 onClick={() => updateField("scheduleEnabled", !form.scheduleEnabled)}
+                variant="ghost"
+                size="xs"
                 className={form.scheduleEnabled ? pillActive : pillDefault}
               >
                 <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 opacity-60">
@@ -1169,13 +1240,13 @@ function AgentEditor({
                   <path d="M8 16A8 8 0 108 0a8 8 0 000 16zm7-8A7 7 0 111 8a7 7 0 0114 0z" />
                 </svg>
                 Schedule
-              </button>
+              </Button>
             </div>
 
             {/* Webhook helper */}
             {form.webhookEnabled && (
-              <p className="text-[10px] text-cc-muted mt-2">
-                A unique URL will be generated after saving. POST to it with <code className="px-1 py-0.5 rounded bg-cc-hover">{`{"input": "..."}`}</code>.
+              <p className="text-[10px] text-muted-foreground mt-2">
+                A unique URL will be generated after saving. POST to it with <code className="px-1 py-0.5 rounded bg-accent">{`{"input": "..."}`}</code>.
               </p>
             )}
 
@@ -1183,7 +1254,7 @@ function AgentEditor({
             {form.scheduleEnabled && (
               <div className="mt-3 space-y-2">
                 <div className="flex items-center gap-2">
-                  <label className="flex items-center gap-1.5 text-xs text-cc-muted cursor-pointer">
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
                     <input
                       type="radio"
                       checked={form.scheduleRecurring}
@@ -1191,7 +1262,7 @@ function AgentEditor({
                     />
                     Recurring
                   </label>
-                  <label className="flex items-center gap-1.5 text-xs text-cc-muted cursor-pointer">
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
                     <input
                       type="radio"
                       checked={!form.scheduleRecurring}
@@ -1204,20 +1275,23 @@ function AgentEditor({
                   <div className="space-y-2">
                     <div className="flex flex-wrap gap-1">
                       {CRON_PRESETS.map((p) => (
-                        <button
+                        <Button
                           key={p.value}
+                          type="button"
                           onClick={() => updateField("scheduleExpression", p.value)}
-                          className={`px-2 py-1 text-[10px] rounded-lg border transition-colors cursor-pointer ${form.scheduleExpression === p.value ? "border-cc-primary text-cc-primary" : "border-cc-border text-cc-muted hover:text-cc-fg"}`}
+                          variant="outline"
+                          size="xs"
+                          className={form.scheduleExpression === p.value ? "border-primary text-primary" : "text-muted-foreground hover:text-foreground"}
                         >
                           {p.label}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                     <input
                       value={form.scheduleExpression}
                       onChange={(e) => updateField("scheduleExpression", e.target.value)}
                       placeholder="Cron expression (e.g. 0 8 * * *)"
-                      className="w-full px-3 py-2 rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg text-sm font-mono-code focus:outline-none focus:ring-1 focus:ring-cc-primary"
+                      className="w-full px-3 py-2 rounded-lg bg-card border border-border text-foreground text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
                 ) : (
@@ -1225,7 +1299,7 @@ function AgentEditor({
                     type="datetime-local"
                     value={form.scheduleExpression}
                     onChange={(e) => updateField("scheduleExpression", e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg text-sm focus:outline-none focus:ring-1 focus:ring-cc-primary"
+                    className="w-full px-3 py-2 rounded-lg bg-card border border-border text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 )}
               </div>
@@ -1234,9 +1308,12 @@ function AgentEditor({
 
           {/* ── Advanced (collapsible) ── */}
           <section>
-            <button
+            <Button
+              type="button"
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center gap-2 text-xs text-cc-muted cursor-pointer hover:text-cc-fg transition-colors w-full"
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start px-0 text-xs text-muted-foreground hover:text-foreground"
             >
               <svg
                 viewBox="0 0 16 16"
@@ -1247,140 +1324,173 @@ function AgentEditor({
               </svg>
               Advanced
               {countAdvancedFeatures(form) > 0 && (
-                <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-cc-primary/15 text-cc-primary font-normal">
+                <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-primary/15 text-primary font-normal">
                   {countAdvancedFeatures(form)}
                 </span>
               )}
-            </button>
+            </Button>
 
             {showAdvanced && (
-              <div className="mt-4 space-y-6 pl-5 border-l-2 border-cc-border/30">
+              <div className="mt-4 space-y-6 pl-5 border-l-2 border-border/30">
                 {/* ── MCP Servers ── */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xs font-medium text-cc-muted">MCP Servers</h3>
-                    <button
+                    <h3 className="text-xs font-medium text-muted-foreground">MCP Servers</h3>
+                    <Button
+                      type="button"
                       onClick={() => setShowMcpForm(!showMcpForm)}
-                      className="text-[10px] text-cc-muted hover:text-cc-fg transition-colors cursor-pointer"
+                      variant="ghost"
+                      size="xs"
+                      className="text-[10px]"
                     >
                       {showMcpForm ? "Cancel" : "+ Add Server"}
-                    </button>
+                    </Button>
                   </div>
 
                   {Object.keys(form.mcpServers).length === 0 && !showMcpForm && (
-                    <p className="text-[10px] text-cc-muted">No MCP servers configured.</p>
+                    <p className="text-[10px] text-muted-foreground">No MCP servers configured.</p>
                   )}
                   {Object.entries(form.mcpServers).map(([name, config]) => (
-                    <div key={name} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-cc-hover/50 mb-1.5">
+                    <div key={name} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-accent/50 mb-1.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-cc-fg font-mono-code">{name}</span>
-                        <span className="px-1.5 py-0.5 text-[10px] rounded bg-cc-border text-cc-muted">{config.type}</span>
+                        <span className="text-xs text-foreground font-mono">{name}</span>
+                        <span className="px-1.5 py-0.5 text-[10px] rounded bg-border text-muted-foreground">{config.type}</span>
                       </div>
-                      <button
+                      <Button
+                        type="button"
                         onClick={() => removeMcpServer(name)}
-                        className="text-cc-muted hover:text-cc-error transition-colors cursor-pointer p-0.5"
+                        variant="ghost"
+                        size="icon-xs"
+                        className="hover:text-destructive"
                         title="Remove server"
                       >
                         <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
                           <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z" />
                         </svg>
-                      </button>
+                      </Button>
                     </div>
                   ))}
 
                   {showMcpForm && (
-                    <div className="rounded-lg border border-cc-border p-3 mt-2 space-y-2">
+                    <div className="rounded-lg border border-border p-3 mt-2 space-y-2">
                       <div>
-                        <label className="block text-[10px] text-cc-muted mb-0.5">Server Name</label>
+                        <label className="block text-[10px] text-muted-foreground mb-0.5">Server Name</label>
                         <input
                           value={mcpFormName}
                           onChange={(e) => setMcpFormName(e.target.value)}
                           placeholder="e.g., my-server"
-                          className="w-full px-2 py-1.5 rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg text-xs font-mono-code focus:outline-none focus:ring-1 focus:ring-cc-primary"
+                          className="w-full px-2 py-1.5 rounded-lg bg-card border border-border text-foreground text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] text-cc-muted mb-0.5">Type</label>
-                        <div className="flex rounded-lg border border-cc-border overflow-hidden">
-                          {(["stdio", "sse", "http"] as const).map((t) => (
-                            <button
+                          <label className="block text-[10px] text-muted-foreground mb-0.5">Type</label>
+                          <div className="flex rounded-lg border border-border overflow-hidden">
+                            {(["stdio", "sse", "http"] as const).map((t) => (
+                            <Button
                               key={t}
+                              type="button"
                               onClick={() => setMcpFormData((prev) => ({ ...prev, type: t }))}
-                              className={`flex-1 px-2 py-1 text-[10px] transition-colors cursor-pointer ${mcpFormData.type === t ? "bg-cc-primary text-white" : "bg-cc-input-bg text-cc-muted hover:text-cc-fg"}`}
+                              variant={mcpFormData.type === t ? "default" : "ghost"}
+                              size="xs"
+                              className="flex-1 rounded-none text-[10px]"
                             >
                               {t}
-                            </button>
+                            </Button>
                           ))}
                         </div>
                       </div>
                       {mcpFormData.type === "stdio" ? (
                         <>
                           <div>
-                            <label className="block text-[10px] text-cc-muted mb-0.5">Command</label>
+                            <label className="block text-[10px] text-muted-foreground mb-0.5">Command</label>
                             <input
                               value={mcpFormData.command}
                               onChange={(e) => setMcpFormData((prev) => ({ ...prev, command: e.target.value }))}
                               placeholder="e.g., npx -y @some/mcp-server"
-                              className="w-full px-2 py-1.5 rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg text-xs font-mono-code focus:outline-none focus:ring-1 focus:ring-cc-primary"
+                              className="w-full px-2 py-1.5 rounded-lg bg-card border border-border text-foreground text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] text-cc-muted mb-0.5">Args (space-separated)</label>
+                            <label className="block text-[10px] text-muted-foreground mb-0.5">Args (space-separated)</label>
                             <input
                               value={mcpFormData.args}
                               onChange={(e) => setMcpFormData((prev) => ({ ...prev, args: e.target.value }))}
                               placeholder="--port 3000"
-                              className="w-full px-2 py-1.5 rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg text-xs font-mono-code focus:outline-none focus:ring-1 focus:ring-cc-primary"
+                              className="w-full px-2 py-1.5 rounded-lg bg-card border border-border text-foreground text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
                             />
                           </div>
                         </>
                       ) : (
                         <div>
-                          <label className="block text-[10px] text-cc-muted mb-0.5">URL</label>
+                          <label className="block text-[10px] text-muted-foreground mb-0.5">URL</label>
                           <input
                             value={mcpFormData.url}
                             onChange={(e) => setMcpFormData((prev) => ({ ...prev, url: e.target.value }))}
                             placeholder="https://example.com/mcp"
-                            className="w-full px-2 py-1.5 rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg text-xs font-mono-code focus:outline-none focus:ring-1 focus:ring-cc-primary"
+                            className="w-full px-2 py-1.5 rounded-lg bg-card border border-border text-foreground text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
                           />
                         </div>
                       )}
-                      <button
+                      <Button
+                        type="button"
                         onClick={addMcpServer}
                         disabled={!mcpFormName.trim()}
-                        className="px-3 py-1.5 text-xs rounded-lg bg-cc-primary text-white hover:bg-cc-primary-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                        size="sm"
+                        className="text-xs"
                       >
                         Add Server
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </div>
 
                 {/* ── Skills ── */}
                 <div>
-                  <h3 className="text-xs font-medium text-cc-muted mb-2">Skills</h3>
+                  <h3 className="text-xs font-medium text-muted-foreground mb-2">Skills</h3>
                   {availableSkills.length === 0 ? (
-                    <p className="text-[10px] text-cc-muted">No skills found in ~/.claude/skills/</p>
+                    <p className="text-[10px] text-muted-foreground">No skills found in ~/.claude/skills/</p>
                   ) : (
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       {availableSkills.map((skill) => (
-                        <label
+                        <div
                           key={skill.slug}
-                          className="flex items-start gap-2 text-sm text-cc-fg cursor-pointer"
+                          className="rounded-lg border border-border/60 bg-accent/30 p-1"
                         >
-                          <input
-                            type="checkbox"
-                            checked={form.skills.includes(skill.slug)}
-                            onChange={() => toggleSkill(skill.slug)}
-                            className="rounded mt-0.5"
-                          />
-                          <div>
-                            <span className="text-xs">{skill.name}</span>
-                            {skill.description && (
-                              <p className="text-[10px] text-cc-muted">{skill.description}</p>
-                            )}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            aria-pressed={form.skills.includes(skill.slug)}
+                            onClick={() => toggleSkill(skill.slug)}
+                            className={`h-auto w-full justify-start gap-3 px-2 py-2 text-left ${
+                              form.skills.includes(skill.slug)
+                                ? "bg-primary/10 text-primary hover:bg-primary/15"
+                                : "text-foreground"
+                            }`}
+                          >
+                            <span
+                              aria-hidden="true"
+                              className={`mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded border text-[10px] ${
+                                form.skills.includes(skill.slug)
+                                  ? "border-primary bg-primary text-white"
+                                  : "border-border bg-card text-transparent"
+                              }`}
+                            >
+                              ✓
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-xs">{skill.name}</span>
+                              {skill.description && (
+                                <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                                  {skill.description}
+                                </span>
+                              )}
+                            </span>
+                          </Button>
+                          <div className="sr-only" aria-live="polite">
+                            {form.skills.includes(skill.slug) ? `${skill.name} selected` : `${skill.name} not selected`}
                           </div>
-                        </label>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -1388,21 +1498,24 @@ function AgentEditor({
 
                 {/* ── Allowed Tools ── */}
                 <div>
-                  <h3 className="text-xs font-medium text-cc-muted mb-2">Allowed Tools</h3>
+                  <h3 className="text-xs font-medium text-muted-foreground mb-2">Allowed Tools</h3>
                   <div className="space-y-2">
                     {form.allowedTools.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         {form.allowedTools.map((tool) => (
-                          <span key={tool} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-mono-code rounded-lg bg-cc-hover text-cc-fg">
+                          <span key={tool} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-mono rounded-lg bg-accent text-foreground">
                             {tool}
-                            <button
+                            <Button
+                              type="button"
                               onClick={() => removeAllowedTool(tool)}
-                              className="text-cc-muted hover:text-cc-error transition-colors cursor-pointer"
+                              variant="ghost"
+                              size="icon-xs"
+                              className="h-auto w-auto p-0 text-muted-foreground hover:text-destructive"
                             >
                               <svg viewBox="0 0 16 16" fill="currentColor" className="w-2.5 h-2.5">
                                 <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z" />
                               </svg>
-                            </button>
+                            </Button>
                           </span>
                         ))}
                       </div>
@@ -1412,25 +1525,28 @@ function AgentEditor({
                       onChange={(e) => setAllowedToolInput(e.target.value)}
                       onKeyDown={addAllowedTool}
                       placeholder="Type tool name and press Enter"
-                      className="w-full px-2 py-1.5 rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg text-xs font-mono-code focus:outline-none focus:ring-1 focus:ring-cc-primary"
+                      className="w-full px-2 py-1.5 rounded-lg bg-card border border-border text-foreground text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
                     />
-                    <p className="text-[10px] text-cc-muted">Leave empty to allow all tools.</p>
+                    <p className="text-[10px] text-muted-foreground">Leave empty to allow all tools.</p>
                   </div>
                 </div>
 
                 {/* ── Environment Variables ── */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xs font-medium text-cc-muted">Environment Variables</h3>
-                    <button
+                    <h3 className="text-xs font-medium text-muted-foreground">Environment Variables</h3>
+                    <Button
+                      type="button"
                       onClick={addEnvVar}
-                      className="text-[10px] text-cc-muted hover:text-cc-fg transition-colors cursor-pointer"
+                      variant="ghost"
+                      size="xs"
+                      className="text-[10px]"
                     >
                       + Add Variable
-                    </button>
+                    </Button>
                   </div>
                   {form.env.length === 0 ? (
-                    <p className="text-[10px] text-cc-muted">No extra variables set.</p>
+                    <p className="text-[10px] text-muted-foreground">No extra variables set.</p>
                   ) : (
                     <div className="space-y-1.5">
                       {form.env.map((entry, i) => (
@@ -1439,23 +1555,26 @@ function AgentEditor({
                             value={entry.key}
                             onChange={(e) => updateEnvVar(i, "key", e.target.value)}
                             placeholder="KEY"
-                            className="w-1/3 px-2 py-1.5 rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg text-xs font-mono-code focus:outline-none focus:ring-1 focus:ring-cc-primary"
+                            className="w-1/3 px-2 py-1.5 rounded-lg bg-card border border-border text-foreground text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
                           />
                           <input
                             value={entry.value}
                             onChange={(e) => updateEnvVar(i, "value", e.target.value)}
                             placeholder="value"
-                            className="flex-1 px-2 py-1.5 rounded-lg bg-cc-input-bg border border-cc-border text-cc-fg text-xs font-mono-code focus:outline-none focus:ring-1 focus:ring-cc-primary"
+                            className="flex-1 px-2 py-1.5 rounded-lg bg-card border border-border text-foreground text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
                           />
-                          <button
+                          <Button
+                            type="button"
                             onClick={() => removeEnvVar(i)}
-                            className="text-cc-muted hover:text-cc-error transition-colors cursor-pointer p-1"
+                            variant="ghost"
+                            size="icon-xs"
+                            className="hover:text-destructive"
                             title="Remove variable"
                           >
                             <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
                               <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z" />
                             </svg>
-                          </button>
+                          </Button>
                         </div>
                       ))}
                     </div>

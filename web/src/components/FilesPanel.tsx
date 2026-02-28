@@ -16,6 +16,7 @@ import { xml } from "@codemirror/lang-xml";
 import { yaml } from "@codemirror/lang-yaml";
 import { api, type TreeNode } from "../api.js";
 import { useStore } from "../store.js";
+import { Button } from "@/components/ui/button";
 
 const IMAGE_EXTENSIONS = new Set([
   "png", "jpg", "jpeg", "gif", "webp", "svg", "avif", "ico", "bmp", "tiff", "tif",
@@ -113,16 +114,18 @@ function TreeEntry({ node, depth, cwd, selectedPath, onSelect }: TreeEntryProps)
   if (node.type === "directory") {
     return (
       <div>
-        <button
+        <Button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="w-full flex items-center gap-1.5 py-2 pr-2 text-left text-xs text-cc-muted hover:text-cc-fg hover:bg-cc-hover rounded cursor-pointer"
+          variant="ghost"
+          size="xs"
+          className="w-full justify-start py-2 pr-2 text-left text-muted-foreground hover:text-foreground"
           style={{ paddingLeft: `${8 + depth * 12}px` }}
           aria-label={`Toggle ${relPath(cwd, node.path)}`}
         >
           <span className="w-3 inline-flex justify-center">{open ? "\u25BE" : "\u25B8"}</span>
           <span className="truncate">{node.name}</span>
-        </button>
+        </Button>
         {open && node.children?.map((child) => (
           <TreeEntry
             key={child.path}
@@ -139,17 +142,19 @@ function TreeEntry({ node, depth, cwd, selectedPath, onSelect }: TreeEntryProps)
 
   const selected = selectedPath === node.path;
   return (
-    <button
+    <Button
       type="button"
       onClick={() => onSelect(node.path)}
-      className={`w-full py-2 pr-2 text-left text-xs rounded truncate cursor-pointer ${
-        selected ? "bg-cc-active text-cc-fg" : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
+      variant="ghost"
+      size="xs"
+      className={`w-full justify-start py-2 pr-2 text-left truncate ${
+        selected ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-accent"
       }`}
       style={{ paddingLeft: `${26 + depth * 12}px` }}
       title={relPath(cwd, node.path)}
     >
       {node.name}
-    </button>
+    </Button>
   );
 }
 
@@ -302,7 +307,7 @@ export function FilesPanel({ sessionId }: FilesPanelProps) {
   // No cwd — waiting for session
   if (!cwd) {
     return (
-      <div className="h-full flex items-center justify-center p-4 text-sm text-cc-muted">
+      <div className="h-full flex items-center justify-center p-4 text-sm text-muted-foreground">
         Waiting for session to connect...
       </div>
     );
@@ -313,33 +318,37 @@ export function FilesPanel({ sessionId }: FilesPanelProps) {
 
   const treePanel = (
     <div className="flex-1 min-h-0 flex flex-col">
-      <div className="shrink-0 px-3 py-2 border-b border-cc-border flex items-center justify-between">
-        <span className="text-xs text-cc-muted font-medium">Files</span>
-        <button
+      <div className="shrink-0 px-3 py-2 border-b border-border flex items-center justify-between">
+        <span className="text-xs text-muted-foreground font-medium">Files</span>
+        <Button
           type="button"
           onClick={handleRefresh}
           disabled={loadingTree}
-          className="text-[11px] px-2 py-1.5 text-cc-muted hover:text-cc-fg disabled:opacity-50 transition-colors cursor-pointer"
+          variant="ghost"
+          size="xs"
+          className="text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-50"
           aria-label="Refresh file tree"
         >
           {loadingTree ? "..." : "Refresh"}
-        </button>
+        </Button>
       </div>
       <div className="flex-1 min-h-0 overflow-auto p-1.5">
-        {loadingTree && <div className="px-2 py-2 text-xs text-cc-muted">Loading files...</div>}
+        {loadingTree && <div className="px-2 py-2 text-xs text-muted-foreground">Loading files...</div>}
         {!loadingTree && tree.length === 0 && !error && (
-          <div className="px-2 py-2 text-xs text-cc-muted">No files found.</div>
+          <div className="px-2 py-2 text-xs text-muted-foreground">No files found.</div>
         )}
         {!loadingTree && error && !selectedFilePath && (
-          <div className="m-2 px-3 py-2 rounded-lg bg-cc-error/10 border border-cc-error/30 text-xs text-cc-error">
+          <div className="m-2 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive">
             {error}
-            <button
+            <Button
               type="button"
               onClick={handleRefresh}
-              className="ml-2 underline hover:no-underline cursor-pointer"
+              variant="link"
+              size="xs"
+              className="ml-2 h-auto px-0 py-0 text-destructive underline hover:no-underline"
             >
               Retry
-            </button>
+            </Button>
           </div>
         )}
         {!loadingTree && tree.map((node) => (
@@ -358,30 +367,32 @@ export function FilesPanel({ sessionId }: FilesPanelProps) {
 
   const fileViewer = selectedFilePath ? (
     <div className="flex-1 min-h-0 flex flex-col">
-      <div className="shrink-0 px-3 py-2 border-b border-cc-border flex items-center gap-2">
+      <div className="shrink-0 px-3 py-2 border-b border-border flex items-center gap-2">
         {/* Back button — always visible on mobile, hidden on desktop */}
-        <button
+        <Button
           type="button"
           onClick={handleBack}
-          className="sm:hidden flex items-center justify-center w-8 h-8 rounded text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer shrink-0"
+          variant="ghost"
+          size="icon-sm"
+          className="sm:hidden shrink-0 text-muted-foreground hover:text-foreground hover:bg-accent"
           aria-label="Back to file tree"
         >
           <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
             <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
           </svg>
-        </button>
-        <p className="text-[11px] text-cc-muted truncate min-w-0">{relPath(cwd, selectedFilePath)}</p>
+        </Button>
+        <p className="text-[11px] text-muted-foreground truncate min-w-0">{relPath(cwd, selectedFilePath)}</p>
       </div>
       {error && (
-        <div className="m-3 px-3 py-2 rounded-lg bg-cc-error/10 border border-cc-error/30 text-xs text-cc-error">
+        <div className="m-3 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive">
           {error}
         </div>
       )}
       <div className="flex-1 min-h-0">
         {loadingFile ? (
-          <div className="h-full flex items-center justify-center text-sm text-cc-muted">Loading file...</div>
+          <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Loading file...</div>
         ) : imageUrl ? (
-          <div className="h-full flex items-center justify-center p-4 bg-cc-bg overflow-auto">
+          <div className="h-full flex items-center justify-center p-4 bg-background overflow-auto">
             <img
               src={imageUrl}
               alt={relPath(cwd, selectedFilePath)}
@@ -396,14 +407,14 @@ export function FilesPanel({ sessionId }: FilesPanelProps) {
   ) : null;
 
   return (
-    <div className="h-full min-h-0 flex bg-cc-bg">
+    <div className="h-full min-h-0 flex bg-background">
       {/* Desktop: side-by-side */}
-      <aside className="hidden sm:flex w-[240px] shrink-0 border-r border-cc-border bg-cc-sidebar/60 flex-col min-h-0">
+      <aside className="hidden sm:flex w-[240px] shrink-0 border-r border-border bg-sidebar/60 flex-col min-h-0">
         {treePanel}
       </aside>
       <div className="hidden sm:flex flex-1 min-h-0 flex-col">
         {fileViewer || (
-          <div className="h-full flex items-center justify-center text-sm text-cc-muted">
+          <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
             Select a file to view its contents.
           </div>
         )}

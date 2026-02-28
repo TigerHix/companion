@@ -1,4 +1,22 @@
 import { useState } from "react";
+import {
+  Terminal,
+  File,
+  FilePlus,
+  FileEdit,
+  Search,
+  Globe,
+  MessageSquare,
+  List,
+  UserRound,
+  CheckSquare,
+  NotebookPen,
+  Wrench,
+  ChevronRight,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { DiffViewer } from "./DiffViewer.js";
 
 const TOOL_ICONS: Record<string, string> = {
@@ -62,29 +80,31 @@ export function ToolBlock({
   const preview = getPreview(name, input);
 
   return (
-    <div className="border border-cc-border rounded-[10px] overflow-hidden bg-cc-card">
-      <button
+    <div className="border border-border rounded-[10px] overflow-hidden card-moku">
+      <Button
+        type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-cc-hover transition-colors cursor-pointer"
+        variant="ghost"
+        size="sm"
+        className="h-auto w-full justify-start gap-2.5 rounded-none px-3 py-2 text-left hover:bg-accent/50"
       >
-        <svg
-          viewBox="0 0 16 16"
-          fill="currentColor"
-          className={`w-3 h-3 text-cc-muted transition-transform shrink-0 ${open ? "rotate-90" : ""}`}
-        >
-          <path d="M6 4l4 4-4 4" />
-        </svg>
+        <ChevronRight
+          className={cn(
+            "size-3 text-muted-foreground transition-transform shrink-0",
+            open && "rotate-90"
+          )}
+        />
         <ToolIcon type={iconType} />
-        <span className="text-xs font-medium text-cc-fg">{label}</span>
+        <span className="text-xs font-medium text-foreground">{label}</span>
         {preview && (
-          <span className="text-xs text-cc-muted truncate flex-1 font-mono-code">
+          <span className="text-xs text-muted-foreground truncate flex-1 font-mono">
             {preview}
           </span>
         )}
-      </button>
+      </Button>
 
       {open && (
-        <div className="px-3 pb-3 pt-0 border-t border-cc-border">
+        <div className="px-3 pb-3 pt-0 border-t border-border">
           <div className="mt-2">
             <ToolDetail name={name} input={input} />
           </div>
@@ -124,7 +144,7 @@ function ToolDetail({ name, input }: { name: string; input: Record<string, unkno
       return <SendMessageDetail input={input} />;
     default:
       return (
-        <pre className="text-[11px] text-cc-muted font-mono-code whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+        <pre className="text-[11px] text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
           {JSON.stringify(input, null, 2)}
         </pre>
       );
@@ -137,14 +157,14 @@ function BashDetail({ input }: { input: Record<string, unknown> }) {
   return (
     <div className="space-y-1.5">
       {!!input.description && (
-        <div className="text-[11px] text-cc-muted italic">{String(input.description)}</div>
+        <div className="text-[11px] text-muted-foreground italic">{String(input.description)}</div>
       )}
-      <pre className="px-3 py-2 rounded-lg bg-cc-code-bg text-cc-code-fg text-[12px] font-mono-code leading-relaxed overflow-x-auto">
-        <span className="text-cc-muted select-none">$ </span>
+      <pre className="px-3 py-2 rounded-lg bg-code-bg text-code-fg text-[12px] font-mono leading-relaxed overflow-x-auto">
+        <span className="text-muted-foreground select-none">$ </span>
         {String(input.command || "")}
       </pre>
       {!!input.timeout && (
-        <div className="text-[10px] text-cc-muted">timeout: {String(input.timeout)}ms</div>
+        <div className="text-[10px] text-muted-foreground">timeout: {String(input.timeout)}ms</div>
       )}
     </div>
   );
@@ -167,26 +187,26 @@ function EditToolDetail({ input }: { input: Record<string, unknown> }) {
   return (
     <div className="space-y-1.5">
       {!!input.replace_all && (
-        <span className="inline-block text-[10px] font-medium px-1.5 py-0.5 rounded bg-cc-warning/10 text-cc-warning">
+        <Badge variant="outline" className="text-[10px] text-warning border-warning/30 bg-warning/10">
           replace all
-        </span>
+        </Badge>
       )}
       {(oldStr || newStr) ? (
         <DiffViewer oldText={oldStr} newText={newStr} fileName={filePath} mode="compact" />
       ) : changes.length > 0 ? (
         <div className="space-y-1.5">
-          {!!filePath && <div className="text-xs text-cc-muted font-mono-code">{filePath}</div>}
+          {!!filePath && <div className="text-xs text-muted-foreground font-mono">{filePath}</div>}
           {changes.map((change, i) => (
-            <div key={`${change.path}-${i}`} className="flex items-center gap-2 text-[11px] text-cc-fg">
-              <span className="inline-block text-[10px] font-medium px-1.5 py-0.5 rounded bg-cc-primary/10 text-cc-primary min-w-[54px] text-center">
+            <div key={`${change.path}-${i}`} className="flex items-center gap-2 text-[11px] text-foreground">
+              <Badge variant="secondary" className="text-[10px] text-primary bg-primary/10 min-w-[54px] justify-center">
                 {change.kind}
-              </span>
-              <span className="font-mono-code truncate">{change.path}</span>
+              </Badge>
+              <span className="font-mono truncate">{change.path}</span>
             </div>
           ))}
         </div>
       ) : (
-        <pre className="text-[11px] text-cc-muted font-mono-code whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+        <pre className="text-[11px] text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
           {JSON.stringify(input, null, 2)}
         </pre>
       )}
@@ -208,9 +228,9 @@ function ReadToolDetail({ input }: { input: Record<string, unknown> }) {
 
   return (
     <div className="space-y-1">
-      <div className="text-xs text-cc-muted font-mono-code">{filePath}</div>
+      <div className="text-xs text-muted-foreground font-mono">{filePath}</div>
       {(offset != null || limit != null) && (
-        <div className="flex gap-2 text-[10px] text-cc-muted">
+        <div className="flex gap-2 text-[10px] text-muted-foreground">
           {offset != null && <span>offset: {offset}</span>}
           {limit != null && <span>limit: {limit}</span>}
         </div>
@@ -222,10 +242,10 @@ function ReadToolDetail({ input }: { input: Record<string, unknown> }) {
 function GlobDetail({ input }: { input: Record<string, unknown> }) {
   return (
     <div className="space-y-1">
-      <div className="text-xs font-mono-code text-cc-code-fg">{String(input.pattern || "")}</div>
+      <div className="text-xs font-mono text-code-fg">{String(input.pattern || "")}</div>
       {!!input.path && (
-        <div className="text-[10px] text-cc-muted">
-          in: <span className="font-mono-code">{String(input.path)}</span>
+        <div className="text-[10px] text-muted-foreground">
+          in: <span className="font-mono">{String(input.path)}</span>
         </div>
       )}
     </div>
@@ -235,15 +255,15 @@ function GlobDetail({ input }: { input: Record<string, unknown> }) {
 function GrepDetail({ input }: { input: Record<string, unknown> }) {
   return (
     <div className="space-y-1">
-      <pre className="px-2 py-1.5 rounded bg-cc-code-bg text-cc-code-fg text-[12px] font-mono-code overflow-x-auto">
+      <pre className="px-2 py-1.5 rounded bg-code-bg text-code-fg text-[12px] font-mono overflow-x-auto">
         {String(input.pattern || "")}
       </pre>
-      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-cc-muted">
+      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
         {!!input.path && (
-          <span>path: <span className="font-mono-code">{String(input.path)}</span></span>
+          <span>path: <span className="font-mono">{String(input.path)}</span></span>
         )}
         {!!input.glob && (
-          <span>glob: <span className="font-mono-code">{String(input.glob)}</span></span>
+          <span>glob: <span className="font-mono">{String(input.glob)}</span></span>
         )}
         {!!input.output_mode && <span>mode: {String(input.output_mode)}</span>}
         {!!input.context && <span>context: {String(input.context)}</span>}
@@ -256,9 +276,9 @@ function GrepDetail({ input }: { input: Record<string, unknown> }) {
 function WebSearchDetail({ input }: { input: Record<string, unknown> }) {
   return (
     <div className="space-y-1">
-      <div className="text-xs text-cc-fg font-medium">{String(input.query || "")}</div>
+      <div className="text-xs text-foreground font-medium">{String(input.query || "")}</div>
       {Array.isArray(input.allowed_domains) && input.allowed_domains.length > 0 && (
-        <div className="text-[10px] text-cc-muted">
+        <div className="text-[10px] text-muted-foreground">
           domains: {(input.allowed_domains as string[]).join(", ")}
         </div>
       )}
@@ -270,10 +290,10 @@ function WebFetchDetail({ input }: { input: Record<string, unknown> }) {
   return (
     <div className="space-y-1">
       {!!input.url && (
-        <div className="text-xs font-mono-code text-cc-primary truncate">{String(input.url)}</div>
+        <div className="text-xs font-mono text-primary truncate">{String(input.url)}</div>
       )}
       {!!input.prompt && (
-        <div className="text-[11px] text-cc-muted italic line-clamp-2">{String(input.prompt)}</div>
+        <div className="text-[11px] text-muted-foreground italic line-clamp-2">{String(input.prompt)}</div>
       )}
     </div>
   );
@@ -283,15 +303,15 @@ function TaskDetail({ input }: { input: Record<string, unknown> }) {
   return (
     <div className="space-y-1.5">
       {!!input.description && (
-        <div className="text-xs text-cc-fg font-medium">{String(input.description)}</div>
+        <div className="text-xs text-foreground font-medium">{String(input.description)}</div>
       )}
       {!!input.subagent_type && (
-        <span className="inline-block text-[10px] font-medium px-1.5 py-0.5 rounded bg-cc-primary/10 text-cc-primary">
+        <Badge variant="secondary" className="text-[10px] text-primary bg-primary/10">
           {String(input.subagent_type)}
-        </span>
+        </Badge>
       )}
       {!!input.prompt && (
-        <pre className="text-[11px] text-cc-muted font-mono-code whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto">
+        <pre className="text-[11px] text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto">
           {String(input.prompt)}
         </pre>
       )}
@@ -303,7 +323,7 @@ function TodoWriteDetail({ input }: { input: Record<string, unknown> }) {
   const todos = input.todos as Array<{ content?: string; status?: string; activeForm?: string }> | undefined;
   if (!Array.isArray(todos)) {
     return (
-      <pre className="text-[11px] text-cc-muted font-mono-code whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+      <pre className="text-[11px] text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
         {JSON.stringify(input, null, 2)}
       </pre>
     );
@@ -317,20 +337,23 @@ function TodoWriteDetail({ input }: { input: Record<string, unknown> }) {
           <div key={i} className="flex items-start gap-2 py-0.5">
             <span className="shrink-0 mt-0.5">
               {status === "completed" ? (
-                <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-cc-success">
+                <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-success">
                   <path fillRule="evenodd" d="M8 15A7 7 0 108 1a7 7 0 000 14zm3.354-9.354a.5.5 0 00-.708-.708L7 8.586 5.354 6.94a.5.5 0 10-.708.708l2 2a.5.5 0 00.708 0l4-4z" clipRule="evenodd" />
                 </svg>
               ) : status === "in_progress" ? (
-                <svg className="w-3.5 h-3.5 text-cc-primary animate-spin" viewBox="0 0 16 16" fill="none">
+                <svg className="w-3.5 h-3.5 text-primary animate-spin" viewBox="0 0 16 16" fill="none">
                   <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round" />
                 </svg>
               ) : (
-                <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 text-cc-muted">
+                <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 text-muted-foreground">
                   <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" />
                 </svg>
               )}
             </span>
-            <span className={`text-[11px] leading-snug ${status === "completed" ? "text-cc-muted line-through" : "text-cc-fg"}`}>
+            <span className={cn(
+              "text-[11px] leading-snug",
+              status === "completed" ? "text-muted-foreground line-through" : "text-foreground"
+            )}>
               {todo.content || "Task"}
             </span>
           </div>
@@ -347,14 +370,14 @@ function NotebookEditDetail({ input }: { input: Record<string, unknown> }) {
 
   return (
     <div className="space-y-1">
-      <div className="text-xs font-mono-code text-cc-muted">{path}</div>
-      <div className="flex gap-2 text-[10px] text-cc-muted">
+      <div className="text-xs font-mono text-muted-foreground">{path}</div>
+      <div className="flex gap-2 text-[10px] text-muted-foreground">
         {cellType && <span>type: {cellType}</span>}
         {editMode && <span>mode: {editMode}</span>}
         {input.cell_number != null && <span>cell: {String(input.cell_number)}</span>}
       </div>
       {!!input.new_source && (
-        <pre className="px-2 py-1.5 rounded bg-cc-code-bg text-cc-code-fg text-[11px] font-mono-code leading-relaxed max-h-40 overflow-y-auto">
+        <pre className="px-2 py-1.5 rounded bg-code-bg text-code-fg text-[11px] font-mono leading-relaxed max-h-40 overflow-y-auto">
           {String(input.new_source)}
         </pre>
       )}
@@ -366,12 +389,12 @@ function SendMessageDetail({ input }: { input: Record<string, unknown> }) {
   return (
     <div className="space-y-1">
       {!!input.recipient && (
-        <div className="text-[11px] text-cc-muted">
-          to: <span className="font-medium text-cc-fg">{String(input.recipient)}</span>
+        <div className="text-[11px] text-muted-foreground">
+          to: <span className="font-medium text-foreground">{String(input.recipient)}</span>
         </div>
       )}
       {!!input.content && (
-        <div className="text-xs text-cc-fg whitespace-pre-wrap">{String(input.content)}</div>
+        <div className="text-xs text-foreground whitespace-pre-wrap">{String(input.content)}</div>
       )}
     </div>
   );
@@ -429,82 +452,19 @@ export function getPreview(name: string, input: Record<string, unknown>): string
 // ─── Icons ──────────────────────────────────────────────────────────────────
 
 export function ToolIcon({ type }: { type: string }) {
-  const cls = "w-3.5 h-3.5 text-cc-primary shrink-0";
+  const cls = "size-3.5 text-primary shrink-0";
 
-  if (type === "terminal") {
-    return (
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={cls}>
-        <polyline points="3 11 6 8 3 5" />
-        <line x1="8" y1="11" x2="13" y2="11" />
-      </svg>
-    );
-  }
-  if (type === "file" || type === "file-plus" || type === "file-edit") {
-    return (
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={cls}>
-        <path d="M9 1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V5L9 1z" />
-        <polyline points="9 1 9 5 13 5" />
-      </svg>
-    );
-  }
-  if (type === "search") {
-    return (
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={cls}>
-        <circle cx="7" cy="7" r="4" />
-        <path d="M13 13l-3-3" />
-      </svg>
-    );
-  }
-  if (type === "globe") {
-    return (
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={cls}>
-        <circle cx="8" cy="8" r="6" />
-        <path d="M2 8h12M8 2c2 2 3 4 3 6s-1 4-3 6c-2-2-3-4-3-6s1-4 3-6z" />
-      </svg>
-    );
-  }
-  if (type === "message") {
-    return (
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={cls}>
-        <path d="M14 10a1 1 0 01-1 1H5l-3 3V3a1 1 0 011-1h10a1 1 0 011 1v7z" />
-      </svg>
-    );
-  }
-  if (type === "list") {
-    return (
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={cls}>
-        <path d="M3 4h10M3 8h10M3 12h6" />
-      </svg>
-    );
-  }
-  if (type === "agent") {
-    return (
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={cls}>
-        <circle cx="8" cy="5" r="3" />
-        <path d="M3 14c0-2.8 2.2-5 5-5s5 2.2 5 5" strokeLinecap="round" />
-      </svg>
-    );
-  }
-  if (type === "checklist") {
-    return (
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={cls}>
-        <path d="M3 4l1.5 1.5L7 3M3 8l1.5 1.5L7 7M3 12l1.5 1.5L7 11" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M9 4h4M9 8h4M9 12h4" />
-      </svg>
-    );
-  }
-  if (type === "notebook") {
-    return (
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={cls}>
-        <rect x="3" y="1" width="10" height="14" rx="1" />
-        <path d="M6 1v14M3 5h3M3 9h3M3 13h3" />
-      </svg>
-    );
-  }
+  if (type === "terminal") return <Terminal className={cls} />;
+  if (type === "file") return <File className={cls} />;
+  if (type === "file-plus") return <FilePlus className={cls} />;
+  if (type === "file-edit") return <FileEdit className={cls} />;
+  if (type === "search") return <Search className={cls} />;
+  if (type === "globe") return <Globe className={cls} />;
+  if (type === "message") return <MessageSquare className={cls} />;
+  if (type === "list") return <List className={cls} />;
+  if (type === "agent") return <UserRound className={cls} />;
+  if (type === "checklist") return <CheckSquare className={cls} />;
+  if (type === "notebook") return <NotebookPen className={cls} />;
   // Default tool icon
-  return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={cls}>
-      <path d="M10.5 2.5l3 3-8 8H2.5v-3l8-8z" />
-    </svg>
-  );
+  return <Wrench className={cls} />;
 }

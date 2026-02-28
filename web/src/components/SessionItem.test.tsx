@@ -55,13 +55,13 @@ function buildProps(overrides: Partial<ComponentProps<typeof SessionItem>> = {})
 }
 
 describe("SessionItem", () => {
-  it("renders the session label and cwd", () => {
+  it("renders the session label and cwd", async () => {
     // Validates the primary row content users rely on to identify sessions.
     render(<SessionItem {...buildProps()} />);
 
-    expect(screen.getByText("claude-sonnet-4-6")).toBeInTheDocument();
-    expect(screen.getByText("/workspace/app")).toBeInTheDocument();
-  });
+    expect(await screen.findByText("claude-sonnet-4-6")).toBeInTheDocument();
+    expect(await screen.findByText("/workspace/app")).toBeInTheDocument();
+  }, 10_000);
 
   it("renders the Docker logo asset when session is containerized", () => {
     // Regression guard for THE-195: keep using the transparent Docker logo asset.

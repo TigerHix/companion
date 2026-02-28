@@ -98,13 +98,17 @@ describe("EnvManager render & accessibility", () => {
   it("renders modal mode via portal and passes axe accessibility scan", async () => {
     // The modal renders via createPortal into document.body. We disable the
     // "region" rule because portal content lives outside landmark regions,
-    // which is standard for modals and not specific to EnvManager.
+    // and "aria-command-name" because Base UI injects unnamed focus guards for
+    // dialog trapping that are outside EnvManager's own content contract.
     const { axe } = await import("vitest-axe");
     const onClose = vi.fn();
     render(<EnvManager onClose={onClose} />);
     await screen.findByText("Manage Environments");
     const results = await axe(document.body, {
-      rules: { region: { enabled: false } },
+      rules: {
+        region: { enabled: false },
+        "aria-command-name": { enabled: false },
+      },
     });
     expect(results).toHaveNoViolations();
   });
@@ -217,8 +221,9 @@ describe("EnvManager modal mode", () => {
   it("shows singular var text for 1 variable in modal list", async () => {
     mockListEnvs.mockResolvedValue([makeEnv({ variables: { ONLY: "one" } })]);
     render(<EnvManager onClose={vi.fn()} />);
-    await screen.findByText("Production");
-    expect(screen.getByText("1 var")).toBeInTheDocument();
+    const envCard = (await screen.findByText("Production")).closest(".card-moku");
+    expect(envCard).toBeTruthy();
+    expect(within(envCard as HTMLElement).getByText("1 var")).toBeInTheDocument();
   });
 
   it("shows loading in modal mode", () => {
@@ -235,10 +240,13 @@ describe("EnvManager modal mode", () => {
 
   it("displays existing env variables in non-editing view", async () => {
     render(<EnvManager onClose={vi.fn()} />);
-    await screen.findByText("API_KEY");
-    expect(screen.getByText("secret123")).toBeInTheDocument();
-    expect(screen.getByText("NODE_ENV")).toBeInTheDocument();
-    expect(screen.getByText("production")).toBeInTheDocument();
+    const envCard = (await screen.findByText("Production")).closest(".card-moku");
+    expect(envCard).toBeTruthy();
+    const scoped = within(envCard as HTMLElement);
+    expect(scoped.getByText("API_KEY")).toBeInTheDocument();
+    expect(scoped.getByText("secret123")).toBeInTheDocument();
+    expect(scoped.getByText("NODE_ENV")).toBeInTheDocument();
+    expect(scoped.getByText("production")).toBeInTheDocument();
   });
 
   it("shows imageTag badge in modal env list", async () => {
@@ -331,6 +339,9 @@ describe("EnvManager create flow (embedded)", () => {
     fireEvent.change(nameInput, { target: { value: "duplicate" } });
     fireEvent.click(screen.getByRole("button", { name: "Create" }));
 
+    await waitFor(() => {
+      expect(mockCreateEnv).toHaveBeenCalled();
+    });
     await screen.findByText("Name already exists");
   });
 
@@ -372,7 +383,6 @@ describe("EnvManager create flow (embedded)", () => {
 describe("EnvManager create flow (modal)", () => {
   it("shows inline create form in modal mode with New Environment label", async () => {
     render(<EnvManager onClose={vi.fn()} />);
-    await screen.findByText("Production");
     // Modal mode always shows the create form inline
     expect(screen.getByText("New Environment")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Environment name (e.g. production)")).toBeInTheDocument();
@@ -380,7 +390,6 @@ describe("EnvManager create flow (modal)", () => {
 
   it("creates environment via Enter key in modal mode", async () => {
     render(<EnvManager onClose={vi.fn()} />);
-    await screen.findByText("Production");
     const nameInput = screen.getByPlaceholderText("Environment name (e.g. production)");
     fireEvent.change(nameInput, { target: { value: "modal-env" } });
     fireEvent.keyDown(nameInput, { key: "Enter" });
@@ -512,10 +521,9 @@ describe("EnvManager edit flow (embedded)", () => {
 describe("EnvManager edit flow (modal)", () => {
   it("opens and cancels edit in modal mode", async () => {
     render(<EnvManager onClose={vi.fn()} />);
-    await screen.findByText("Production");
 
     // In modal mode, Edit and Delete are text buttons
-    fireEvent.click(screen.getByText("Edit"));
+    fireEvent.click(await screen.findByText("Edit"));
     // Should show name input in edit view
     expect(screen.getByDisplayValue("Production")).toBeInTheDocument();
 
@@ -528,9 +536,8 @@ describe("EnvManager edit flow (modal)", () => {
 
   it("saves edit in modal mode", async () => {
     render(<EnvManager onClose={vi.fn()} />);
-    await screen.findByText("Production");
 
-    fireEvent.click(screen.getByText("Edit"));
+    fireEvent.click(await screen.findByText("Edit"));
     fireEvent.click(screen.getByText("Save"));
 
     await waitFor(() => {
@@ -747,16 +754,21 @@ describe("EnvManager docker tab", () => {
     fireEvent.click(screen.getByRole("button", { name: "docker" }));
     const select = screen.getByRole("combobox") as HTMLSelectElement;
     fireEvent.change(select, { target: { value: "moku:latest" } });
+    await waitFor(() => {
+      expect(select.value).toBe("moku:latest");
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Create" }));
 
     await waitFor(() => {
-      expect(mockCreateEnv).toHaveBeenCalledWith(
-        "docker-env",
-        {},
-        expect.objectContaining({ baseImage: "moku:latest" }),
-      );
+      expect(mockCreateEnv).toHaveBeenCalled();
     });
+
+    expect(mockCreateEnv).toHaveBeenCalledWith(
+      "docker-env",
+      {},
+      expect.objectContaining({ baseImage: "moku:latest" }),
+    );
   });
 });
 
@@ -817,7 +829,6 @@ describe("EnvManager ports tab", () => {
 describe("EnvManager init script tab", () => {
   it("renders init script textarea with helper text", async () => {
     render(<EnvManager embedded />);
-    await screen.findByText("Production");
 
     fireEvent.click(screen.getByRole("button", { name: /new environment/i }));
     fireEvent.click(screen.getByRole("button", { name: "init" }));
@@ -829,7 +840,6 @@ describe("EnvManager init script tab", () => {
 
   it("creates env with init script", async () => {
     render(<EnvManager embedded />);
-    await screen.findByText("Production");
 
     fireEvent.click(screen.getByRole("button", { name: /new environment/i }));
 
@@ -882,7 +892,7 @@ describe("EnvManager VarEditor", () => {
     // Remove the first row by clicking the X button on the first row
     // The X buttons are the small cross SVG buttons next to each row
     const removeButtons = screen.getAllByRole("button").filter(
-      (btn) => btn.querySelector("svg") && btn.className.includes("hover:text-cc-error"),
+      (btn) => btn.querySelector("svg") && btn.className.includes("hover:text-destructive"),
     );
     // Should have at least 2 remove buttons (one per row)
     fireEvent.click(removeButtons[0]);
@@ -951,16 +961,12 @@ describe("EnvManager build flow", () => {
     mockGetEnvBuildStatus.mockResolvedValue({ buildStatus: "success" });
 
     render(<EnvManager embedded />);
-    await screen.findByText("Production");
-
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
 
     // The "Build Image" button should be visible since dockerfile is set
-    await waitFor(() => {
-      expect(screen.getByText("Build Image")).toBeInTheDocument();
-    });
+    const buildButton = await screen.findByText("Build Image");
 
-    fireEvent.click(screen.getByText("Build Image"));
+    fireEvent.click(buildButton);
 
     await waitFor(() => {
       expect(mockBuildEnvImage).toHaveBeenCalledWith("production");
@@ -977,15 +983,11 @@ describe("EnvManager build flow", () => {
     mockBuildEnvImage.mockRejectedValue(new Error("Docker daemon not running"));
 
     render(<EnvManager embedded />);
-    await screen.findByText("Production");
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    const buildButton = await screen.findByText("Build Image");
 
-    await waitFor(() => {
-      expect(screen.getByText("Build Image")).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText("Build Image"));
+    fireEvent.click(buildButton);
 
     await screen.findByText(/Docker daemon not running/);
   });
@@ -1093,10 +1095,9 @@ describe("EnvManager existing env edit — Docker baseImage update", () => {
 describe("EnvManager delete while editing (modal)", () => {
   it("clears editing state if the env being edited is deleted", async () => {
     render(<EnvManager onClose={vi.fn()} />);
-    await screen.findByText("Production");
 
     // Start editing
-    fireEvent.click(screen.getByText("Edit"));
+    fireEvent.click(await screen.findByText("Edit"));
     expect(screen.getByDisplayValue("Production")).toBeInTheDocument();
 
     // In modal mode, cancel button is visible during edit. The delete button

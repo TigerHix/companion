@@ -108,9 +108,9 @@ describe("ClaudeMdEditor", () => {
   it("shows a spinner while loading files", () => {
     // Make the API hang indefinitely so we can observe the loading state
     mockGetClaudeMdFiles.mockReturnValue(new Promise(() => {}));
-    const { container } = render(<ClaudeMdEditor {...defaultProps} />);
-    // The spinner is a div with animate-spin class; verify it exists
-    const spinner = container.querySelector(".animate-spin");
+    render(<ClaudeMdEditor {...defaultProps} />);
+    // The dialog renders in a portal, so query the document rather than the render container.
+    const spinner = document.querySelector(".animate-spin");
     expect(spinner).toBeInTheDocument();
     // The file list sidebar should NOT be visible during loading
     expect(screen.queryByText("Files")).not.toBeInTheDocument();
@@ -448,19 +448,23 @@ describe("ClaudeMdEditor", () => {
 
   it("closes via backdrop click", async () => {
     const onClose = vi.fn();
-    const { container } = render(
+    render(
       <ClaudeMdEditor cwd={CWD} open={true} onClose={onClose} />,
     );
     await waitFor(() => {
       expect(screen.getByText("Files")).toBeInTheDocument();
     });
 
-    // The backdrop is the first child div with the bg-black/40 class
-    const backdrop = container.querySelector(".fixed.inset-0.bg-black\\/40");
+    // Shared Dialog renders its backdrop in a portal.
+    const backdrop = document.querySelector('[data-slot="dialog-overlay"]');
     expect(backdrop).toBeTruthy();
+    fireEvent.mouseDown(backdrop!);
+    fireEvent.mouseUp(backdrop!);
     fireEvent.click(backdrop!);
 
-    expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
   });
 
   // ─── Additional edge cases ─────────────────────────────────────────────────
@@ -590,9 +594,9 @@ describe("ClaudeMdEditor", () => {
     const claudeMdElements = screen.getAllByText("CLAUDE.md");
     // There should be at least 2: one in sidebar file list, one in path bar
     expect(claudeMdElements.length).toBeGreaterThanOrEqual(2);
-    // Verify one is in the path bar (the span with text-cc-muted class)
+    // Verify one is in the path bar (the span with text-muted-foreground class)
     const pathBarSpan = claudeMdElements.find(
-      (el) => el.tagName === "SPAN" && el.classList.contains("text-cc-muted"),
+      (el) => el.tagName === "SPAN" && el.classList.contains("text-muted-foreground"),
     );
     expect(pathBarSpan).toBeTruthy();
   });

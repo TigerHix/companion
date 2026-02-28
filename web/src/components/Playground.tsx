@@ -19,6 +19,8 @@ import { SessionLaunchOverlay } from "./SessionLaunchOverlay.js";
 import { SessionItem } from "./SessionItem.js";
 import type { CreationProgressEvent } from "../types.js";
 import type { SessionItem as SessionItemType } from "../utils/project-grouping.js";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 // ─── Mock Data ──────────────────────────────────────────────────────────────
 
@@ -194,6 +196,13 @@ const PERM_ASK_MULTI = mockPermission({
         multiSelect: false,
       },
     ],
+  },
+});
+
+const PERM_ASK_SIMPLE = mockPermission({
+  tool_name: "AskUserQuestion",
+  input: {
+    question: "Should the assistant continue with the migration?",
   },
 });
 
@@ -571,16 +580,17 @@ export function Playground() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-cc-bg text-cc-fg font-sans-ui">
+    <div className="min-h-screen bg-background text-foreground font-sans">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-cc-sidebar border-b border-cc-border">
+      <header className="sticky top-0 z-50 bg-sidebar border-b border-border">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold text-cc-fg tracking-tight">Component Playground</h1>
-            <p className="text-xs text-cc-muted mt-0.5">Visual catalog of all UI components</p>
+            <h1 className="text-lg font-semibold text-foreground tracking-tight">Component Playground</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">Visual catalog of all UI components</p>
           </div>
           <div className="flex items-center gap-3">
-            <button
+            <Button
+              type="button"
               onClick={() => {
                 const sessionId = useStore.getState().currentSessionId;
                 if (sessionId) {
@@ -589,16 +599,21 @@ export function Playground() {
                   navigateHome();
                 }
               }}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-cc-hover hover:bg-cc-active text-cc-fg border border-cc-border transition-colors cursor-pointer"
+              variant="outline"
+              size="sm"
+              className="text-xs"
             >
               Back to App
-            </button>
-            <button
+            </Button>
+            <Button
+              type="button"
               onClick={() => setDarkMode(!darkMode)}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-cc-primary/10 hover:bg-cc-primary/20 text-cc-primary border border-cc-primary/20 transition-colors cursor-pointer"
+              variant="ghost"
+              size="sm"
+              className="text-xs text-primary hover:bg-primary/20 hover:text-primary"
             >
               {darkMode ? "Light Mode" : "Dark Mode"}
-            </button>
+            </Button>
           </div>
         </div>
       </header>
@@ -606,7 +621,7 @@ export function Playground() {
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-12">
         {/* ─── Permission Banners ──────────────────────────────── */}
         <Section title="Permission Banners" description="Tool approval requests shown above the composer">
-          <div className="border border-cc-border rounded-xl overflow-hidden bg-cc-card divide-y divide-cc-border">
+          <div className="border border-border rounded-xl overflow-hidden bg-card divide-y divide-border">
             <PermissionBanner permission={PERM_BASH} sessionId={MOCK_SESSION_ID} />
             <PermissionBanner permission={PERM_EDIT} sessionId={MOCK_SESSION_ID} />
             <PermissionBanner permission={PERM_WRITE} sessionId={MOCK_SESSION_ID} />
@@ -620,14 +635,14 @@ export function Playground() {
 
         {/* ─── Real Chat Stack ──────────────────────────────── */}
         <Section title="Real Chat Stack" description="Integrated ChatView using real MessageFeed + PermissionBanner + Composer components">
-          <div data-testid="playground-real-chat-stack" className="max-w-3xl border border-cc-border rounded-xl overflow-hidden bg-cc-card h-[620px]">
+          <div data-testid="playground-real-chat-stack" className="max-w-3xl border border-border rounded-xl overflow-hidden bg-card h-[620px]">
             <ChatView sessionId={MOCK_SESSION_ID} />
           </div>
         </Section>
 
         {/* ─── ExitPlanMode (the fix) ──────────────────────────── */}
         <Section title="ExitPlanMode" description="Plan approval request — previously rendered as raw JSON, now shows formatted markdown">
-          <div className="border border-cc-border rounded-xl overflow-hidden bg-cc-card">
+          <div className="border border-border rounded-xl overflow-hidden bg-card">
             <PermissionBanner permission={PERM_EXIT_PLAN} sessionId={MOCK_SESSION_ID} />
           </div>
         </Section>
@@ -640,6 +655,9 @@ export function Playground() {
             </Card>
             <Card label="Multi-question">
               <PermissionBanner permission={PERM_ASK_MULTI} sessionId={MOCK_SESSION_ID} />
+            </Card>
+            <Card label="Simple fallback question">
+              <PermissionBanner permission={PERM_ASK_SIMPLE} sessionId={MOCK_SESSION_ID} />
             </Card>
           </div>
         </Section>
@@ -663,7 +681,7 @@ export function Playground() {
               <PlaygroundAiValidationToggle enabled={true} />
             </Card>
             <Card label="Auto-resolved badges">
-              <div className="border border-cc-border rounded-xl overflow-hidden bg-cc-card divide-y divide-cc-border">
+              <div className="border border-border rounded-xl overflow-hidden bg-card divide-y divide-border">
                 <AiValidationBadge entry={{
                   request: mockPermission({ tool_name: "Read", input: { file_path: "/src/index.ts" } }),
                   behavior: "allow",
@@ -755,20 +773,20 @@ export function Playground() {
         <Section title="Tool Progress" description="Real-time progress indicator shown while tools are running">
           <div className="space-y-4 max-w-3xl">
             <Card label="Single tool running">
-              <div className="flex items-center gap-1.5 text-[11px] text-cc-muted font-mono-code pl-9">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-cc-primary animate-pulse" />
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono pl-9">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                 <span>Terminal</span>
-                <span className="text-cc-muted/60">8s</span>
+                <span className="text-muted-foreground/60">8s</span>
               </div>
             </Card>
             <Card label="Multiple tools running">
-              <div className="flex items-center gap-1.5 text-[11px] text-cc-muted font-mono-code pl-9">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-cc-primary animate-pulse" />
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono pl-9">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                 <span>Search Content</span>
-                <span className="text-cc-muted/60">3s</span>
-                <span className="text-cc-muted/40">&middot;</span>
+                <span className="text-muted-foreground/60">3s</span>
+                <span className="text-muted-foreground/40">&middot;</span>
                 <span>Find Files</span>
-                <span className="text-cc-muted/60">2s</span>
+                <span className="text-muted-foreground/60">2s</span>
               </div>
             </Card>
           </div>
@@ -790,31 +808,31 @@ export function Playground() {
 
         {/* ─── Task Panel ──────────────────────────────── */}
         <Section title="Tasks" description="Task list states: pending, in progress, completed, blocked">
-          <div className="w-[280px] border border-cc-border rounded-xl overflow-hidden bg-cc-card">
+          <div className="w-[280px] border border-border rounded-xl overflow-hidden bg-card">
             {/* Session stats mock */}
-            <div className="px-4 py-3 border-b border-cc-border space-y-2.5">
+            <div className="px-4 py-3 border-b border-border space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-cc-muted uppercase tracking-wider">Cost</span>
-                <span className="text-[13px] font-medium text-cc-fg tabular-nums">$0.1847</span>
+                <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Cost</span>
+                <span className="text-[13px] font-medium text-foreground tabular-nums">$0.1847</span>
               </div>
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-cc-muted uppercase tracking-wider">Context</span>
-                  <span className="text-[11px] text-cc-muted tabular-nums">62%</span>
+                  <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Context</span>
+                  <span className="text-[11px] text-muted-foreground tabular-nums">62%</span>
                 </div>
-                <div className="w-full h-1.5 rounded-full bg-cc-hover overflow-hidden">
-                  <div className="h-full rounded-full bg-cc-warning transition-all duration-500" style={{ width: "62%" }} />
+                <div className="w-full h-1.5 rounded-full bg-accent overflow-hidden">
+                  <div className="h-full rounded-full bg-warning transition-all duration-500" style={{ width: "62%" }} />
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-cc-muted uppercase tracking-wider">Turns</span>
-                <span className="text-[13px] font-medium text-cc-fg tabular-nums">14</span>
+                <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Turns</span>
+                <span className="text-[13px] font-medium text-foreground tabular-nums">14</span>
               </div>
             </div>
             {/* Task header */}
-            <div className="px-4 py-2.5 border-b border-cc-border flex items-center justify-between">
-              <span className="text-[12px] font-semibold text-cc-fg">Tasks</span>
-              <span className="text-[11px] text-cc-muted tabular-nums">2/{MOCK_TASKS.length}</span>
+            <div className="px-4 py-2.5 border-b border-border flex items-center justify-between">
+              <span className="text-[12px] font-semibold text-foreground">Tasks</span>
+              <span className="text-[11px] text-muted-foreground tabular-nums">2/{MOCK_TASKS.length}</span>
             </div>
             {/* Task list */}
             <div className="px-3 py-2 space-y-0.5">
@@ -829,22 +847,22 @@ export function Playground() {
         <Section title="GitHub PR Status" description="PR health shown in the TaskPanel — checks, reviews, unresolved comments">
           <div className="space-y-4">
             <Card label="Open PR — failing checks + changes requested">
-              <div className="w-[280px] border border-cc-border rounded-xl overflow-hidden bg-cc-card">
+              <div className="w-[280px] border border-border rounded-xl overflow-hidden bg-card">
                 <GitHubPRDisplay pr={MOCK_PR_FAILING} />
               </div>
             </Card>
             <Card label="Open PR — all checks passed + approved">
-              <div className="w-[280px] border border-cc-border rounded-xl overflow-hidden bg-cc-card">
+              <div className="w-[280px] border border-border rounded-xl overflow-hidden bg-card">
                 <GitHubPRDisplay pr={MOCK_PR_PASSING} />
               </div>
             </Card>
             <Card label="Draft PR — pending checks">
-              <div className="w-[280px] border border-cc-border rounded-xl overflow-hidden bg-cc-card">
+              <div className="w-[280px] border border-border rounded-xl overflow-hidden bg-card">
                 <GitHubPRDisplay pr={MOCK_PR_DRAFT} />
               </div>
             </Card>
             <Card label="Merged PR">
-              <div className="w-[280px] border border-cc-border rounded-xl overflow-hidden bg-cc-card">
+              <div className="w-[280px] border border-border rounded-xl overflow-hidden bg-card">
                 <GitHubPRDisplay pr={MOCK_PR_MERGED} />
               </div>
             </Card>
@@ -855,21 +873,21 @@ export function Playground() {
         <Section title="MCP Servers" description="MCP server status display with toggle, reconnect, and tool listing">
           <div className="space-y-4">
             <Card label="All server states (connected, failed, disabled, connecting)">
-              <div className="w-[280px] border border-cc-border rounded-xl overflow-hidden bg-cc-card">
+              <div className="w-[280px] border border-border rounded-xl overflow-hidden bg-card">
                 {/* MCP section header */}
-                <div className="shrink-0 px-4 py-2.5 border-b border-cc-border flex items-center justify-between">
-                  <span className="text-[12px] font-semibold text-cc-fg flex items-center gap-1.5">
-                    <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-cc-muted">
+                <div className="shrink-0 px-4 py-2.5 border-b border-border flex items-center justify-between">
+                  <span className="text-[12px] font-semibold text-foreground flex items-center gap-1.5">
+                    <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-muted-foreground">
                       <path d="M1.5 3A1.5 1.5 0 013 1.5h10A1.5 1.5 0 0114.5 3v1A1.5 1.5 0 0113 5.5H3A1.5 1.5 0 011.5 4V3zm0 5A1.5 1.5 0 013 6.5h10A1.5 1.5 0 0114.5 8v1A1.5 1.5 0 0113 10.5H3A1.5 1.5 0 011.5 9V8zm0 5A1.5 1.5 0 013 11.5h10a1.5 1.5 0 011.5 1.5v1a1.5 1.5 0 01-1.5 1.5H3A1.5 1.5 0 011.5 14v-1z" />
                     </svg>
                     MCP Servers
                   </span>
-                  <span className="text-[11px] text-cc-muted">
+                  <Button type="button" variant="ghost" size="icon-xs" className="text-muted-foreground">
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
                       <path d="M2.5 8a5.5 5.5 0 019.78-3.5M13.5 8a5.5 5.5 0 01-9.78 3.5" strokeLinecap="round" />
                       <path d="M12.5 2v3h-3M3.5 14v-3h3" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                  </span>
+                  </Button>
                 </div>
                 {/* Server rows */}
                 <div className="px-3 py-2 space-y-1.5">
@@ -886,15 +904,15 @@ export function Playground() {
         <Section title="Panel Config View" description="Inline configuration for the right sidebar — toggle sections on/off and reorder them">
           <div className="space-y-4">
             <Card label="Config mode with mixed enabled/disabled sections">
-              <div className="w-[320px] border border-cc-border rounded-xl overflow-hidden bg-cc-card">
+              <div className="w-[320px] border border-border rounded-xl overflow-hidden bg-card">
                 {/* Header */}
-                <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-cc-border">
-                  <span className="text-sm font-semibold text-cc-fg tracking-tight">Panel Settings</span>
-                  <button className="flex items-center justify-center w-6 h-6 rounded-lg text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer">
+                <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-border">
+                  <span className="text-sm font-semibold text-foreground tracking-tight">Panel Settings</span>
+                  <Button type="button" variant="ghost" size="icon-xs" className="text-muted-foreground hover:text-foreground">
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
                       <path d="M4 4l8 8M12 4l-8 8" />
                     </svg>
-                  </button>
+                  </Button>
                 </div>
                 {/* Section rows */}
                 <div className="px-3 py-3 space-y-1">
@@ -907,40 +925,30 @@ export function Playground() {
                   ].map((s, i, arr) => (
                     <div
                       key={s.id}
-                      className={`flex items-center gap-2 px-2.5 py-2 rounded-lg border border-cc-border transition-opacity ${
-                        s.enabled ? "bg-cc-bg" : "bg-cc-hover/50 opacity-60"
+                      className={`flex items-center gap-2 px-2.5 py-2 rounded-lg border border-border transition-opacity ${
+                        s.enabled ? "bg-background" : "bg-accent/50 opacity-60"
                       }`}
                     >
                       <div className="flex flex-col gap-0.5 shrink-0">
-                        <button disabled={i === 0} className="w-5 h-4 flex items-center justify-center text-cc-muted hover:text-cc-fg disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer transition-colors">
+                        <Button type="button" variant="ghost" size="icon-xs" disabled={i === 0} className="h-4 w-5 rounded-sm text-muted-foreground hover:text-foreground disabled:opacity-20">
                           <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3"><path d="M8 4l4 4H4l4-4z" /></svg>
-                        </button>
-                        <button disabled={i === arr.length - 1} className="w-5 h-4 flex items-center justify-center text-cc-muted hover:text-cc-fg disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer transition-colors">
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon-xs" disabled={i === arr.length - 1} className="h-4 w-5 rounded-sm text-muted-foreground hover:text-foreground disabled:opacity-20">
                           <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3"><path d="M8 12l4-4H4l4 4z" /></svg>
-                        </button>
+                        </Button>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className="text-[12px] font-medium text-cc-fg block">{s.label}</span>
-                        <span className="text-[10px] text-cc-muted block truncate">{s.desc}</span>
+                        <span className="text-[12px] font-medium text-foreground block">{s.label}</span>
+                        <span className="text-[10px] text-muted-foreground block truncate">{s.desc}</span>
                       </div>
-                      <button
-                        className={`shrink-0 w-8 h-[18px] rounded-full transition-colors cursor-pointer relative ${
-                          s.enabled ? "bg-cc-primary" : "bg-cc-hover"
-                        }`}
-                        role="switch"
-                        aria-checked={s.enabled}
-                      >
-                        <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow transition-transform ${
-                          s.enabled ? "translate-x-[16px]" : "translate-x-[2px]"
-                        }`} />
-                      </button>
+                      <Switch checked={s.enabled} size="sm" disabled />
                     </div>
                   ))}
                 </div>
                 {/* Footer */}
-                <div className="shrink-0 border-t border-cc-border px-3 py-2.5 flex items-center justify-between">
-                  <button className="text-[11px] text-cc-muted hover:text-cc-fg transition-colors cursor-pointer">Reset to defaults</button>
-                  <button className="text-[11px] font-medium text-cc-primary hover:text-cc-primary-hover transition-colors cursor-pointer">Done</button>
+                <div className="shrink-0 border-t border-border px-3 py-2.5 flex items-center justify-between">
+                  <Button type="button" variant="ghost" size="xs" className="h-auto px-0 py-0 text-[11px] text-muted-foreground">Reset to defaults</Button>
+                  <Button type="button" variant="ghost" size="xs" className="h-auto px-0 py-0 text-[11px] text-primary hover:text-primary">Done</Button>
                 </div>
               </div>
             </Card>
@@ -961,29 +969,29 @@ export function Playground() {
         <Section title="Status Indicators" description="Connection and session status banners">
           <div className="space-y-3 max-w-3xl">
             <Card label="Disconnected warning">
-              <div className="px-4 py-2 bg-cc-warning/10 border border-cc-warning/20 rounded-lg text-center">
-                <span className="text-xs text-cc-warning font-medium">Reconnecting to session...</span>
+              <div className="px-4 py-2 bg-warning/10 border border-warning/20 rounded-lg text-center">
+                <span className="text-xs text-warning font-medium">Reconnecting to session...</span>
               </div>
             </Card>
             <Card label="Connected">
-              <div className="flex items-center gap-2 px-3 py-2 bg-cc-card border border-cc-border rounded-lg">
-                <span className="w-2 h-2 rounded-full bg-cc-success" />
-                <span className="text-xs text-cc-fg font-medium">Connected</span>
-                <span className="text-[11px] text-cc-muted ml-auto">claude-opus-4-6</span>
+              <div className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg">
+                <span className="w-2 h-2 rounded-full bg-success" />
+                <span className="text-xs text-foreground font-medium">Connected</span>
+                <span className="text-[11px] text-muted-foreground ml-auto">claude-opus-4-6</span>
               </div>
             </Card>
             <Card label="Running / Thinking">
-              <div className="flex items-center gap-2 px-3 py-2 bg-cc-card border border-cc-border rounded-lg">
-                <span className="w-2 h-2 rounded-full bg-cc-primary animate-[pulse-dot_1.5s_ease-in-out_infinite]" />
-                <span className="text-xs text-cc-fg font-medium">Thinking</span>
+              <div className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg">
+                <span className="w-2 h-2 rounded-full bg-primary animate-[pulse-dot_1.5s_ease-in-out_infinite]" />
+                <span className="text-xs text-foreground font-medium">Thinking</span>
               </div>
             </Card>
             <Card label="Compacting">
-              <div className="flex items-center gap-2 px-3 py-2 bg-cc-card border border-cc-border rounded-lg">
-                <svg className="w-3.5 h-3.5 text-cc-muted animate-spin" viewBox="0 0 16 16" fill="none">
+              <div className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg">
+                <svg className="w-3.5 h-3.5 text-muted-foreground animate-spin" viewBox="0 0 16 16" fill="none">
                   <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round" />
                 </svg>
-                <span className="text-xs text-cc-muted font-medium">Compacting context...</span>
+                <span className="text-xs text-muted-foreground font-medium">Compacting context...</span>
               </div>
             </Card>
           </div>
@@ -993,10 +1001,10 @@ export function Playground() {
         <Section title="Composer" description="Message input bar with mode toggle, image upload, saved prompts (@), and send/stop buttons">
           <div className="max-w-3xl">
             <Card label="Connected — code mode">
-              <div className="border-t border-cc-border bg-cc-card px-4 py-3">
-                <div className="relative bg-cc-input-bg/95 border border-cc-border rounded-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.10)] overflow-visible">
+              <div className="border-t border-border bg-card px-4 py-3">
+                <div className="relative bg-card/95 border border-border rounded-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.10)] overflow-visible">
                   <div className="flex items-end gap-2 px-2.5 py-2">
-                    <div className="mb-0.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-cc-border text-[12px] font-semibold text-cc-muted">
+                    <div className="mb-0.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-[12px] font-semibold text-muted-foreground">
                       <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
                         <path d="M2.5 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
                         <path d="M8.5 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
@@ -1007,18 +1015,18 @@ export function Playground() {
                       readOnly
                       value="Can you refactor the auth module to use JWT?"
                       rows={1}
-                      className="flex-1 min-w-0 px-2 py-1.5 text-sm bg-transparent resize-none text-cc-fg font-sans-ui"
+                      className="flex-1 min-w-0 px-2 py-1.5 text-sm bg-transparent resize-none text-foreground font-sans"
                       style={{ minHeight: "36px" }}
                     />
                     <div className="mb-0.5 flex items-center gap-1.5">
-                      <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-cc-border text-cc-muted">
+                      <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-border text-muted-foreground">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
                           <rect x="2" y="2" width="12" height="12" rx="2" />
                           <circle cx="5.5" cy="5.5" r="1" fill="currentColor" stroke="none" />
                           <path d="M2 11l3-3 2 2 3-4 4 5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </div>
-                      <div className="flex items-center justify-center w-9 h-9 rounded-full bg-cc-primary text-white shadow-[0_6px_20px_rgba(0,0,0,0.18)]">
+                      <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary text-white shadow-[0_6px_20px_rgba(0,0,0,0.18)]">
                         <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
                           <path d="M3 2l11 6-11 6V9.5l7-1.5-7-1.5V2z" />
                         </svg>
@@ -1030,16 +1038,16 @@ export function Playground() {
             </Card>
             <div className="mt-4" />
             <Card label="@ prompt insertion">
-              <div className="border-t border-cc-border bg-cc-card px-4 py-3">
-                <div className="relative bg-cc-input-bg/95 border border-cc-border rounded-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.10)] overflow-visible">
-                  <div className="absolute left-2 right-2 bottom-full mb-1 max-h-[180px] overflow-y-auto bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-20 py-1">
-                    <div className="px-3 py-2 flex items-center gap-2.5 bg-cc-hover">
-                      <span className="flex items-center justify-center w-6 h-6 rounded-md bg-cc-hover text-cc-muted shrink-0">@</span>
+              <div className="border-t border-border bg-card px-4 py-3">
+                <div className="relative bg-card/95 border border-border rounded-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.10)] overflow-visible">
+                  <div className="absolute left-2 right-2 bottom-full mb-1 max-h-[180px] overflow-y-auto bg-card border border-border rounded-[10px] shadow-lg z-20 py-1">
+                    <div className="px-3 py-2 flex items-center gap-2.5 bg-accent">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-md bg-accent text-muted-foreground shrink-0">@</span>
                       <div className="flex-1 min-w-0">
-                        <div className="text-[13px] font-medium text-cc-fg truncate">@review-pr</div>
-                        <div className="text-[11px] text-cc-muted truncate">Review this PR and list risks, regressions, and missing tests.</div>
+                        <div className="text-[13px] font-medium text-foreground truncate">@review-pr</div>
+                        <div className="text-[11px] text-muted-foreground truncate">Review this PR and list risks, regressions, and missing tests.</div>
                       </div>
-                      <span className="text-[10px] text-cc-muted shrink-0">project</span>
+                      <span className="text-[10px] text-muted-foreground shrink-0">project</span>
                     </div>
                   </div>
                   <div className="flex items-end gap-2 px-2.5 py-2">
@@ -1047,11 +1055,11 @@ export function Playground() {
                       readOnly
                       value="@rev"
                       rows={1}
-                      className="flex-1 min-w-0 px-2 py-1.5 text-sm bg-transparent resize-none text-cc-fg font-sans-ui"
+                      className="flex-1 min-w-0 px-2 py-1.5 text-sm bg-transparent resize-none text-foreground font-sans"
                       style={{ minHeight: "36px" }}
                     />
                     <div className="mb-0.5 flex items-center gap-1.5">
-                      <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-cc-border text-cc-muted">
+                      <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-border text-muted-foreground">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
                           <path d="M4 2.75h8A1.25 1.25 0 0113.25 4v9.25L8 10.5l-5.25 2.75V4A1.25 1.25 0 014 2.75z" />
                         </svg>
@@ -1063,10 +1071,10 @@ export function Playground() {
             </Card>
             <div className="mt-4" />
             <Card label="Plan mode active">
-              <div className="border-t border-cc-border bg-cc-card px-4 py-3">
-                <div className="relative bg-cc-input-bg/95 border border-cc-primary/40 rounded-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.10)] overflow-visible">
+              <div className="border-t border-border bg-card px-4 py-3">
+                <div className="relative bg-card/95 border border-primary/40 rounded-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.10)] overflow-visible">
                   <div className="flex items-end gap-2 px-2.5 py-2">
-                    <div className="mb-0.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-cc-primary/40 text-[12px] font-semibold text-cc-primary bg-cc-primary/8">
+                    <div className="mb-0.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-primary/40 text-[12px] font-semibold text-primary bg-primary/8">
                       <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
                         <rect x="3" y="3" width="3.5" height="10" rx="0.75" />
                         <rect x="9.5" y="3" width="3.5" height="10" rx="0.75" />
@@ -1078,18 +1086,18 @@ export function Playground() {
                       value=""
                       placeholder="Type a message... (/ + @)"
                       rows={1}
-                      className="flex-1 min-w-0 px-2 py-1.5 text-sm bg-transparent resize-none text-cc-fg font-sans-ui placeholder:text-cc-muted"
+                      className="flex-1 min-w-0 px-2 py-1.5 text-sm bg-transparent resize-none text-foreground font-sans placeholder:text-muted-foreground"
                       style={{ minHeight: "36px" }}
                     />
                     <div className="mb-0.5 flex items-center gap-1.5">
-                      <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-cc-border text-cc-muted">
+                      <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-border text-muted-foreground">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
                           <rect x="2" y="2" width="12" height="12" rx="2" />
                           <circle cx="5.5" cy="5.5" r="1" fill="currentColor" stroke="none" />
                           <path d="M2 11l3-3 2 2 3-4 4 5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </div>
-                      <div className="flex items-center justify-center w-9 h-9 rounded-full bg-cc-hover text-cc-muted">
+                      <div className="flex items-center justify-center w-9 h-9 rounded-full bg-accent text-muted-foreground">
                         <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
                           <path d="M3 2l11 6-11 6V9.5l7-1.5-7-1.5V2z" />
                         </svg>
@@ -1101,10 +1109,10 @@ export function Playground() {
             </Card>
             <div className="mt-4" />
             <Card label="Running — stop button visible">
-              <div className="border-t border-cc-border bg-cc-card px-4 py-3">
-                <div className="relative bg-cc-input-bg/95 border border-cc-border rounded-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.10)] overflow-visible">
+              <div className="border-t border-border bg-card px-4 py-3">
+                <div className="relative bg-card/95 border border-border rounded-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.10)] overflow-visible">
                   <div className="flex items-end gap-2 px-2.5 py-2">
-                    <div className="mb-0.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-cc-border text-[12px] font-semibold text-cc-muted">
+                    <div className="mb-0.5 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-[12px] font-semibold text-muted-foreground">
                       <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
                         <path d="M2.5 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
                         <path d="M8.5 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
@@ -1116,18 +1124,18 @@ export function Playground() {
                       value=""
                       placeholder="Type a message... (/ for commands)"
                       rows={1}
-                      className="flex-1 min-w-0 px-2 py-1.5 text-sm bg-transparent resize-none text-cc-fg font-sans-ui placeholder:text-cc-muted"
+                      className="flex-1 min-w-0 px-2 py-1.5 text-sm bg-transparent resize-none text-foreground font-sans placeholder:text-muted-foreground"
                       style={{ minHeight: "36px" }}
                     />
                     <div className="mb-0.5 flex items-center gap-1.5">
-                      <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-cc-border text-cc-muted">
+                      <div className="flex items-center justify-center w-9 h-9 rounded-lg border border-border text-muted-foreground">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
                           <rect x="2" y="2" width="12" height="12" rx="2" />
                           <circle cx="5.5" cy="5.5" r="1" fill="currentColor" stroke="none" />
                           <path d="M2 11l3-3 2 2 3-4 4 5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </div>
-                      <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-cc-error/10 text-cc-error">
+                      <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-destructive/10 text-destructive">
                         <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
                           <rect x="3" y="3" width="10" height="10" rx="1" />
                         </svg>
@@ -1145,28 +1153,28 @@ export function Playground() {
           <div className="space-y-4 max-w-3xl">
             <Card label="Streaming with cursor">
               <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-cc-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 text-cc-primary">
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 text-primary">
                     <path d="M8 1v14M1 8h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <pre className="font-serif-assistant text-[15px] text-cc-fg whitespace-pre-wrap break-words leading-relaxed">
+                  <pre className="font-serif-assistant text-[15px] text-foreground whitespace-pre-wrap break-words leading-relaxed">
                     I'll start by creating the JWT utility module with sign and verify helpers. Let me first check what dependencies are already installed...
-                    <span className="inline-block w-0.5 h-4 bg-cc-primary ml-0.5 align-middle animate-[pulse-dot_0.8s_ease-in-out_infinite]" />
+                    <span className="inline-block w-0.5 h-4 bg-primary ml-0.5 align-middle animate-[pulse-dot_0.8s_ease-in-out_infinite]" />
                   </pre>
                 </div>
               </div>
             </Card>
             <Card label="Generation stats bar">
-              <div className="flex items-center gap-1.5 text-[11px] text-cc-muted font-mono-code pl-9">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-cc-primary animate-pulse" />
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono pl-9">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                 <span>Generating...</span>
-                <span className="text-cc-muted/60">(</span>
+                <span className="text-muted-foreground/60">(</span>
                 <span>12s</span>
-                <span className="text-cc-muted/40">&middot;</span>
+                <span className="text-muted-foreground/40">&middot;</span>
                 <span>&darr; 1.2k</span>
-                <span className="text-cc-muted/60">)</span>
+                <span className="text-muted-foreground/60">)</span>
               </div>
             </Card>
           </div>
@@ -1316,7 +1324,7 @@ export function Playground() {
         <Section title="Session Launch Overlay" description="Full-screen overlay shown during session creation, replacing the inline progress list">
           <div className="space-y-4">
             <Card label="In progress (container session)">
-              <div className="relative h-[360px] bg-cc-bg rounded-lg overflow-hidden border border-cc-border">
+              <div className="relative h-[360px] bg-background rounded-lg overflow-hidden border border-border">
                 <SessionLaunchOverlay
                   steps={[
                     { step: "resolving_env", label: "Environment resolved", status: "done" },
@@ -1330,7 +1338,7 @@ export function Playground() {
               </div>
             </Card>
             <Card label="All steps done (launching)">
-              <div className="relative h-[360px] bg-cc-bg rounded-lg overflow-hidden border border-cc-border">
+              <div className="relative h-[360px] bg-background rounded-lg overflow-hidden border border-border">
                 <SessionLaunchOverlay
                   steps={[
                     { step: "resolving_env", label: "Environment resolved", status: "done" },
@@ -1343,7 +1351,7 @@ export function Playground() {
               </div>
             </Card>
             <Card label="Error state">
-              <div className="relative h-[400px] bg-cc-bg rounded-lg overflow-hidden border border-cc-border">
+              <div className="relative h-[400px] bg-background rounded-lg overflow-hidden border border-border">
                 <SessionLaunchOverlay
                   steps={[
                     { step: "resolving_env", label: "Environment resolved", status: "done" },
@@ -1356,7 +1364,7 @@ export function Playground() {
               </div>
             </Card>
             <Card label="Codex backend">
-              <div className="relative h-[320px] bg-cc-bg rounded-lg overflow-hidden border border-cc-border">
+              <div className="relative h-[320px] bg-background rounded-lg overflow-hidden border border-border">
                 <SessionLaunchOverlay
                   steps={[
                     { step: "resolving_env", label: "Environment resolved", status: "done" },
@@ -1435,7 +1443,7 @@ function PlaygroundSessionItems() {
     <div className="space-y-4 max-w-sm">
       {/* Running — Claude Code */}
       <Card label="Running — Claude Code">
-        <div className="bg-cc-sidebar rounded-lg p-1">
+        <div className="bg-sidebar rounded-lg p-1">
           <SessionItem
             session={mockSession({ isConnected: true, status: "running", backendType: "claude" })}
             isActive={false}
@@ -1449,7 +1457,7 @@ function PlaygroundSessionItems() {
 
       {/* Running — Codex + Docker */}
       <Card label="Running — Codex + Docker">
-        <div className="bg-cc-sidebar rounded-lg p-1">
+        <div className="bg-sidebar rounded-lg p-1">
           <SessionItem
             session={mockSession({ isConnected: true, status: "running", backendType: "codex", isContainerized: true })}
             isActive={false}
@@ -1463,7 +1471,7 @@ function PlaygroundSessionItems() {
 
       {/* Awaiting Input — 2 permissions */}
       <Card label="Awaiting Input — 2 permissions pending">
-        <div className="bg-cc-sidebar rounded-lg p-1">
+        <div className="bg-sidebar rounded-lg p-1">
           <SessionItem
             session={mockSession({ isConnected: true, status: "running", backendType: "claude", permCount: 2 })}
             isActive={false}
@@ -1477,7 +1485,7 @@ function PlaygroundSessionItems() {
 
       {/* Idle */}
       <Card label="Idle — connected, not running">
-        <div className="bg-cc-sidebar rounded-lg p-1">
+        <div className="bg-sidebar rounded-lg p-1">
           <SessionItem
             session={mockSession({ isConnected: true, status: "idle", backendType: "claude" })}
             isActive={false}
@@ -1491,7 +1499,7 @@ function PlaygroundSessionItems() {
 
       {/* Exited */}
       <Card label="Exited — session stopped">
-        <div className="bg-cc-sidebar rounded-lg p-1">
+        <div className="bg-sidebar rounded-lg p-1">
           <SessionItem
             session={mockSession({ sdkState: "exited", backendType: "codex" })}
             isActive={false}
@@ -1505,7 +1513,7 @@ function PlaygroundSessionItems() {
 
       {/* Active (selected) */}
       <Card label="Active (selected session)">
-        <div className="bg-cc-sidebar rounded-lg p-1">
+        <div className="bg-sidebar rounded-lg p-1">
           <SessionItem
             session={mockSession({ isConnected: true, status: "running", backendType: "claude", isContainerized: true })}
             isActive={true}
@@ -1519,7 +1527,7 @@ function PlaygroundSessionItems() {
 
       {/* Archived */}
       <Card label="Archived session">
-        <div className="bg-cc-sidebar rounded-lg p-1">
+        <div className="bg-sidebar rounded-lg p-1">
           <SessionItem
             session={mockSession({ archived: true, backendType: "claude" })}
             isActive={false}
@@ -1541,8 +1549,8 @@ function Section({ title, description, children }: { title: string; description:
   return (
     <section>
       <div className="mb-4">
-        <h2 className="text-base font-semibold text-cc-fg">{title}</h2>
-        <p className="text-xs text-cc-muted mt-0.5">{description}</p>
+        <h2 className="text-base font-semibold text-foreground">{title}</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
       </div>
       {children}
     </section>
@@ -1551,9 +1559,9 @@ function Section({ title, description, children }: { title: string; description:
 
 function Card({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="border border-cc-border rounded-xl overflow-hidden bg-cc-card">
-      <div className="px-3 py-1.5 bg-cc-hover/50 border-b border-cc-border">
-        <span className="text-[10px] text-cc-muted font-mono-code uppercase tracking-wider">{label}</span>
+    <div className="border border-border rounded-xl overflow-hidden bg-card">
+      <div className="px-3 py-1.5 bg-accent/50 border-b border-border">
+        <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">{label}</span>
       </div>
       <div className="p-4">{children}</div>
     </div>
@@ -1569,50 +1577,56 @@ function PlaygroundTerminalTabsMock() {
   const [placement, setPlacement] = useState<"top" | "right" | "bottom" | "left">("bottom");
 
   return (
-    <div className="rounded-xl border border-cc-border bg-cc-card overflow-hidden">
-      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-cc-border bg-cc-sidebar">
-        <div className="flex items-center gap-0.5 bg-cc-hover rounded-md p-0.5 mr-1">
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border bg-sidebar">
+        <div className="flex items-center gap-0.5 bg-accent rounded-md p-0.5 mr-1">
           {(["top", "right", "bottom", "left"] as const).map((p) => (
-            <button
+            <Button
               key={p}
+              type="button"
               onClick={() => setPlacement(p)}
-              className={`px-2 py-1 rounded text-[10px] font-medium cursor-pointer ${
-                placement === p ? "bg-cc-card text-cc-fg" : "text-cc-muted"
+              variant="ghost"
+              size="xs"
+              className={`text-[10px] ${
+                placement === p ? "bg-card text-foreground" : "text-muted-foreground"
               }`}
             >
               {p[0]?.toUpperCase()}{p.slice(1)}
-            </button>
+            </Button>
           ))}
         </div>
         {tabs.map((tab) => (
-          <button
+          <Button
             key={tab.id}
+            type="button"
             onClick={() => setActive(tab.id)}
-            className={`px-2 py-1 rounded-md text-[11px] font-medium border cursor-pointer ${
+            variant="ghost"
+            size="xs"
+            className={`text-[11px] border ${
               active === tab.id
-                ? "text-cc-fg bg-cc-card border-cc-border"
-                : "text-cc-muted border-transparent hover:bg-cc-hover"
+                ? "text-foreground bg-card border-border"
+                : "text-muted-foreground border-transparent hover:bg-accent"
             }`}
           >
             {tab.label}
-          </button>
+          </Button>
         ))}
-        <span className="text-[11px] font-mono-code text-cc-muted truncate ml-1">
+        <span className="text-[11px] font-mono text-muted-foreground truncate ml-1">
           {tabs.find((tab) => tab.id === active)?.cwd}
         </span>
       </div>
-      <div className="h-32 p-3 bg-cc-bg">
-        <div className={`h-full min-h-0 rounded-lg border border-cc-border bg-cc-card flex ${placement === "left" || placement === "right" ? "flex-row" : "flex-col"}`}>
+      <div className="h-32 p-3 bg-background">
+        <div className={`h-full min-h-0 rounded-lg border border-border bg-card flex ${placement === "left" || placement === "right" ? "flex-row" : "flex-col"}`}>
           {(placement === "top" || placement === "left") && (
-            <div className={`${placement === "left" ? "w-2/5 border-r" : "h-2/5 border-b"} border-cc-border bg-cc-sidebar/40 flex items-center justify-center text-[10px] text-cc-muted font-mono-code`}>
+            <div className={`${placement === "left" ? "w-2/5 border-r" : "h-2/5 border-b"} border-border bg-sidebar/40 flex items-center justify-center text-[10px] text-muted-foreground font-mono`}>
               Terminal docked
             </div>
           )}
-          <div className="flex-1 min-h-0 flex items-center justify-center text-xs text-cc-muted">
+          <div className="flex-1 min-h-0 flex items-center justify-center text-xs text-muted-foreground">
             Session content
           </div>
           {(placement === "right" || placement === "bottom") && (
-            <div className={`${placement === "right" ? "w-2/5 border-l" : "h-2/5 border-t"} border-cc-border bg-cc-sidebar/40 flex items-center justify-center text-[10px] text-cc-muted font-mono-code`}>
+            <div className={`${placement === "right" ? "w-2/5 border-l" : "h-2/5 border-t"} border-border bg-sidebar/40 flex items-center justify-center text-[10px] text-muted-foreground font-mono`}>
               Terminal docked
             </div>
           )}
@@ -1636,27 +1650,29 @@ function PlaygroundToolGroup({ toolName, items }: { toolName: string; items: Too
     const item = items[0];
     return (
       <div className="flex items-start gap-3">
-        <div className="w-6 h-6 rounded-full bg-cc-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-          <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-cc-primary"><circle cx="8" cy="8" r="3" /></svg>
+        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+          <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-primary"><circle cx="8" cy="8" r="3" /></svg>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="border border-cc-border rounded-[10px] overflow-hidden bg-cc-card">
-            <button
+          <div className="border border-border rounded-[10px] overflow-hidden bg-card">
+            <Button
+              type="button"
               onClick={() => setOpen(!open)}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-cc-hover transition-colors cursor-pointer"
+              variant="ghost"
+              className="h-auto w-full justify-start gap-2.5 rounded-none px-3 py-2 text-left"
             >
-              <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 text-cc-muted transition-transform shrink-0 ${open ? "rotate-90" : ""}`}>
+              <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 text-muted-foreground transition-transform shrink-0 ${open ? "rotate-90" : ""}`}>
                 <path d="M6 4l4 4-4 4" />
               </svg>
               <ToolIcon type={iconType} />
-              <span className="text-xs font-medium text-cc-fg">{label}</span>
-              <span className="text-xs text-cc-muted truncate flex-1 font-mono-code">
+              <span className="text-xs font-medium text-foreground">{label}</span>
+              <span className="text-xs text-muted-foreground truncate flex-1 font-mono">
                 {getPreview(item.name, item.input)}
               </span>
-            </button>
+            </Button>
             {open && (
-              <div className="px-3 pb-3 pt-0 border-t border-cc-border mt-0">
-                <pre className="mt-2 text-[11px] text-cc-muted font-mono-code whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+              <div className="px-3 pb-3 pt-0 border-t border-border mt-0">
+                <pre className="mt-2 text-[11px] text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
                   {JSON.stringify(item.input, null, 2)}
                 </pre>
               </div>
@@ -1669,31 +1685,33 @@ function PlaygroundToolGroup({ toolName, items }: { toolName: string; items: Too
 
   return (
     <div className="flex items-start gap-3">
-      <div className="w-6 h-6 rounded-full bg-cc-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-        <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-cc-primary"><circle cx="8" cy="8" r="3" /></svg>
+      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+        <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-primary"><circle cx="8" cy="8" r="3" /></svg>
       </div>
       <div className="flex-1 min-w-0">
-        <div className="border border-cc-border rounded-[10px] overflow-hidden bg-cc-card">
-          <button
+        <div className="border border-border rounded-[10px] overflow-hidden bg-card">
+          <Button
+            type="button"
             onClick={() => setOpen(!open)}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-cc-hover transition-colors cursor-pointer"
+            variant="ghost"
+            className="h-auto w-full justify-start gap-2.5 rounded-none px-3 py-2 text-left"
           >
-            <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 text-cc-muted transition-transform shrink-0 ${open ? "rotate-90" : ""}`}>
+            <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 text-muted-foreground transition-transform shrink-0 ${open ? "rotate-90" : ""}`}>
               <path d="M6 4l4 4-4 4" />
             </svg>
             <ToolIcon type={iconType} />
-            <span className="text-xs font-medium text-cc-fg">{label}</span>
-            <span className="text-[10px] text-cc-muted bg-cc-hover rounded-full px-1.5 py-0.5 tabular-nums font-medium">
+            <span className="text-xs font-medium text-foreground">{label}</span>
+            <span className="text-[10px] text-muted-foreground bg-accent rounded-full px-1.5 py-0.5 tabular-nums font-medium">
               {count}
             </span>
-          </button>
+          </Button>
           {open && (
-            <div className="border-t border-cc-border px-3 py-1.5">
+            <div className="border-t border-border px-3 py-1.5">
               {items.map((item, i) => {
                 const preview = getPreview(item.name, item.input);
                 return (
-                  <div key={item.id || i} className="flex items-center gap-2 py-1 text-xs text-cc-muted font-mono-code truncate">
-                    <span className="w-1 h-1 rounded-full bg-cc-muted/40 shrink-0" />
+                  <div key={item.id || i} className="flex items-center gap-2 py-1 text-xs text-muted-foreground font-mono truncate">
+                    <span className="w-1 h-1 rounded-full bg-muted-foreground/40 shrink-0" />
                     <span className="truncate">{preview || JSON.stringify(item.input).slice(0, 80)}</span>
                   </div>
                 );
@@ -1712,28 +1730,30 @@ function PlaygroundSubagentGroup({ description, agentType, items }: { descriptio
   const [open, setOpen] = useState(true);
 
   return (
-    <div className="ml-9 border-l-2 border-cc-primary/20 pl-4">
-      <button
+    <div className="ml-9 border-l-2 border-primary/20 pl-4">
+      <Button
+        type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2 py-1.5 text-left cursor-pointer mb-1"
+        variant="ghost"
+        className="mb-1 h-auto w-full justify-start gap-2 px-0 py-1.5 text-left"
       >
-        <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 text-cc-muted transition-transform shrink-0 ${open ? "rotate-90" : ""}`}>
+        <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 text-muted-foreground transition-transform shrink-0 ${open ? "rotate-90" : ""}`}>
           <path d="M6 4l4 4-4 4" />
         </svg>
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5 text-cc-primary shrink-0">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5 text-primary shrink-0">
           <circle cx="8" cy="8" r="5" />
           <path d="M8 5v3l2 1" strokeLinecap="round" />
         </svg>
-        <span className="text-xs font-medium text-cc-fg truncate">{description}</span>
+        <span className="text-xs font-medium text-foreground truncate">{description}</span>
         {agentType && (
-          <span className="text-[10px] text-cc-muted bg-cc-hover rounded-full px-1.5 py-0.5 shrink-0">
+          <span className="text-[10px] text-muted-foreground bg-accent rounded-full px-1.5 py-0.5 shrink-0">
             {agentType}
           </span>
         )}
-        <span className="text-[10px] text-cc-muted bg-cc-hover rounded-full px-1.5 py-0.5 tabular-nums shrink-0 ml-auto">
+        <span className="text-[10px] text-muted-foreground bg-accent rounded-full px-1.5 py-0.5 tabular-nums shrink-0 ml-auto">
           {items.length}
         </span>
-      </button>
+      </Button>
       {open && (
         <div className="space-y-3 pb-2">
           <PlaygroundToolGroup toolName={items[0]?.name || "Grep"} items={items} />
@@ -1801,7 +1821,7 @@ function CodexPlaygroundDemo() {
   }, []);
 
   return (
-    <div className="w-[280px] border border-cc-border rounded-xl overflow-hidden bg-cc-card">
+    <div className="w-[280px] border border-border rounded-xl overflow-hidden bg-card">
       <CodexRateLimitsSection sessionId={CODEX_DEMO_SESSION} />
       <CodexTokenDetailsSection sessionId={CODEX_DEMO_SESSION} />
     </div>
@@ -1821,16 +1841,18 @@ function PlaygroundClaudeMdButton() {
 
   return (
     <div className="flex items-center gap-3">
-      <button
+      <Button
+        type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-cc-hover border border-cc-border hover:bg-cc-active transition-colors cursor-pointer"
+        variant="outline"
+        className="gap-2"
       >
-        <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4 text-cc-primary">
+        <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4 text-primary">
           <path d="M4 1.5a.5.5 0 01.5-.5h7a.5.5 0 01.354.146l2 2A.5.5 0 0114 3.5v11a.5.5 0 01-.5.5h-11a.5.5 0 01-.5-.5v-13zm1 .5v12h8V4h-1.5a.5.5 0 01-.5-.5V2H5zm6 0v1h1l-1-1zM6.5 7a.5.5 0 000 1h5a.5.5 0 000-1h-5zm0 2a.5.5 0 000 1h5a.5.5 0 000-1h-5zm0 2a.5.5 0 000 1h3a.5.5 0 000-1h-3z" />
         </svg>
-        <span className="text-xs font-medium text-cc-fg">Edit CLAUDE.md</span>
-      </button>
-      <span className="text-[11px] text-cc-muted">
+        <span className="text-xs font-medium text-foreground">Edit CLAUDE.md</span>
+      </Button>
+      <span className="text-[11px] text-muted-foreground">
         Click to open the editor modal (uses server working directory)
       </span>
       <ClaudeMdEditor
@@ -1847,34 +1869,34 @@ function PlaygroundClaudeMdButton() {
 function PlaygroundMcpRow({ server }: { server: McpServerDetail }) {
   const [expanded, setExpanded] = useState(false);
   const statusMap: Record<string, { label: string; cls: string; dot: string }> = {
-    connected: { label: "Connected", cls: "text-cc-success bg-cc-success/10", dot: "bg-cc-success" },
-    connecting: { label: "Connecting", cls: "text-cc-warning bg-cc-warning/10", dot: "bg-cc-warning animate-pulse" },
-    failed: { label: "Failed", cls: "text-cc-error bg-cc-error/10", dot: "bg-cc-error" },
-    disabled: { label: "Disabled", cls: "text-cc-muted bg-cc-hover", dot: "bg-cc-muted opacity-40" },
+    connected: { label: "Connected", cls: "text-success bg-success/10", dot: "bg-success" },
+    connecting: { label: "Connecting", cls: "text-warning bg-warning/10", dot: "bg-warning animate-pulse" },
+    failed: { label: "Failed", cls: "text-destructive bg-destructive/10", dot: "bg-destructive" },
+    disabled: { label: "Disabled", cls: "text-muted-foreground bg-accent", dot: "bg-muted-foreground opacity-40" },
   };
   const badge = statusMap[server.status] || statusMap.disabled;
 
   return (
-    <div className="rounded-lg border border-cc-border bg-cc-bg">
+    <div className="rounded-lg border border-border bg-background">
       <div className="flex items-center gap-2 px-2.5 py-2">
         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${badge.dot}`} />
-        <button onClick={() => setExpanded(!expanded)} className="flex-1 min-w-0 text-left cursor-pointer">
-          <span className="text-[12px] font-medium text-cc-fg truncate block">{server.name}</span>
-        </button>
+        <Button type="button" variant="ghost" onClick={() => setExpanded(!expanded)} className="min-w-0 flex-1 h-auto justify-start px-0 py-0 text-left">
+          <span className="text-[12px] font-medium text-foreground truncate block">{server.name}</span>
+        </Button>
         <span className={`text-[9px] font-medium px-1.5 rounded-full leading-[16px] shrink-0 ${badge.cls}`}>
           {badge.label}
         </span>
       </div>
       {expanded && (
-        <div className="px-2.5 pb-2.5 space-y-1.5 border-t border-cc-border pt-2">
-          <div className="text-[11px] text-cc-muted space-y-0.5">
+        <div className="px-2.5 pb-2.5 space-y-1.5 border-t border-border pt-2">
+          <div className="text-[11px] text-muted-foreground space-y-0.5">
             <div className="flex items-center gap-1">
-              <span className="text-cc-muted/60">Type:</span>
+              <span className="text-muted-foreground/60">Type:</span>
               <span>{server.config.type}</span>
             </div>
             {server.config.command && (
               <div className="flex items-start gap-1">
-                <span className="text-cc-muted/60 shrink-0">Cmd:</span>
+                <span className="text-muted-foreground/60 shrink-0">Cmd:</span>
                 <span className="font-mono text-[10px] break-all">
                   {server.config.command}{server.config.args?.length ? ` ${server.config.args.join(" ")}` : ""}
                 </span>
@@ -1882,24 +1904,24 @@ function PlaygroundMcpRow({ server }: { server: McpServerDetail }) {
             )}
             {server.config.url && (
               <div className="flex items-start gap-1">
-                <span className="text-cc-muted/60 shrink-0">URL:</span>
+                <span className="text-muted-foreground/60 shrink-0">URL:</span>
                 <span className="font-mono text-[10px] break-all">{server.config.url}</span>
               </div>
             )}
             <div className="flex items-center gap-1">
-              <span className="text-cc-muted/60">Scope:</span>
+              <span className="text-muted-foreground/60">Scope:</span>
               <span>{server.scope}</span>
             </div>
           </div>
           {server.error && (
-            <div className="text-[11px] text-cc-error bg-cc-error/5 rounded px-2 py-1">{server.error}</div>
+            <div className="text-[11px] text-destructive bg-destructive/5 rounded px-2 py-1">{server.error}</div>
           )}
           {server.tools && server.tools.length > 0 && (
             <div className="space-y-1">
-              <span className="text-[10px] text-cc-muted uppercase tracking-wider">Tools ({server.tools.length})</span>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Tools ({server.tools.length})</span>
               <div className="flex flex-wrap gap-1">
                 {server.tools.map((tool) => (
-                  <span key={tool.name} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cc-hover text-cc-fg">
+                  <span key={tool.name} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-accent text-foreground">
                     {tool.name}
                   </span>
                 ))}
@@ -1923,28 +1945,28 @@ function TaskRow({ task }: { task: TaskItem }) {
       <div className="flex items-start gap-2">
         <span className="shrink-0 flex items-center justify-center w-4 h-4 mt-px">
           {isInProgress ? (
-            <svg className="w-4 h-4 text-cc-primary animate-spin" viewBox="0 0 16 16" fill="none">
+            <svg className="w-4 h-4 text-primary animate-spin" viewBox="0 0 16 16" fill="none">
               <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" strokeDasharray="28" strokeDashoffset="8" strokeLinecap="round" />
             </svg>
           ) : isCompleted ? (
-            <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4 text-cc-success">
+            <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4 text-success">
               <path fillRule="evenodd" d="M8 15A7 7 0 108 1a7 7 0 000 14zm3.354-9.354a.5.5 0 00-.708-.708L7 8.586 5.354 6.94a.5.5 0 10-.708.708l2 2a.5.5 0 00.708 0l4-4z" clipRule="evenodd" />
             </svg>
           ) : (
-            <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 text-cc-muted">
+            <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4 text-muted-foreground">
               <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" />
             </svg>
           )}
         </span>
-        <span className={`text-[13px] leading-snug flex-1 ${isCompleted ? "text-cc-muted line-through" : "text-cc-fg"}`}>
+        <span className={`text-[13px] leading-snug flex-1 ${isCompleted ? "text-muted-foreground line-through" : "text-foreground"}`}>
           {task.subject}
         </span>
       </div>
       {isInProgress && task.activeForm && (
-        <p className="mt-1 ml-6 text-[11px] text-cc-muted italic truncate">{task.activeForm}</p>
+        <p className="mt-1 ml-6 text-[11px] text-muted-foreground italic truncate">{task.activeForm}</p>
       )}
       {task.blockedBy && task.blockedBy.length > 0 && (
-        <p className="mt-1 ml-6 text-[11px] text-cc-muted flex items-center gap-1">
+        <p className="mt-1 ml-6 text-[11px] text-muted-foreground flex items-center gap-1">
           <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3 shrink-0">
             <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5" />
             <path d="M5 8h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -2009,7 +2031,7 @@ function PlaygroundAiValidationToggle({ enabled }: { enabled: boolean }) {
   return (
     <div className="flex items-center gap-2 p-2">
       <AiValidationToggle sessionId={PLAYGROUND_AI_VALIDATION_SESSION} />
-      <span className="text-xs text-cc-muted">Click to toggle</span>
+      <span className="text-xs text-muted-foreground">Click to toggle</span>
     </div>
   );
 }

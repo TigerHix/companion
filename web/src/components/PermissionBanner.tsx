@@ -1,10 +1,21 @@
 import { useState, type ComponentProps } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import {
+  AlertCircle,
+  AlertTriangle,
+  Check,
+  X,
+  ListTree,
+  Cog,
+} from "lucide-react";
 import { useStore } from "../store.js";
 import { sendToSession } from "../ws.js";
 import type { PermissionRequest } from "../types.js";
 import type { PermissionUpdate } from "../../server/session-types.js";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { DiffViewer } from "./DiffViewer.js";
 
 /** Human-readable label for a permission suggestion */
@@ -60,34 +71,34 @@ export function PermissionBanner({
   const suggestions = permission.permission_suggestions;
 
   return (
-    <div className="px-2 sm:px-4 py-3 border-b border-cc-border animate-[fadeSlideIn_0.2s_ease-out]">
+    <div className="px-2 sm:px-4 py-3 border-b border-border animate-[fadeSlideIn_0.2s_ease-out]">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-start gap-2 sm:gap-3">
           {/* Icon */}
-          <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+          <div className={cn(
+            "w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
             isAskUser
-              ? "bg-cc-primary/10 border border-cc-primary/20"
-              : "bg-cc-warning/10 border border-cc-warning/20"
-          }`}>
+              ? "bg-primary/10 border border-primary/20"
+              : "bg-warning/10 border border-warning/20"
+          )}>
             {isAskUser ? (
-              <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-cc-primary">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-              </svg>
+              <AlertCircle className="size-4 text-primary" />
             ) : (
-              <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-cc-warning">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
+              <AlertTriangle className="size-4 text-warning" />
             )}
           </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
-              <span className={`text-xs font-semibold ${isAskUser ? "text-cc-primary" : "text-cc-warning"}`}>
+              <span className={cn(
+                "text-xs font-semibold",
+                isAskUser ? "text-primary" : "text-warning"
+              )}>
                 {isAskUser ? "Question" : "Permission Request"}
               </span>
               {!isAskUser && (
-                <span className="text-[11px] text-cc-muted font-mono-code">{permission.tool_name}</span>
+                <span className="text-[11px] text-muted-foreground font-mono">{permission.tool_name}</span>
               )}
             </div>
 
@@ -103,16 +114,15 @@ export function PermissionBanner({
 
             {/* AI validation recommendation (shown for "uncertain" verdicts that fall through to manual) */}
             {permission.ai_validation && !isAskUser && (
-              <div className={`mt-2 flex items-center gap-1.5 text-[11px] px-2 py-1.5 rounded-md ${
+              <div className={cn(
+                "mt-2 flex items-center gap-1.5 text-[11px] px-2 py-1.5 rounded-md",
                 permission.ai_validation.verdict === "safe"
-                  ? "bg-cc-success/10 text-cc-success"
+                  ? "bg-success/10 text-success"
                   : permission.ai_validation.verdict === "dangerous"
-                    ? "bg-cc-error/10 text-cc-error"
-                    : "bg-cc-warning/10 text-cc-warning"
-              }`}>
-                <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 shrink-0">
-                  <path d="M8 1a2.5 2.5 0 00-2.5 2.5v.382a8 8 0 00-1.074.646l-.33-.191a2.5 2.5 0 00-3.415.912 2.5 2.5 0 00.916 3.42l.33.19A8 8 0 001.5 9.5v.382A8 8 0 002 10.5l-.33.19a2.5 2.5 0 00-.916 3.42 2.5 2.5 0 003.415.912l.33-.191a8 8 0 001.074.646V16A2.5 2.5 0 008 13.5 2.5 2.5 0 0010.5 16v-.713a8 8 0 001.074-.646l.33.191a2.5 2.5 0 003.415-.912 2.5 2.5 0 00-.916-3.42L14 10.5V9.5l.33-.19a2.5 2.5 0 00.916-3.42 2.5 2.5 0 00-3.415-.912l-.33.191A8 8 0 0010.5 4.882V4.5A2.5 2.5 0 008 2V1z"/>
-                </svg>
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-warning/10 text-warning"
+              )}>
+                <Cog className="size-3 shrink-0" />
                 <span className="font-medium">AI analysis:</span>
                 <span>{permission.ai_validation.reason}</span>
               </div>
@@ -121,43 +131,41 @@ export function PermissionBanner({
             {/* Actions - only for non-AskUserQuestion tools */}
             {!isAskUser && (
               <div className="flex items-center gap-2 mt-3 flex-wrap">
-                <button
+                <Button
                   onClick={() => handleAllow()}
                   disabled={loading}
-                  className="inline-flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-lg bg-cc-success/90 hover:bg-cc-success text-white disabled:opacity-50 transition-colors cursor-pointer"
+                  size="sm"
+                  className="bg-success/90 hover:bg-success text-white border-0"
                 >
-                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3 h-3">
-                    <path d="M3 8.5l3.5 3.5 6.5-7" />
-                  </svg>
+                  <Check className="size-3" />
                   Allow
-                </button>
+                </Button>
 
                 {/* Permission suggestion buttons — only when CLI provides them */}
                 {suggestions?.map((suggestion, i) => (
-                  <button
+                  <Button
                     key={i}
+                    variant="outline"
+                    size="sm"
                     onClick={() => handleAllow(undefined, [suggestion])}
                     disabled={loading}
                     title={`${suggestion.type}: ${JSON.stringify(suggestion)}`}
-                    className="inline-flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-lg bg-cc-primary/10 hover:bg-cc-primary/20 text-cc-primary border border-cc-primary/20 disabled:opacity-50 transition-colors cursor-pointer"
+                    className="text-primary border-primary/20 bg-primary/10 hover:bg-primary/20"
                   >
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
-                      <path d="M3 8.5l3.5 3.5 6.5-7" />
-                    </svg>
+                    <Check className="size-3" />
                     {suggestionLabel(suggestion)}
-                  </button>
+                  </Button>
                 ))}
 
-                <button
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={handleDeny}
                   disabled={loading}
-                  className="inline-flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium rounded-lg bg-cc-hover hover:bg-cc-active text-cc-fg border border-cc-border disabled:opacity-50 transition-colors cursor-pointer"
                 >
-                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3 h-3">
-                    <path d="M4 4l8 8M12 4l-8 8" />
-                  </svg>
+                  <X className="size-3" />
                   Deny
-                </button>
+                </Button>
               </div>
             )}
           </div>
@@ -208,9 +216,9 @@ function BashDisplay({ input }: { input: Record<string, unknown> }) {
 
   return (
     <div className="space-y-1.5">
-      {desc && <div className="text-xs text-cc-muted">{desc}</div>}
-      <pre className="text-xs text-cc-fg font-mono-code bg-cc-code-bg/30 rounded-lg px-2 sm:px-3 py-2 max-h-32 overflow-y-auto overflow-x-auto whitespace-pre-wrap break-words">
-        <span className="text-cc-muted select-none">$ </span>{command}
+      {desc && <div className="text-xs text-muted-foreground">{desc}</div>}
+      <pre className="text-xs text-foreground font-mono bg-code-bg/30 rounded-lg px-2 sm:px-3 py-2 max-h-32 overflow-y-auto overflow-x-auto whitespace-pre-wrap break-words">
+        <span className="text-muted-foreground select-none">$ </span>{command}
       </pre>
     </div>
   );
@@ -296,7 +304,7 @@ function AskUserQuestionDisplay({
     const question = typeof input.question === "string" ? input.question : "";
     if (question) {
       return (
-        <div className="text-sm text-cc-fg bg-cc-code-bg/30 rounded-lg px-3 py-2">
+        <div className="text-sm text-foreground bg-code-bg/30 rounded-lg px-3 py-2">
           {question}
         </div>
       );
@@ -317,12 +325,12 @@ function AskUserQuestionDisplay({
         return (
           <div key={i} className="space-y-2">
             {header && (
-              <span className="inline-block text-[10px] font-semibold text-cc-primary bg-cc-primary/10 px-1.5 py-0.5 rounded">
+              <Badge variant="secondary" className="text-[10px] text-primary bg-primary/10">
                 {header}
-              </span>
+              </Badge>
             )}
             {text && (
-              <p className="text-sm text-cc-fg leading-relaxed">{text}</p>
+              <p className="text-sm text-foreground leading-relaxed">{text}</p>
             )}
             {options.length > 0 && (
               <div className="space-y-1.5">
@@ -332,50 +340,56 @@ function AskUserQuestionDisplay({
                   const isSelected = selected === label;
 
                   return (
-                    <button
+                    <Button
                       key={j}
+                      type="button"
                       onClick={() => handleOptionClick(i, label)}
                       disabled={disabled}
-                      className={`w-full text-left px-3 py-2 rounded-lg border transition-all cursor-pointer disabled:opacity-50 ${
+                      className={cn(
+                        "h-auto w-full justify-start whitespace-normal rounded-lg border px-3 py-2 text-left transition-all",
                         isSelected
-                          ? "border-cc-primary bg-cc-primary/10 ring-1 ring-cc-primary/30"
-                          : "border-cc-border bg-cc-hover/50 hover:bg-cc-hover hover:border-cc-primary/30"
-                      }`}
+                          ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                          : "border-border bg-accent/50 hover:bg-accent hover:border-primary/30"
+                      )}
                     >
                       <div className="flex items-center gap-2">
-                        <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                          isSelected ? "border-cc-primary" : "border-cc-muted/40"
-                        }`}>
-                          {isSelected && <span className="w-2 h-2 rounded-full bg-cc-primary" />}
+                        <span className={cn(
+                          "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
+                          isSelected ? "border-primary" : "border-muted-foreground/40"
+                        )}>
+                          {isSelected && <span className="w-2 h-2 rounded-full bg-primary" />}
                         </span>
                         <div>
-                          <span className="text-xs font-medium text-cc-fg">{label}</span>
-                          {desc && <p className="text-[11px] text-cc-muted mt-0.5 leading-snug">{desc}</p>}
+                          <span className="text-xs font-medium text-foreground">{label}</span>
+                          {desc && <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{desc}</p>}
                         </div>
                       </div>
-                    </button>
+                    </Button>
                   );
                 })}
 
                 {/* "Other" option */}
-                <button
+                <Button
+                  type="button"
                   onClick={() => handleCustomToggle(i)}
                   disabled={disabled}
-                  className={`w-full text-left px-3 py-2 rounded-lg border transition-all cursor-pointer disabled:opacity-50 ${
+                  className={cn(
+                    "h-auto w-full justify-start whitespace-normal rounded-lg border px-3 py-2 text-left transition-all",
                     isCustom
-                      ? "border-cc-primary bg-cc-primary/10 ring-1 ring-cc-primary/30"
-                      : "border-cc-border bg-cc-hover/50 hover:bg-cc-hover hover:border-cc-primary/30"
-                  }`}
+                      ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                      : "border-border bg-accent/50 hover:bg-accent hover:border-primary/30"
+                  )}
                 >
                   <div className="flex items-center gap-2">
-                    <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                      isCustom ? "border-cc-primary" : "border-cc-muted/40"
-                    }`}>
-                      {isCustom && <span className="w-2 h-2 rounded-full bg-cc-primary" />}
+                    <span className={cn(
+                      "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
+                      isCustom ? "border-primary" : "border-muted-foreground/40"
+                    )}>
+                      {isCustom && <span className="w-2 h-2 rounded-full bg-primary" />}
                     </span>
-                    <span className="text-xs font-medium text-cc-muted">Other...</span>
+                    <span className="text-xs font-medium text-muted-foreground">Other...</span>
                   </div>
-                </button>
+                </Button>
 
                 {isCustom && (
                   <div className="pl-6">
@@ -385,11 +399,11 @@ function AskUserQuestionDisplay({
                       onChange={(e) => handleCustomChange(i, e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") handleCustomSubmit(i); }}
                       placeholder="Type your answer..."
-                      className="w-full px-2.5 py-1.5 text-xs bg-cc-input-bg border border-cc-border rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:border-cc-primary/50"
+                      className="w-full px-2.5 py-1.5 text-xs input-moku rounded-lg text-foreground placeholder:text-muted-foreground"
                       autoFocus
                     />
                     {questions.length <= 1 && (
-                      <p className="mt-1 text-[10px] text-cc-muted">Press Enter to submit</p>
+                      <p className="mt-1 text-[10px] text-muted-foreground">Press Enter to submit</p>
                     )}
                   </div>
                 )}
@@ -401,13 +415,12 @@ function AskUserQuestionDisplay({
 
       {/* Submit all for multi-question */}
       {questions.length > 1 && Object.keys(selections).length > 0 && (
-        <button
+        <Button
           onClick={handleSubmitAll}
           disabled={disabled}
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg bg-cc-primary hover:bg-cc-primary-hover text-white disabled:opacity-50 transition-colors cursor-pointer"
         >
           Submit answers
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -444,7 +457,7 @@ function WriteDisplay({ input }: { input: Record<string, unknown> }) {
 function ReadDisplay({ input }: { input: Record<string, unknown> }) {
   const filePath = String(input.file_path || "");
   return (
-    <div className="text-xs text-cc-muted font-mono-code bg-cc-code-bg/30 rounded-lg px-3 py-2">
+    <div className="text-xs text-muted-foreground font-mono bg-code-bg/30 rounded-lg px-3 py-2">
       {filePath}
     </div>
   );
@@ -454,9 +467,9 @@ function GlobDisplay({ input }: { input: Record<string, unknown> }) {
   const pattern = typeof input.pattern === "string" ? input.pattern : "";
   const path = typeof input.path === "string" ? input.path : "";
   return (
-    <div className="text-xs font-mono-code bg-cc-code-bg/30 rounded-lg px-3 py-2 space-y-0.5">
-      <div className="text-cc-fg">{pattern}</div>
-      {path && <div className="text-cc-muted">{path}</div>}
+    <div className="text-xs font-mono bg-code-bg/30 rounded-lg px-3 py-2 space-y-0.5">
+      <div className="text-foreground">{pattern}</div>
+      {path && <div className="text-muted-foreground">{path}</div>}
     </div>
   );
 }
@@ -466,10 +479,10 @@ function GrepDisplay({ input }: { input: Record<string, unknown> }) {
   const path = typeof input.path === "string" ? input.path : "";
   const glob = typeof input.glob === "string" ? input.glob : "";
   return (
-    <div className="text-xs font-mono-code bg-cc-code-bg/30 rounded-lg px-3 py-2 space-y-0.5">
-      <div className="text-cc-fg">{pattern}</div>
-      {path && <div className="text-cc-muted">{path}</div>}
-      {glob && <div className="text-cc-muted">{glob}</div>}
+    <div className="text-xs font-mono bg-code-bg/30 rounded-lg px-3 py-2 space-y-0.5">
+      <div className="text-foreground">{pattern}</div>
+      {path && <div className="text-muted-foreground">{path}</div>}
+      {glob && <div className="text-muted-foreground">{glob}</div>}
     </div>
   );
 }
@@ -481,29 +494,27 @@ function ExitPlanModeDisplay({ input }: { input: Record<string, unknown> }) {
   return (
     <div className="space-y-2">
       {plan && (
-        <div className="rounded-xl border border-cc-border overflow-hidden bg-cc-card">
-          <div className="px-3 py-2 border-b border-cc-border bg-cc-primary/[0.04] flex items-center gap-2">
-            <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-cc-primary/15 text-cc-primary shrink-0">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
-                <path d="M3 3.5h10M3 8h10M3 12.5h6" strokeLinecap="round" />
-              </svg>
+        <div className="rounded-xl border border-border overflow-hidden card-moku">
+          <div className="px-3 py-2 border-b border-border bg-primary/[0.04] flex items-center gap-2">
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-primary/15 text-primary shrink-0">
+              <ListTree className="size-3" />
             </span>
-            <span className="text-[11px] text-cc-primary font-semibold tracking-wide uppercase">Plan</span>
+            <span className="text-[11px] text-primary font-semibold tracking-wide uppercase">Plan</span>
           </div>
-          <div className="px-3 py-3 max-h-72 overflow-y-auto markdown-body text-[13px] text-cc-fg leading-relaxed">
+          <div className="px-3 py-3 max-h-72 overflow-y-auto markdown-body text-[13px] text-foreground leading-relaxed">
             <Markdown
               remarkPlugins={[remarkGfm]}
               components={{
-                h1: ({ children }) => <h1 className="text-base font-semibold text-cc-fg mb-2">{children}</h1>,
-                h2: ({ children }) => <h2 className="text-sm font-semibold text-cc-fg mb-1.5 mt-3 first:mt-0">{children}</h2>,
-                h3: ({ children }) => <h3 className="text-sm font-medium text-cc-fg mb-1.5 mt-2">{children}</h3>,
+                h1: ({ children }) => <h1 className="text-base font-semibold text-foreground mb-2">{children}</h1>,
+                h2: ({ children }) => <h2 className="text-sm font-semibold text-foreground mb-1.5 mt-3 first:mt-0">{children}</h2>,
+                h3: ({ children }) => <h3 className="text-sm font-medium text-foreground mb-1.5 mt-2">{children}</h3>,
                 p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
                 ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-0.5">{children}</ul>,
                 ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-0.5">{children}</ol>,
                 li: ({ children }) => <li>{children}</li>,
-                strong: ({ children }) => <strong className="font-semibold text-cc-fg">{children}</strong>,
+                strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
                 a: ({ href, children }) => (
-                  <a href={href} target="_blank" rel="noopener noreferrer" className="text-cc-primary hover:underline">{children}</a>
+                  <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{children}</a>
                 ),
                 code: (props: ComponentProps<"code">) => {
                   const { children, className } = props;
@@ -512,21 +523,21 @@ function ExitPlanModeDisplay({ input }: { input: Record<string, unknown> }) {
 
                   if (isBlock) {
                     return (
-                      <pre className="my-2 px-2.5 py-2 rounded-lg bg-cc-code-bg text-cc-code-fg text-[12px] font-mono-code leading-relaxed overflow-x-auto border border-cc-border">
+                      <pre className="my-2 px-2.5 py-2 rounded-lg bg-code-bg text-code-fg text-[12px] font-mono leading-relaxed overflow-x-auto border border-border">
                         <code>{children}</code>
                       </pre>
                     );
                   }
 
                   return (
-                    <code className="px-1.5 py-0.5 rounded-md bg-cc-fg/[0.06] text-cc-code-fg font-mono-code text-[12px]">
+                    <code className="px-1.5 py-0.5 rounded-md bg-foreground/[0.06] text-code-fg font-mono text-[12px]">
                       {children}
                     </code>
                   );
                 },
                 pre: ({ children }) => <>{children}</>,
                 blockquote: ({ children }) => (
-                  <blockquote className="border-l-2 border-cc-primary/40 pl-2 text-cc-muted italic my-2">{children}</blockquote>
+                  <blockquote className="border-l-2 border-primary/40 pl-2 text-muted-foreground italic my-2">{children}</blockquote>
                 ),
               }}
             >
@@ -537,19 +548,19 @@ function ExitPlanModeDisplay({ input }: { input: Record<string, unknown> }) {
       )}
       {allowedPrompts.length > 0 && (
         <div className="space-y-1">
-          <div className="text-[10px] text-cc-muted uppercase tracking-wider">Requested permissions</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Requested permissions</div>
           <div className="space-y-1">
             {allowedPrompts.map((p: Record<string, unknown>, i: number) => (
-              <div key={i} className="flex items-center gap-2 text-[11px] font-mono-code bg-cc-code-bg/30 rounded-lg px-2.5 py-1.5">
-                <span className="text-cc-muted shrink-0">{String(p.tool || "")}</span>
-                <span className="text-cc-fg">{String(p.prompt || "")}</span>
+              <div key={i} className="flex items-center gap-2 text-[11px] font-mono bg-code-bg/30 rounded-lg px-2.5 py-1.5">
+                <span className="text-muted-foreground shrink-0">{String(p.tool || "")}</span>
+                <span className="text-foreground">{String(p.prompt || "")}</span>
               </div>
             ))}
           </div>
         </div>
       )}
       {!plan && allowedPrompts.length === 0 && (
-        <div className="text-xs text-cc-muted">Plan approval requested</div>
+        <div className="text-xs text-muted-foreground">Plan approval requested</div>
       )}
     </div>
   );
@@ -567,21 +578,21 @@ function GenericDisplay({
   );
 
   if (entries.length === 0 && description) {
-    return <div className="text-xs text-cc-fg">{description}</div>;
+    return <div className="text-xs text-foreground">{description}</div>;
   }
 
   return (
     <div className="space-y-1">
-      {description && <div className="text-xs text-cc-muted mb-1">{description}</div>}
-      <div className="bg-cc-code-bg/30 rounded-lg px-3 py-2 space-y-1">
+      {description && <div className="text-xs text-muted-foreground mb-1">{description}</div>}
+      <div className="bg-code-bg/30 rounded-lg px-3 py-2 space-y-1">
         {entries.map(([key, value]) => {
           const displayValue = typeof value === "string"
             ? value.length > 200 ? value.slice(0, 200) + "..." : value
             : JSON.stringify(value);
           return (
-            <div key={key} className="flex gap-2 text-[11px] font-mono-code">
-              <span className="text-cc-muted shrink-0">{key}:</span>
-              <span className="text-cc-fg break-all">{displayValue}</span>
+            <div key={key} className="flex gap-2 text-[11px] font-mono">
+              <span className="text-muted-foreground shrink-0">{key}:</span>
+              <span className="text-foreground break-all">{displayValue}</span>
             </div>
           );
         })}

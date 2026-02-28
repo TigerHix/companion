@@ -1,3 +1,4 @@
+import { Shield } from "lucide-react";
 import type { PermissionRequest } from "../types.js";
 
 interface AiValidationBadgeProps {
@@ -29,18 +30,15 @@ export function AiValidationBadge({ entry }: AiValidationBadgeProps) {
 
   return (
     <div className={`flex items-center gap-2 px-3 py-1.5 text-[11px] ${
-      isAllow ? "text-cc-success" : "text-cc-error"
+      isAllow ? "text-success" : "text-destructive"
     }`}>
-      {/* Shield icon */}
-      <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 shrink-0 opacity-70">
-        <path fillRule="evenodd" d="M8 1.246l.542.228c1.926.812 3.732.95 5.408.435l.61-.187v6.528a5.75 5.75 0 01-2.863 4.973L8 15.5l-3.697-2.277A5.75 5.75 0 011.44 8.25V1.722l.61.187c1.676.515 3.482.377 5.408-.435L8 1.246z" clipRule="evenodd" />
-      </svg>
+      <Shield className="w-3.5 h-3.5 shrink-0 opacity-70" />
       <span>
         AI auto-{isAllow ? "approved" : "denied"}:
         {" "}
-        <span className="font-mono-code opacity-80">{toolDesc}</span>
+        <span className="font-mono opacity-80">{toolDesc}</span>
         {reason && (
-          <span className="text-cc-muted ml-1">({reason})</span>
+          <span className="text-muted-foreground ml-1">({reason})</span>
         )}
       </span>
     </div>

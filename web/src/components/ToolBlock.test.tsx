@@ -161,33 +161,31 @@ describe("getPreview", () => {
 
 // ─── ToolIcon ────────────────────────────────────────────────────────────────
 
+// Validates that ToolIcon renders an SVG element for each known icon type
+// and for the default/unknown fallback. Uses lucide-react icons internally.
 describe("ToolIcon", () => {
   it("renders an SVG for terminal type", () => {
     const { container } = render(<ToolIcon type="terminal" />);
     const svg = container.querySelector("svg");
     expect(svg).toBeTruthy();
-    expect(svg?.querySelector("polyline")).toBeTruthy();
   });
 
   it("renders an SVG for file type", () => {
     const { container } = render(<ToolIcon type="file" />);
     const svg = container.querySelector("svg");
     expect(svg).toBeTruthy();
-    expect(svg?.querySelector("path")).toBeTruthy();
   });
 
   it("renders an SVG for search type", () => {
     const { container } = render(<ToolIcon type="search" />);
     const svg = container.querySelector("svg");
     expect(svg).toBeTruthy();
-    expect(svg?.querySelector("circle")).toBeTruthy();
   });
 
   it("renders an SVG for globe type", () => {
     const { container } = render(<ToolIcon type="globe" />);
     const svg = container.querySelector("svg");
     expect(svg).toBeTruthy();
-    expect(svg?.querySelector("circle")).toBeTruthy();
   });
 
   it("renders an SVG for message type", () => {
@@ -206,7 +204,6 @@ describe("ToolIcon", () => {
     const { container } = render(<ToolIcon type="tool" />);
     const svg = container.querySelector("svg");
     expect(svg).toBeTruthy();
-    expect(svg?.querySelector("path")).toBeTruthy();
   });
 });
 

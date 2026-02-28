@@ -1,6 +1,8 @@
 import type { RefObject } from "react";
+import { ChevronRight, Folder } from "lucide-react";
 import type { ProjectGroup as ProjectGroupType } from "../utils/project-grouping.js";
 import { SessionItem } from "./SessionItem.js";
+import { Button } from "@/components/ui/button";
 
 interface ProjectGroupProps {
   group: ProjectGroupType;
@@ -56,46 +58,42 @@ export function ProjectGroup({
     : "";
 
   return (
-    <div className={!isFirst ? "my-2 pt-2 border-t border-cc-separator" : ""}>
+    <div className={!isFirst ? "my-2 pt-2 border-t border-border" : ""}>
       {/* Group header */}
-      <button
+      <Button
+        type="button"
         onClick={() => onToggleCollapse(group.key)}
-        className="w-full px-2 py-1.5 flex items-center gap-1.5 hover:bg-cc-hover rounded-md transition-colors cursor-pointer"
+        variant="ghost"
+        className="w-full justify-start gap-1.5 px-2 py-1.5"
       >
-        <svg
-          viewBox="0 0 16 16"
-          fill="currentColor"
-          className={`w-2.5 h-2.5 text-cc-muted transition-transform ${isCollapsed ? "" : "rotate-90"}`}
-        >
-          <path d="M6 4l4 4-4 4" />
-        </svg>
+        <ChevronRight
+          className={`w-2.5 h-2.5 text-muted-foreground transition-transform ${isCollapsed ? "" : "rotate-90"}`}
+        />
         {/* Folder icon */}
-        <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-cc-muted/60 shrink-0">
-          <path d="M1 3.5A1.5 1.5 0 012.5 2h3.879a1.5 1.5 0 011.06.44l.622.621a.5.5 0 00.354.146H13.5A1.5 1.5 0 0115 4.707V12.5a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 011 12.5v-9z" />
-        </svg>
-        <span className="text-[12px] font-semibold text-cc-fg/80 truncate">
+        <Folder className="w-3 h-3 text-muted-foreground/60 shrink-0" />
+        <span className="text-[12px] font-semibold text-foreground/80 truncate">
           {group.label}
         </span>
 
         {/* Status dots */}
         <span className="flex items-center gap-1 ml-auto shrink-0">
           {group.runningCount > 0 && (
-            <span className="w-1 h-1 rounded-full bg-cc-success" title={`${group.runningCount} running`} />
+            <span className="w-1 h-1 rounded-full bg-success" title={`${group.runningCount} running`} />
           )}
           {group.permCount > 0 && (
-            <span className="w-1 h-1 rounded-full bg-cc-warning" title={`${group.permCount} waiting`} />
+            <span className="w-1 h-1 rounded-full bg-warning" title={`${group.permCount} waiting`} />
           )}
         </span>
 
         {/* Count badge */}
-        <span className="text-[10px] bg-cc-hover rounded-full px-1.5 py-0.5 text-cc-muted shrink-0">
+        <span className="text-[10px] bg-accent rounded-full px-1.5 py-0.5 text-muted-foreground shrink-0">
           {group.sessions.length}
         </span>
-      </button>
+      </Button>
 
       {/* Collapsed preview */}
       {isCollapsed && collapsedPreview && (
-        <div className="text-[10px] text-cc-muted/70 truncate pl-7 pb-1">
+        <div className="text-[10px] text-muted-foreground/70 truncate pl-7 pb-1">
           {collapsedPreview}
         </div>
       )}

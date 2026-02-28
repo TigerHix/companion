@@ -106,9 +106,9 @@ describe("MentionMenu", () => {
     );
     const buttons = screen.getAllByRole("button");
     // Second button (index 1) should have the selected class
-    expect(buttons[1].className).toContain("bg-cc-hover");
+    expect(buttons[1].className).toContain("bg-accent");
     // First button should not have the solid highlight
-    expect(buttons[0].className).not.toContain("bg-cc-hover ");
+    expect(buttons[0].className).not.toContain("bg-accent ");
   });
 
   it("calls onSelect when a prompt is clicked", () => {

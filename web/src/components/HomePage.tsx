@@ -25,6 +25,7 @@ import { MentionMenu } from "./MentionMenu.js";
 import { useMentionMenu } from "../utils/use-mention-menu.js";
 import type { SavedPrompt } from "../api.js";
 import type { SdkSessionInfo } from "../types.js";
+import { Button } from "@/components/ui/button";
 
 let idCounter = 0;
 
@@ -767,7 +768,7 @@ export function HomePage() {
         {/* Logo + Title */}
         <div className="flex flex-col items-center justify-center mb-3 sm:mb-4">
           <img src={logoSrc} alt="Moku" className="w-16 h-16 sm:w-20 sm:h-20 mb-2.5" />
-          <h1 className="text-2xl sm:text-[2rem] font-semibold tracking-tight text-cc-fg">
+          <h1 className="text-2xl sm:text-[2rem] font-semibold tracking-tight text-foreground">
             Moku
           </h1>
         </div>
@@ -780,16 +781,19 @@ export function HomePage() {
                 <img
                   src={`data:${img.mediaType};base64,${img.base64}`}
                   alt={img.name}
-                  className="w-12 h-12 rounded-lg object-cover border border-cc-border"
+                  className="w-12 h-12 rounded-lg object-cover border border-border"
                 />
-                <button
+                <Button
+                  type="button"
                   onClick={() => removeImage(i)}
-                  className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-cc-error text-white flex items-center justify-center text-[10px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity cursor-pointer"
+                  variant="destructive"
+                  size="icon-xs"
+                  className="absolute -top-1.5 -right-1.5 rounded-full text-white opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
                 >
                   <svg viewBox="0 0 16 16" fill="currentColor" className="w-2.5 h-2.5">
                     <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
                   </svg>
-                </button>
+                </Button>
               </div>
             ))}
           </div>
@@ -809,7 +813,7 @@ export function HomePage() {
         <div className="grid grid-cols-1 gap-3 sm:gap-4 items-start">
           <div>
             {/* Input card */}
-            <div className="relative bg-cc-card border border-cc-border rounded-[14px] shadow-sm">
+            <div className="relative bg-card border border-border rounded-[14px] shadow-sm">
               <MentionMenu
                 open={mention.mentionMenuOpen}
                 loading={mention.promptsLoading}
@@ -830,7 +834,7 @@ export function HomePage() {
                 aria-label="Task description"
               placeholder="Fix a bug, build a feature, refactor code..."
                 rows={4}
-                className="w-full px-4 pt-4 pb-2 text-base sm:text-sm bg-transparent resize-none focus:outline-none text-cc-fg font-sans-ui placeholder:text-cc-muted overflow-y-auto"
+                className="w-full px-4 pt-4 pb-2 text-base sm:text-sm bg-transparent resize-none focus:outline-none text-foreground font-sans placeholder:text-muted-foreground overflow-y-auto"
                 style={{ minHeight: "100px", maxHeight: "200px" }}
               />
 
@@ -838,10 +842,13 @@ export function HomePage() {
               <div className="flex items-center justify-between px-3 pb-3">
                 {/* Left: mode dropdown */}
                 <div className="relative" ref={modeDropdownRef}>
-                  <button
+                  <Button
+                    type="button"
                     onClick={() => setShowModeDropdown(!showModeDropdown)}
                     aria-expanded={showModeDropdown}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-cc-muted hover:text-cc-fg rounded-lg hover:bg-cc-hover transition-colors cursor-pointer"
+                    variant="ghost"
+                    size="xs"
+                    className="font-medium"
                   >
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
                       <path d="M2 4h12M2 8h8M2 12h10" strokeLinecap="round" />
@@ -850,19 +857,22 @@ export function HomePage() {
                     <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50">
                       <path d="M4 6l4 4 4-4" />
                     </svg>
-                  </button>
+                  </Button>
                   {showModeDropdown && (
-                    <div className="absolute left-0 bottom-full mb-1 w-40 bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-10 py-1 overflow-hidden">
+                    <div className="absolute left-0 bottom-full mb-1 w-40 bg-card border border-border rounded-[10px] shadow-lg z-10 py-1 overflow-hidden">
                       {MODES.map((m) => (
-                        <button
+                        <Button
                           key={m.value}
+                          type="button"
                           onClick={() => { setMode(m.value); setShowModeDropdown(false); }}
-                          className={`w-full px-3 py-2 text-xs text-left hover:bg-cc-hover transition-colors cursor-pointer ${
-                            m.value === mode ? "text-cc-primary font-medium" : "text-cc-fg"
+                          variant="ghost"
+                          size="sm"
+                          className={`w-full justify-start text-xs ${
+                            m.value === mode ? "text-primary font-medium" : "text-foreground"
                           }`}
                         >
                           {m.label}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   )}
@@ -871,9 +881,11 @@ export function HomePage() {
                 {/* Right: image placeholder + send */}
                 <div className="flex items-center gap-1.5">
                   {/* Image upload */}
-                  <button
+                  <Button
+                    type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center justify-center w-8 h-8 rounded-lg text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+                    variant="ghost"
+                    size="icon-sm"
                     title="Upload image"
                   >
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
@@ -881,23 +893,25 @@ export function HomePage() {
                       <circle cx="5.5" cy="5.5" r="1" fill="currentColor" stroke="none" />
                       <path d="M2 11l3-3 2 2 3-4 4 5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                  </button>
+                  </Button>
 
                   {/* Send button */}
-                  <button
+                  <Button
+                    type="button"
                     onClick={handleSend}
                     disabled={!canSend}
-                    className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors ${
+                    size="icon-lg"
+                    className={`rounded-full ${
                       canSend
-                        ? "bg-cc-primary hover:bg-cc-primary-hover text-white cursor-pointer"
-                        : "bg-cc-hover text-cc-muted cursor-not-allowed"
+                        ? "bg-primary hover:bg-primary/90 text-white"
+                        : "bg-accent text-muted-foreground"
                     }`}
                     title="Send message"
                   >
                     <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
                       <path d="M3 2l11 6-11 6V9.5l7-1.5-7-1.5V2z" />
                     </svg>
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -906,47 +920,53 @@ export function HomePage() {
           <div className="flex items-center gap-1 sm:gap-2 mt-2 sm:mt-3 px-1 flex-wrap">
           {/* Backend toggle */}
           {backends.length > 1 && (
-            <div className="flex items-center bg-cc-hover/50 rounded-lg p-0.5">
+            <div className="flex items-center bg-accent/50 rounded-lg p-0.5">
               {backends.map((b) => (
-                <button
+                <Button
                   key={b.id}
+                  type="button"
                   onClick={() => b.available && switchBackend(b.id as BackendType)}
                   disabled={!b.available}
                   title={b.available ? b.name : `${b.name} CLI not found in PATH`}
-                  className={`flex items-center gap-1 px-2.5 py-2 text-xs rounded-md transition-colors ${
+                  variant="ghost"
+                  size="xs"
+                  className={`${
                     !b.available
-                      ? "text-cc-muted/40 cursor-not-allowed"
+                      ? "text-muted-foreground/40"
                       : backend === b.id
-                        ? "bg-cc-card text-cc-fg font-medium shadow-sm cursor-pointer"
-                        : "text-cc-muted hover:text-cc-fg cursor-pointer"
+                        ? "bg-card text-foreground font-medium shadow-sm hover:bg-card"
+                        : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {b.name}
                   {!b.available && (
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3 text-cc-error/60">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3 text-destructive/60">
                       <circle cx="8" cy="8" r="6" />
                       <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" />
                     </svg>
                   )}
-                </button>
+                </Button>
               ))}
             </div>
           )}
 
           {/* Folder selector */}
           <div>
-            <button
+            <Button
+              type="button"
               onClick={() => setShowFolderPicker(true)}
-              className="flex items-center gap-1.5 px-2.5 py-2 text-xs text-cc-muted hover:text-cc-fg rounded-md hover:bg-cc-hover transition-colors cursor-pointer"
+              variant="ghost"
+              size="xs"
+              className="text-muted-foreground hover:text-foreground"
             >
               <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 opacity-60">
                 <path d="M1 3.5A1.5 1.5 0 012.5 2h3.379a1.5 1.5 0 011.06.44l.622.621a.5.5 0 00.353.146H13.5A1.5 1.5 0 0115 4.707V12.5a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 011 12.5v-9z" />
               </svg>
-              <span className="max-w-[120px] sm:max-w-[200px] truncate font-mono-code">{dirLabel}</span>
+              <span className="max-w-[120px] sm:max-w-[200px] truncate font-mono">{dirLabel}</span>
               <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50">
                 <path d="M4 6l4 4 4-4" />
               </svg>
-            </button>
+            </Button>
             {showFolderPicker && (
               <FolderPicker
                 initialPath={cwd || ""}
@@ -970,7 +990,8 @@ export function HomePage() {
 
           {/* Environment selector */}
           <div className="relative" ref={envDropdownRef}>
-            <button
+            <Button
+              type="button"
               onClick={() => {
                 if (!showEnvDropdown) {
                   api.listEnvs().then(setEnvs).catch(() => {});
@@ -978,7 +999,9 @@ export function HomePage() {
                 setShowEnvDropdown(!showEnvDropdown);
               }}
               aria-expanded={showEnvDropdown}
-              className="flex items-center gap-1.5 px-2.5 py-2 text-xs text-cc-muted hover:text-cc-fg rounded-md hover:bg-cc-hover transition-colors cursor-pointer"
+              variant="ghost"
+              size="xs"
+              className="text-muted-foreground hover:text-foreground"
             >
               <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 opacity-60">
                 <path d="M8 1a2 2 0 012 2v1h2a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2h2V3a2 2 0 012-2zm0 1.5a.5.5 0 00-.5.5v1h1V3a.5.5 0 00-.5-.5zM4 5.5a.5.5 0 00-.5.5v6a.5.5 0 00.5.5h8a.5.5 0 00.5-.5V6a.5.5 0 00-.5-.5H4z" />
@@ -991,10 +1014,10 @@ export function HomePage() {
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${
                     envImageState.status === "ready"
-                      ? "bg-green-500"
+                      ? "bg-success"
                       : envImageState.status === "pulling"
-                        ? "bg-amber-500 animate-pulse"
-                        : "bg-cc-error"
+                        ? "bg-warning animate-pulse"
+                        : "bg-destructive"
                   }`}
                   title={
                     envImageState.status === "ready"
@@ -1008,49 +1031,58 @@ export function HomePage() {
               <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50">
                 <path d="M4 6l4 4 4-4" />
               </svg>
-            </button>
+            </Button>
             {showEnvDropdown && (
-              <div className="absolute left-0 bottom-full mb-1 w-56 bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-10 py-1 overflow-hidden">
-                <button
+              <div className="absolute left-0 bottom-full mb-1 w-56 bg-card border border-border rounded-[10px] shadow-lg z-10 py-1 overflow-hidden">
+                <Button
+                  type="button"
                   onClick={() => {
                     setSelectedEnv("");
                     localStorage.setItem("cc-selected-env", "");
                     setShowEnvDropdown(false);
                   }}
-                  className={`w-full px-3 py-2 text-xs text-left hover:bg-cc-hover transition-colors cursor-pointer ${
-                    !selectedEnv ? "text-cc-primary font-medium" : "text-cc-fg"
+                  variant="ghost"
+                  size="sm"
+                  className={`w-full justify-start text-xs ${
+                    !selectedEnv ? "text-primary font-medium" : "text-foreground"
                   }`}
                 >
                   No environment
-                </button>
+                </Button>
                 {envs.map((env) => (
-                  <button
+                  <Button
                     key={env.slug}
+                    type="button"
                     onClick={() => {
                       setSelectedEnv(env.slug);
                       localStorage.setItem("cc-selected-env", env.slug);
                       setShowEnvDropdown(false);
                     }}
-                    className={`w-full px-3 py-2 text-xs text-left hover:bg-cc-hover transition-colors cursor-pointer flex items-center gap-1 ${
-                      env.slug === selectedEnv ? "text-cc-primary font-medium" : "text-cc-fg"
+                    variant="ghost"
+                    size="sm"
+                    className={`w-full justify-start gap-1 text-xs ${
+                      env.slug === selectedEnv ? "text-primary font-medium" : "text-foreground"
                     }`}
                   >
                     <span className="truncate">{env.name}</span>
-                    <span className="text-cc-muted ml-auto shrink-0">
+                    <span className="text-muted-foreground ml-auto shrink-0">
                       {Object.keys(env.variables).length} var{Object.keys(env.variables).length !== 1 ? "s" : ""}
                     </span>
-                  </button>
+                  </Button>
                 ))}
-                <div className="border-t border-cc-border mt-1 pt-1">
-                  <button
+                <div className="border-t border-border mt-1 pt-1">
+                  <Button
+                    type="button"
                     onClick={() => {
                       setShowEnvManager(true);
                       setShowEnvDropdown(false);
                     }}
-                    className="w-full px-3 py-2 text-xs text-left text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start text-xs text-muted-foreground hover:text-foreground"
                   >
                     Manage environments...
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -1058,30 +1090,36 @@ export function HomePage() {
 
           {/* Model selector */}
           <div className="relative" ref={modelDropdownRef}>
-            <button
+            <Button
+              type="button"
               onClick={() => setShowModelDropdown(!showModelDropdown)}
               aria-expanded={showModelDropdown}
-              className="flex items-center gap-1.5 px-2.5 py-2 text-xs text-cc-muted hover:text-cc-fg rounded-md hover:bg-cc-hover transition-colors cursor-pointer"
+              variant="ghost"
+              size="xs"
+              className="text-muted-foreground hover:text-foreground"
             >
               <span>{selectedModel.icon}</span>
               <span>{selectedModel.label}</span>
               <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50">
                 <path d="M4 6l4 4 4-4" />
               </svg>
-            </button>
+            </Button>
             {showModelDropdown && (
-              <div className="absolute left-0 bottom-full mb-1 w-48 bg-cc-card border border-cc-border rounded-[10px] shadow-lg z-10 py-1">
+              <div className="absolute left-0 bottom-full mb-1 w-48 bg-card border border-border rounded-[10px] shadow-lg z-10 py-1">
                 {MODELS.map((m) => (
-                  <button
+                  <Button
                     key={m.value}
+                    type="button"
                     onClick={() => { setModel(m.value); setShowModelDropdown(false); }}
-                    className={`w-full px-3 py-2 text-xs text-left hover:bg-cc-hover transition-colors cursor-pointer flex items-center gap-2 ${
-                      m.value === model ? "text-cc-primary font-medium" : "text-cc-fg"
+                    variant="ghost"
+                    size="sm"
+                    className={`w-full justify-start gap-2 text-xs ${
+                      m.value === model ? "text-primary font-medium" : "text-foreground"
                     }`}
                   >
                     <span>{m.icon}</span>
                     {m.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
@@ -1089,13 +1127,15 @@ export function HomePage() {
 
           {/* Branch from prior session (Claude only) */}
           {backend === "claude" && (
-            <button
+            <Button
               type="button"
               onClick={() => setShowBranchingControls((v) => !v)}
-              className={`flex items-center gap-1.5 px-2.5 py-2 text-xs rounded-md transition-colors cursor-pointer ${
+              variant="ghost"
+              size="xs"
+              className={`${
                 showBranchingControls
-                  ? "text-cc-primary bg-cc-primary/10 hover:bg-cc-primary/15"
-                  : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
+                  ? "text-primary bg-primary/10 hover:bg-primary/15"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
               aria-expanded={showBranchingControls}
               aria-controls="branch-from-session-panel"
@@ -1105,26 +1145,28 @@ export function HomePage() {
                 <path d="M7 5.5h2.5A1.5 1.5 0 0111 7v1" strokeLinecap="round" />
               </svg>
               Branch from session
-            </button>
+            </Button>
           )}
             </div>
 
             {backend === "claude" && showBranchingControls && (
               <div
                 id="branch-from-session-panel"
-                className="mt-2 px-3 py-2.5 rounded-lg border border-cc-border bg-cc-card/50 space-y-2"
+                className="mt-2 px-3 py-2.5 rounded-lg border border-border bg-card/50 space-y-2"
               >
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => void loadResumeCandidates()}
                     disabled={resumeCandidatesLoading}
-                    className="px-2 py-1 rounded-md text-[11px] bg-cc-hover text-cc-muted hover:text-cc-fg transition-colors disabled:opacity-60 cursor-pointer"
+                    variant="ghost"
+                    size="xs"
+                    className="bg-accent text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-60"
                   >
                     {resumeCandidatesLoading ? "Refreshing..." : "Refresh detected sessions"}
-                  </button>
+                  </Button>
                   {resumeCandidates.length > 0 && (
-                    <span className="text-[11px] text-cc-muted">
+                    <span className="text-[11px] text-muted-foreground">
                       Showing {visibleResumeCandidates.length} of {filteredActiveResumeCandidates.length}{" "}
                       {normalizedResumeSearchQuery
                         ? "matching"
@@ -1132,28 +1174,32 @@ export function HomePage() {
                     </span>
                   )}
                   {!showOlderResumeCandidates && hiddenOlderResumeCount > 0 && recentResumeCandidates.length > 0 && (
-                    <button
+                    <Button
                       type="button"
                       onClick={() => {
                         setShowOlderResumeCandidates(true);
                         setVisibleResumeCandidateRows(INITIAL_VISIBLE_SESSION_ROWS);
                       }}
-                      className="px-2 py-1 rounded-md text-[11px] bg-cc-hover text-cc-muted hover:text-cc-fg transition-colors cursor-pointer"
+                      variant="ghost"
+                      size="xs"
+                      className="bg-accent text-[11px] text-muted-foreground hover:text-foreground"
                     >
                       Include older ({hiddenOlderResumeCount})
-                    </button>
+                    </Button>
                   )}
                   {showOlderResumeCandidates && recentResumeCandidates.length > 0 && (
-                    <button
+                    <Button
                       type="button"
                       onClick={() => {
                         setShowOlderResumeCandidates(false);
                         setVisibleResumeCandidateRows(INITIAL_VISIBLE_SESSION_ROWS);
                       }}
-                      className="px-2 py-1 rounded-md text-[11px] bg-cc-hover text-cc-muted hover:text-cc-fg transition-colors cursor-pointer"
+                      variant="ghost"
+                      size="xs"
+                      className="bg-accent text-[11px] text-muted-foreground hover:text-foreground"
                     >
                       Recent only
-                    </button>
+                    </Button>
                   )}
                 </div>
                 <label className="block">
@@ -1164,7 +1210,7 @@ export function HomePage() {
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="1.5"
-                      className="w-3.5 h-3.5 text-cc-muted absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+                      className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
                     >
                       <circle cx="7" cy="7" r="4.25" />
                       <path d="M10.25 10.25L14 14" strokeLinecap="round" />
@@ -1174,35 +1220,35 @@ export function HomePage() {
                       value={resumeSearchQuery}
                       onChange={(e) => setResumeSearchQuery(e.target.value)}
                       placeholder="Search sessions, branch, folder, or ID"
-                      className="w-full bg-cc-card border border-cc-border rounded-md pl-8 pr-2.5 py-1.5 text-xs text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 focus:border-cc-primary/40"
+                      className="w-full bg-card border border-border rounded-md pl-8 pr-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40"
                     />
                   </div>
                 </label>
-                <p className="text-[11px] text-cc-muted">
-                  <span className="font-medium text-cc-fg">Fork</span> opens a new session that leaves the original untouched.
+                <p className="text-[11px] text-muted-foreground">
+                  <span className="font-medium text-foreground">Fork</span> opens a new session that leaves the original untouched.
                   <span className="mx-1">•</span>
-                  <span className="font-medium text-cc-fg">Continue</span> opens from the same linear thread.
+                  <span className="font-medium text-foreground">Continue</span> opens from the same linear thread.
                 </p>
                 {resumeCandidatesError && (
-                  <p className="text-[11px] text-cc-error">{resumeCandidatesError}</p>
+                  <p className="text-[11px] text-destructive">{resumeCandidatesError}</p>
                 )}
                 {!resumeCandidatesLoading && !resumeCandidatesError && filteredActiveResumeCandidates.length === 0 && (
-                  <p className="text-[11px] text-cc-muted">
+                  <p className="text-[11px] text-muted-foreground">
                     {normalizedResumeSearchQuery
                       ? "No sessions match this search."
                       : "No Claude sessions detected yet."}
                   </p>
                 )}
                 {visibleResumeCandidates.length > 0 && (
-                  <div className="rounded-md border border-cc-border overflow-hidden bg-cc-card/50">
-                    <div className="hidden sm:grid sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_auto] px-2.5 py-1.5 border-b border-cc-border text-[10px] uppercase tracking-wider text-cc-muted">
+                  <div className="rounded-md border border-border overflow-hidden bg-card/50">
+                    <div className="hidden sm:grid sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_auto] px-2.5 py-1.5 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground">
                       <span>Session</span>
                       <span>Project</span>
                       <span>Branch</span>
                       <span>Last active</span>
                       <span className="text-right">Action</span>
                     </div>
-                    <div className="divide-y divide-cc-border/50">
+                    <div className="divide-y divide-border/50">
                       {visibleResumeCandidates.map((candidate) => {
                         const title = getResumeCandidateTitle(candidate);
                         const project = getResumeCandidateProject(candidate.cwd);
@@ -1214,28 +1260,28 @@ export function HomePage() {
                             className="px-2.5 py-2.5 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.7fr)_auto] sm:items-center"
                           >
                             <div className="min-w-0">
-                              <p className={`text-xs truncate ${selected ? "text-cc-primary font-medium" : "text-cc-fg"}`}>
+                              <p className={`text-xs truncate ${selected ? "text-primary font-medium" : "text-foreground"}`}>
                                 {title}
                               </p>
                               <div className="mt-0.5 flex items-center gap-1.5 text-[10px]">
-                                <span className="font-mono-code text-cc-muted">{shortSessionId(candidate.resumeSessionId)}</span>
-                                <span className="px-1 py-0.5 rounded bg-cc-hover text-cc-muted">{sourceLabel}</span>
+                                <span className="font-mono text-muted-foreground">{shortSessionId(candidate.resumeSessionId)}</span>
+                                <span className="px-1 py-0.5 rounded bg-accent text-muted-foreground">{sourceLabel}</span>
                               </div>
                             </div>
-                            <div className="min-w-0 text-[11px] text-cc-muted sm:font-mono-code truncate" title={candidate.cwd}>
+                            <div className="min-w-0 text-[11px] text-muted-foreground sm:font-mono truncate" title={candidate.cwd}>
                               <div className="truncate">{project}</div>
-                              <div className="mt-0.5 text-[10px] text-cc-muted/70 truncate" title={candidate.cwd}>
+                              <div className="mt-0.5 text-[10px] text-muted-foreground/70 truncate" title={candidate.cwd}>
                                 {formatPathTail(candidate.cwd)}
                               </div>
                             </div>
-                            <div className="text-[11px] text-cc-muted sm:font-mono-code truncate">
+                            <div className="text-[11px] text-muted-foreground sm:font-mono truncate">
                               {candidate.gitBranch || "—"}
                             </div>
-                            <div className="text-[11px] text-cc-muted">
+                            <div className="text-[11px] text-muted-foreground">
                               {formatTimeAgo(candidate.createdAt)}
                             </div>
                             <div className="sm:text-right flex gap-1.5 sm:justify-end">
-                              <button
+                              <Button
                                 type="button"
                                 onClick={() => {
                                   setResumeSessionAt(candidate.resumeSessionId);
@@ -1243,16 +1289,18 @@ export function HomePage() {
                                   void handleOpenBranchedSession(candidate, true);
                                 }}
                                 aria-label={`Fork and open ${title}`}
-                                className={`px-2 py-1 rounded-md text-[11px] border transition-colors cursor-pointer ${
+                                variant="outline"
+                                size="xs"
+                                className={`text-[11px] ${
                                   selected && forkSession
-                                    ? "border-cc-primary/40 bg-cc-primary/10 text-cc-primary"
-                                    : "border-cc-border bg-cc-card text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
+                                    ? "border-primary/40 bg-primary/10 text-primary"
+                                    : "text-muted-foreground hover:text-foreground"
                                 }`}
                                 title={`Fork and open now\n${candidate.cwd}${candidate.gitBranch ? ` (${candidate.gitBranch})` : ""}\n${candidate.resumeSessionId}`}
                               >
                                 Fork
-                              </button>
-                              <button
+                              </Button>
+                              <Button
                                 type="button"
                                 onClick={() => {
                                   setResumeSessionAt(candidate.resumeSessionId);
@@ -1260,37 +1308,41 @@ export function HomePage() {
                                   void handleOpenBranchedSession(candidate, false);
                                 }}
                                 aria-label={`Continue and open ${title}`}
-                                className={`px-2 py-1 rounded-md text-[11px] border transition-colors cursor-pointer ${
+                                variant="outline"
+                                size="xs"
+                                className={`text-[11px] ${
                                   selected && !forkSession
-                                    ? "border-cc-primary/40 bg-cc-primary/10 text-cc-primary"
-                                    : "border-cc-border bg-cc-card text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
+                                    ? "border-primary/40 bg-primary/10 text-primary"
+                                    : "text-muted-foreground hover:text-foreground"
                                 }`}
                                 title={`Continue and open now\n${candidate.resumeSessionId}`}
                               >
                                 Continue
-                              </button>
+                              </Button>
                             </div>
                           </div>
                         );
                       })}
                     </div>
                     {hasMoreResumeCandidates && (
-                      <div className="px-2.5 py-2 border-t border-cc-border bg-cc-card/40">
-                        <button
+                      <div className="px-2.5 py-2 border-t border-border bg-card/40">
+                        <Button
                           type="button"
                           onClick={() =>
                             setVisibleResumeCandidateRows((count) =>
                               Math.min(count + LOAD_MORE_SESSION_ROWS, filteredActiveResumeCandidates.length)
                             )}
-                          className="px-2 py-1 rounded-md text-[11px] bg-cc-hover text-cc-muted hover:text-cc-fg transition-colors cursor-pointer"
+                          variant="ghost"
+                          size="xs"
+                          className="bg-accent text-[11px] text-muted-foreground hover:text-foreground"
                         >
                           Load more ({filteredActiveResumeCandidates.length - visibleResumeCandidateRows} remaining)
-                        </button>
+                        </Button>
                       </div>
                     )}
                   </div>
                 )}
-                <p className="text-[11px] text-cc-muted">
+                <p className="text-[11px] text-muted-foreground">
                   Fork/Continue opens the session immediately, then you can type directly in chat.
                   Send from Home still starts a normal new session with your typed prompt.
                 </p>
@@ -1302,51 +1354,55 @@ export function HomePage() {
 
         {/* Branch behind remote warning */}
         {pullPrompt && (
-          <div className="mt-3 p-3 rounded-[10px] bg-amber-500/10 border border-amber-500/20">
+          <div className="mt-3 rounded-[10px] border border-warning/20 bg-warning/10 p-3">
             <div className="flex items-start gap-2.5">
-              <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4 text-amber-500 shrink-0 mt-0.5">
+              <svg viewBox="0 0 16 16" fill="currentColor" className="mt-0.5 h-4 w-4 shrink-0 text-warning">
                 <path d="M8.982 1.566a1.13 1.13 0 00-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 01-1.1 0L7.1 5.995A.905.905 0 018 5zm.002 6a1 1 0 110 2 1 1 0 010-2z" />
               </svg>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-cc-fg leading-snug">
-                  <span className="font-mono-code font-medium">{pullPrompt.branchName}</span> is{" "}
-                  <span className="font-semibold text-amber-500">{pullPrompt.behind} commit{pullPrompt.behind !== 1 ? "s" : ""} behind</span>{" "}
+                <p className="text-xs text-foreground leading-snug">
+                  <span className="font-mono font-medium">{pullPrompt.branchName}</span> is{" "}
+                  <span className="font-semibold text-warning">{pullPrompt.behind} commit{pullPrompt.behind !== 1 ? "s" : ""} behind</span>{" "}
                   remote. Pull before starting?
                 </p>
                 {pullError && (
-                  <div className="mt-2 px-2 py-1.5 rounded-md bg-cc-error/10 border border-cc-error/20 text-[11px] text-cc-error font-mono-code whitespace-pre-wrap">
+                  <div className="mt-2 px-2 py-1.5 rounded-md bg-destructive/10 border border-destructive/20 text-[11px] text-destructive font-mono whitespace-pre-wrap">
                     {pullError}
                   </div>
                 )}
                 <div className="flex gap-2 mt-2.5">
-                  <button
+                  <Button
                     onClick={handleCancelPull}
                     disabled={pulling}
-                    className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-cc-hover text-cc-muted hover:text-cc-fg transition-colors cursor-pointer"
+                    variant="secondary"
+                    size="xs"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={handleSkipPull}
                     disabled={pulling}
-                    className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-cc-hover text-cc-muted hover:text-cc-fg transition-colors cursor-pointer"
+                    variant="secondary"
+                    size="xs"
                   >
                     Continue anyway
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={handlePullAndContinue}
                     disabled={pulling}
-                    className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-cc-primary/15 text-cc-primary hover:bg-cc-primary/25 transition-colors cursor-pointer flex items-center gap-1.5"
+                    variant="outline"
+                    size="xs"
+                    className="text-primary"
                   >
                     {pulling ? (
                       <>
-                        <span className="w-3 h-3 border-2 border-cc-primary/30 border-t-cc-primary rounded-full animate-spin" />
+                        <span className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                         Pulling...
                       </>
                     ) : (
                       "Pull and continue"
                     )}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -1355,11 +1411,11 @@ export function HomePage() {
 
         {/* Error message */}
         {error && (
-          <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-cc-error/5 border border-cc-error/20">
-            <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-cc-error shrink-0">
+          <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-destructive/5 border border-destructive/20">
+            <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-destructive shrink-0">
               <path fillRule="evenodd" d="M8 15A7 7 0 108 1a7 7 0 000 14zm1-3a1 1 0 11-2 0 1 1 0 012 0zM7.5 5.5a.5.5 0 011 0v3a.5.5 0 01-1 0v-3z" clipRule="evenodd" />
             </svg>
-            <p className="text-xs text-cc-error">{error}</p>
+            <p className="text-xs text-destructive">{error}</p>
           </div>
         )}
       </div>

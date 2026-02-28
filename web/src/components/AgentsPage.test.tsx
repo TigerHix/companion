@@ -271,9 +271,8 @@ describe("AgentsPage", () => {
     fireEvent.click(screen.getByText("+ New Agent"));
     expect(screen.getByText("New Agent")).toBeInTheDocument();
 
-    // Click Cancel — there are two Cancel buttons in the editor (back arrow area and header)
-    const cancelButtons = screen.getAllByText("Cancel");
-    fireEvent.click(cancelButtons[0]);
+    // Use the dedicated back button so the test follows the editor chrome contract.
+    fireEvent.click(screen.getByRole("button", { name: "Back to agents" }));
 
     // Should return to list view
     await waitFor(() => {
@@ -611,9 +610,9 @@ describe("AgentsPage", () => {
 
   // ── Skills ─────────────────────────────────────────────────────────────
 
-  it("Skills checkbox list renders fetched skills", async () => {
-    // When the API returns skills, they should appear as checkboxes in the
-    // Advanced > Skills sub-section.
+  it("Skills multi-select renders fetched skills and toggles pressed state", async () => {
+    // The skills selector now uses shared button toggles with aria-pressed
+    // instead of native checkboxes because it is a multi-select surface.
     mockApi.listSkills.mockResolvedValue([
       { slug: "code-review", name: "Code Review", description: "Reviews code changes" },
       { slug: "testing", name: "Testing", description: "Writes tests" },
@@ -631,6 +630,15 @@ describe("AgentsPage", () => {
       expect(screen.getByText("Reviews code changes")).toBeInTheDocument();
       expect(screen.getByText("Testing")).toBeInTheDocument();
     });
+
+    const codeReviewToggle = screen.getByRole("button", { name: /Code Review/i });
+    expect(codeReviewToggle).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(codeReviewToggle);
+    expect(codeReviewToggle).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(codeReviewToggle);
+    expect(codeReviewToggle).toHaveAttribute("aria-pressed", "false");
   });
 
   it("Skills shows empty state when no skills found", async () => {

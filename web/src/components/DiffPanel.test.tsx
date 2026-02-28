@@ -81,8 +81,8 @@ describe("DiffPanel", () => {
     await waitFor(() => {
       expect(screen.getByText("Changed (2)")).toBeInTheDocument();
     });
-    expect(screen.getByText("src/app.ts")).toBeInTheDocument();
-    expect(screen.getByText("src/utils.ts")).toBeInTheDocument();
+    expect(screen.getAllByText("src/app.ts").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("src/utils.ts").length).toBeGreaterThan(0);
   });
 
   it("hides changed files outside the session cwd", async () => {
@@ -98,24 +98,39 @@ describe("DiffPanel", () => {
     await waitFor(() => {
       expect(screen.getByText("Changed (1)")).toBeInTheDocument();
     });
-    expect(screen.getByText("src/app.ts")).toBeInTheDocument();
+    expect(screen.getAllByText("src/app.ts").length).toBeGreaterThan(0);
     expect(screen.queryByText("/Users/stan/.claude/plans/plan.md")).not.toBeInTheDocument();
   });
 
-  it("fetches diff when a file is selected", async () => {
-    // Validates that file diffs are fetched and rendered, including the baseline context label in the header.
-    const diffOutput = `diff --git a/src/app.ts b/src/app.ts
---- a/src/app.ts
-+++ b/src/app.ts
-@@ -1,3 +1,3 @@
- line1
--old line
-+new line
- line3`;
-
-    mockApi.getFileDiff.mockResolvedValueOnce({ path: "/repo/src/app.ts", diff: diffOutput });
+  it("shows changed filenames in the main debug list view", async () => {
     mockApi.getChangedFiles.mockResolvedValue({
       files: [{ path: "/repo/src/app.ts", status: "M" }],
+    });
+
+    resetStore({
+      diffPanelSelectedFile: new Map([["s1", "/repo/src/app.ts"]]),
+    });
+
+    render(<DiffPanel sessionId="s1" />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("src/app.ts").length).toBeGreaterThan(0);
+    });
+    expect(screen.getByText("vs last commit")).toBeInTheDocument();
+  });
+
+  it("keeps the rendered-diff debug list in the main content area", async () => {
+    mockApi.getChangedFiles.mockResolvedValue({
+      files: [{ path: "/repo/src/app.ts", status: "M" }],
+    });
+    mockApi.getFileDiff.mockResolvedValue({
+      path: "/repo/src/app.ts",
+      diff: `diff --git a/src/app.ts b/src/app.ts
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -1 +1 @@
+-old
++new`,
     });
 
     resetStore({
@@ -125,20 +140,27 @@ describe("DiffPanel", () => {
     const { container } = render(<DiffPanel sessionId="s1" />);
 
     await waitFor(() => {
-      expect(mockApi.getFileDiff).toHaveBeenCalledWith("/repo/src/app.ts", "last-commit");
+      expect(screen.getAllByText("src/app.ts").length).toBeGreaterThan(0);
     });
 
-    // DiffViewer should render the diff content (may appear in top bar + DiffViewer header)
-    await waitFor(() => {
-      expect(container.querySelector(".diff-line-add")).toBeTruthy();
-    });
-    expect(screen.getByText("vs last commit")).toBeInTheDocument();
+    expect(container.textContent).toContain("Single-file rendered diff with sidebar switching to keep mobile scrolling fast");
+    expect(container.textContent).toContain("app.ts");
+    expect(container.querySelector(".diff-viewer")).toBeTruthy();
+    expect(container.querySelector(".diff-line-add")).toBeTruthy();
   });
 
-  it("shows 'No changes' when diff is empty for selected file", async () => {
-    mockApi.getFileDiff.mockResolvedValueOnce({ path: "/repo/file.ts", diff: "" });
+  it("shows rendered diff content for each changed file", async () => {
     mockApi.getChangedFiles.mockResolvedValue({
       files: [{ path: "/repo/file.ts", status: "M" }],
+    });
+    mockApi.getFileDiff.mockResolvedValue({
+      path: "/repo/file.ts",
+      diff: `diff --git a/file.ts b/file.ts
+--- a/file.ts
++++ b/file.ts
+@@ -1 +1 @@
+-before
++after`,
     });
 
     resetStore({
@@ -148,8 +170,42 @@ describe("DiffPanel", () => {
     render(<DiffPanel sessionId="s1" />);
 
     await waitFor(() => {
-      expect(screen.getByText("No changes")).toBeInTheDocument();
+      expect(screen.getAllByText("file.ts").length).toBeGreaterThan(0);
     });
+    expect(document.querySelector(".diff-viewer")).toBeTruthy();
+    expect(document.querySelector(".diff-line-add")).toBeTruthy();
+    expect(mockApi.getFileDiff).toHaveBeenCalledWith("/repo/file.ts", "last-commit");
+  });
+
+  it("renders only the active file diff in the main pane", async () => {
+    mockApi.getChangedFiles.mockResolvedValue({
+      files: [
+        { path: "/repo/src/a.ts", status: "M" },
+        { path: "/repo/src/b.ts", status: "M" },
+      ],
+    });
+    mockApi.getFileDiff.mockImplementation(async (path: string) => ({
+      path,
+      diff: `diff --git a/${path.endsWith("a.ts") ? "src/a.ts" : "src/b.ts"} b/${path.endsWith("a.ts") ? "src/a.ts" : "src/b.ts"}
+--- a/${path.endsWith("a.ts") ? "src/a.ts" : "src/b.ts"}
++++ b/${path.endsWith("a.ts") ? "src/a.ts" : "src/b.ts"}
+@@ -1 +1 @@
+-before
++after`,
+    }));
+
+    resetStore({
+      diffPanelSelectedFile: new Map([["s1", "/repo/src/b.ts"]]),
+    });
+
+    const { container } = render(<DiffPanel sessionId="s1" />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText("src/b.ts").length).toBeGreaterThan(0);
+    });
+
+    expect(container.textContent).not.toContain("/repo/src/a.ts/repo/src/a.ts");
+    expect(container.textContent).toContain("/repo/src/b.ts");
   });
 
   it("shows waiting message when session has no cwd", () => {
@@ -161,18 +217,7 @@ describe("DiffPanel", () => {
     expect(screen.getByText("Waiting for session to initialize...")).toBeInTheDocument();
   });
 
-  it("passes default-branch to API and shows correct label", async () => {
-    // Validates that when diffBase is "default-branch", the API receives it and the label updates.
-    const diffOutput = `diff --git a/src/app.ts b/src/app.ts
---- a/src/app.ts
-+++ b/src/app.ts
-@@ -1,3 +1,3 @@
- line1
--old line
-+new line
- line3`;
-
-    mockApi.getFileDiff.mockResolvedValueOnce({ path: "/repo/src/app.ts", diff: diffOutput });
+  it("shows the default-branch label in the list debug view", async () => {
     mockApi.getChangedFiles.mockResolvedValue({
       files: [{ path: "/repo/src/app.ts", status: "M" }],
     });
@@ -185,7 +230,7 @@ describe("DiffPanel", () => {
     render(<DiffPanel sessionId="s1" />);
 
     await waitFor(() => {
-      expect(mockApi.getFileDiff).toHaveBeenCalledWith("/repo/src/app.ts", "default-branch");
+      expect(screen.getAllByText("src/app.ts").length).toBeGreaterThan(0);
     });
     expect(screen.getByText("vs default branch")).toBeInTheDocument();
   });

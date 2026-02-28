@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Component } from "react";
+import { Button } from "@/components/ui/button";
 
 
 interface Props {
@@ -27,19 +28,19 @@ export class AppErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="h-[100dvh] flex items-center justify-center bg-cc-bg text-cc-fg px-4">
-          <div className="max-w-md w-full rounded-xl border border-cc-border bg-cc-card p-5 shadow-sm">
+        <div className="h-[100dvh] flex items-center justify-center bg-background text-foreground px-4">
+          <div className="max-w-md w-full rounded-xl border border-border bg-card p-5 shadow-sm">
             <h1 className="text-base font-semibold">A runtime error occurred</h1>
-            <p className="text-sm text-cc-muted mt-2">
+            <p className="text-sm text-muted-foreground mt-2">
               Reload the page to recover. The error has been reported.
             </p>
-            <button
+            <Button
               type="button"
               onClick={() => window.location.reload()}
-              className="mt-4 inline-flex items-center rounded-md bg-cc-primary px-3 py-1.5 text-sm text-white hover:bg-cc-primary-hover cursor-pointer"
+              className="mt-4 bg-primary text-sm text-white hover:bg-primary/90"
             >
               Reload
-            </button>
+            </Button>
           </div>
         </div>
       );

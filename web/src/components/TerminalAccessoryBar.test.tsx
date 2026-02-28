@@ -159,12 +159,12 @@ describe("TerminalAccessoryBar", () => {
 
     // Toggle Ctrl on
     fireEvent.click(ctrlBtn);
-    expect(ctrlBtn.className).toContain("bg-cc-primary");
+    expect(ctrlBtn.className).toContain("bg-primary");
 
     // Press pipe (not A-Z) — sends raw "|" and deactivates Ctrl
     fireEvent.click(screen.getByText("|"));
     expect(onWrite).toHaveBeenCalledWith("|");
-    expect(ctrlBtn.className).not.toContain("bg-cc-primary");
+    expect(ctrlBtn.className).not.toContain("bg-primary");
   });
 
   it("returns null when keyboard is closed (keyboardOffset === 0)", () => {

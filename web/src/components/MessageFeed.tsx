@@ -1,10 +1,14 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from "react";
+import { ChevronRight, Clock, Plus, Terminal as TerminalIcon } from "lucide-react";
 import { useStore } from "../store.js";
 import { api } from "../api.js";
 import { MessageBubble } from "./MessageBubble.js";
 import { getToolIcon, getToolLabel, getPreview, ToolIcon } from "./ToolBlock.js";
 import type { ChatMessage, ContentBlock, SdkSessionInfo } from "../types.js";
 import { formatElapsed, formatTokenCount } from "../utils/format.js";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 const FEED_PAGE_SIZE = 100;
 const RESUME_HISTORY_PAGE_SIZE = 40;
@@ -203,23 +207,24 @@ function ToolMessageGroup({ group }: { group: ToolMsgGroup }) {
         <div className="flex items-start gap-3">
           <AssistantAvatar />
           <div className="flex-1 min-w-0">
-            <div className="border border-cc-border rounded-[10px] overflow-hidden bg-cc-card">
-              <button
+            <div className="border border-border rounded-[10px] overflow-hidden card-moku">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => setOpen(!open)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-cc-hover transition-colors cursor-pointer"
+                className="h-auto w-full justify-start gap-2.5 rounded-none px-3 py-2 text-left hover:bg-accent/50"
               >
-                <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 text-cc-muted transition-transform shrink-0 ${open ? "rotate-90" : ""}`}>
-                  <path d="M6 4l4 4-4 4" />
-                </svg>
+                <ChevronRight className={cn("size-3 text-muted-foreground transition-transform shrink-0", open && "rotate-90")} />
                 <ToolIcon type={iconType} />
-                <span className="text-xs font-medium text-cc-fg">{label}</span>
-                <span className="text-xs text-cc-muted truncate flex-1 font-mono-code">
+                <span className="text-xs font-medium text-foreground">{label}</span>
+                <span className="text-xs text-muted-foreground truncate flex-1 font-mono">
                   {getPreview(item.name, item.input)}
                 </span>
-              </button>
+              </Button>
               {open && (
-                <div className="px-3 pb-3 pt-0 border-t border-cc-border mt-0">
-                  <pre className="mt-2 text-[11px] text-cc-muted font-mono-code whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+                <div className="px-3 pb-3 pt-0 border-t border-border mt-0">
+                  <pre className="mt-2 text-[11px] text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
                     {JSON.stringify(item.input, null, 2)}
                   </pre>
                 </div>
@@ -237,28 +242,29 @@ function ToolMessageGroup({ group }: { group: ToolMsgGroup }) {
       <div className="flex items-start gap-3">
         <AssistantAvatar />
         <div className="flex-1 min-w-0">
-          <div className="border border-cc-border rounded-[10px] overflow-hidden bg-cc-card">
-            <button
+          <div className="border border-border rounded-[10px] overflow-hidden card-moku">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => setOpen(!open)}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-cc-hover transition-colors cursor-pointer"
+              className="h-auto w-full justify-start gap-2.5 rounded-none px-3 py-2 text-left hover:bg-accent/50"
             >
-              <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 text-cc-muted transition-transform shrink-0 ${open ? "rotate-90" : ""}`}>
-                <path d="M6 4l4 4-4 4" />
-              </svg>
+              <ChevronRight className={cn("size-3 text-muted-foreground transition-transform shrink-0", open && "rotate-90")} />
               <ToolIcon type={iconType} />
-              <span className="text-xs font-medium text-cc-fg">{label}</span>
-              <span className="text-[10px] text-cc-muted bg-cc-hover rounded-full px-1.5 py-0.5 tabular-nums font-medium">
+              <span className="text-xs font-medium text-foreground">{label}</span>
+              <Badge variant="secondary" className="text-[10px] tabular-nums px-1.5 py-0.5 h-auto">
                 {count}
-              </span>
-            </button>
+              </Badge>
+            </Button>
 
             {open && (
-              <div className="border-t border-cc-border px-3 py-1.5">
+              <div className="border-t border-border px-3 py-1.5">
                 {group.items.map((item, i) => {
                   const preview = getPreview(item.name, item.input);
                   return (
-                    <div key={item.id || i} className="flex items-center gap-2 py-1 text-xs text-cc-muted font-mono-code truncate">
-                      <span className="w-1 h-1 rounded-full bg-cc-muted/40 shrink-0" />
+                    <div key={item.id || i} className="flex items-center gap-2 py-1 text-xs text-muted-foreground font-mono truncate">
+                      <span className="w-1 h-1 rounded-full bg-muted-foreground/40 shrink-0" />
                       <span className="truncate">{preview || JSON.stringify(item.input).slice(0, 80)}</span>
                     </div>
                   );
@@ -299,8 +305,7 @@ function SubagentContainer({ group }: { group: SubagentGroup }) {
   const lastPreview = useMemo(() => {
     if (!lastEntry) return "";
     if (lastEntry.kind === "tool_msg_group") {
-      const item = lastEntry.items[lastEntry.items.length - 1];
-      return `${getToolLabel(lastEntry.toolName)}${lastEntry.items.length > 1 ? ` ×${lastEntry.items.length}` : ""}`;
+      return `${getToolLabel(lastEntry.toolName)}${lastEntry.items.length > 1 ? ` \u00d7${lastEntry.items.length}` : ""}`;
     }
     if (lastEntry.kind === "message" && lastEntry.msg.role === "assistant") {
       const text = lastEntry.msg.content?.trim();
@@ -315,33 +320,31 @@ function SubagentContainer({ group }: { group: SubagentGroup }) {
 
   return (
     <div className="animate-[fadeSlideIn_0.2s_ease-out]">
-      <div className="ml-10 border-l-2 border-cc-primary/20 pl-4">
-        <button
+      <div className="ml-10 border-l-2 border-primary/20 pl-4">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => setOpen(!open)}
-          className="w-full flex items-center gap-2 py-1.5 text-left cursor-pointer mb-1"
+          className="mb-1 h-auto w-full justify-start gap-2 rounded-none px-0 py-1.5 text-left hover:bg-transparent"
         >
-          <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 text-cc-muted transition-transform shrink-0 ${open ? "rotate-90" : ""}`}>
-            <path d="M6 4l4 4-4 4" />
-          </svg>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5 text-cc-primary shrink-0">
-            <circle cx="8" cy="8" r="5" />
-            <path d="M8 5v3l2 1" strokeLinecap="round" />
-          </svg>
-          <span className="text-xs font-medium text-cc-fg truncate">{label}</span>
+          <ChevronRight className={cn("size-3 text-muted-foreground transition-transform shrink-0", open && "rotate-90")} />
+          <Clock className="size-3.5 text-primary shrink-0" />
+          <span className="text-xs font-medium text-foreground truncate">{label}</span>
           {agentType && (
-            <span className="text-[10px] text-cc-muted bg-cc-hover rounded-full px-1.5 py-0.5 shrink-0">
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 h-auto shrink-0">
               {agentType}
-            </span>
+            </Badge>
           )}
           {!open && lastPreview && (
-            <span className="text-[11px] text-cc-muted truncate ml-1 font-mono-code">
+            <span className="text-[11px] text-muted-foreground truncate ml-1 font-mono">
               {lastPreview}
             </span>
           )}
-          <span className="text-[10px] text-cc-muted bg-cc-hover rounded-full px-1.5 py-0.5 tabular-nums shrink-0 ml-auto">
+          <Badge variant="secondary" className="text-[10px] tabular-nums px-1.5 py-0.5 h-auto shrink-0 ml-auto">
             {childCount}
-          </span>
-        </button>
+          </Badge>
+        </Button>
 
         {open && (
           <div className="space-y-3 pb-2">
@@ -355,8 +358,8 @@ function SubagentContainer({ group }: { group: SubagentGroup }) {
 
 function AssistantAvatar() {
   return (
-    <div className="w-7 h-7 rounded-full bg-cc-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-      <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-cc-primary">
+    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+      <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-primary">
         <circle cx="8" cy="8" r="3" />
       </svg>
     </div>
@@ -596,34 +599,32 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
   if (mergedMessages.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-4 select-none px-6">
-        <div className="w-14 h-14 rounded-2xl bg-cc-card border border-cc-border flex items-center justify-center">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-7 h-7 text-cc-muted">
-            <polyline points="4 17 10 11 4 5" />
-            <line x1="12" y1="19" x2="20" y2="19" />
-          </svg>
+        <div className="w-14 h-14 rounded-2xl card-moku border border-border flex items-center justify-center">
+          <TerminalIcon className="size-7 text-muted-foreground" />
         </div>
         <div className="text-center">
           {canLoadResumeHistory ? (
             <>
-              <p className="text-sm text-cc-fg font-medium mb-1">This session has prior Claude context</p>
-              <p className="text-xs text-cc-muted leading-relaxed mb-3">
+              <p className="text-sm text-foreground font-medium mb-1">This session has prior Claude context</p>
+              <p className="text-xs text-muted-foreground leading-relaxed mb-3">
                 {resumeModeLabel} {resumeSourceSessionId.slice(0, 8)}. Load earlier messages into this chat when needed.
               </p>
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => void loadResumeHistoryPage({ preserveScroll: false })}
                 disabled={resumeHistoryLoading}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-cc-fg bg-cc-card border border-cc-border rounded-lg hover:bg-cc-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
               >
                 {resumeHistoryLoading ? "Loading..." : "Load previous history"}
-              </button>
+              </Button>
               {resumeHistoryError && (
-                <p className="text-xs text-cc-error mt-2">{resumeHistoryError}</p>
+                <p className="text-xs text-destructive mt-2">{resumeHistoryError}</p>
               )}
             </>
           ) : (
             <>
-              <p className="text-sm text-cc-fg font-medium mb-1">Start a conversation</p>
-              <p className="text-xs text-cc-muted leading-relaxed">
+              <p className="text-sm text-foreground font-medium mb-1">Start a conversation</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 Send a message to begin working with Moku.
               </p>
             </>
@@ -636,7 +637,7 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
   return (
     <div className="flex-1 min-h-0 relative overflow-hidden">
       {/* Top fade — softens the scroll edge under the top bar */}
-      <div className="pointer-events-none absolute top-0 inset-x-0 h-6 bg-gradient-to-b from-cc-bg to-transparent z-10" />
+      <div className="pointer-events-none absolute top-0 inset-x-0 h-6 bg-gradient-to-b from-background to-transparent z-10" />
       <div
         ref={containerRef}
         onScroll={handleScroll}
@@ -644,31 +645,33 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
       >
         <div className="max-w-3xl mx-auto space-y-5 sm:space-y-7">
           {canLoadResumeHistory && !resumeHistoryLoaded && (
-            <div className="rounded-xl border border-cc-border bg-cc-card p-3">
+            <div className="rounded-xl border border-border card-moku p-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-medium text-cc-fg">{resumeModeLabel} existing Claude thread</p>
-                  <p className="text-[11px] text-cc-muted mt-1">
-                    {resumeSourceSessionId} {sdkSession?.cwd ? `· ${formatResumeSourcePath(sdkSession.cwd)}` : ""}
+                  <p className="text-xs font-medium text-foreground">{resumeModeLabel} existing Claude thread</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {resumeSourceSessionId} {sdkSession?.cwd ? `\u00b7 ${formatResumeSourcePath(sdkSession.cwd)}` : ""}
                   </p>
                 </div>
-                <button
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => void loadResumeHistoryPage({ preserveScroll: true })}
                   disabled={resumeHistoryLoading}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-cc-fg bg-cc-card border border-cc-border rounded-lg hover:bg-cc-hover transition-colors disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                  className="shrink-0"
                 >
                   {resumeHistoryLoading ? "Loading..." : "Load previous history"}
-                </button>
+                </Button>
               </div>
               {resumeHistoryError && (
-                <p className="text-xs text-cc-error mt-2">{resumeHistoryError}</p>
+                <p className="text-xs text-destructive mt-2">{resumeHistoryError}</p>
               )}
             </div>
           )}
 
           {canLoadResumeHistory && resumeHistoryLoaded && (
             <div className="flex justify-center">
-              <p className="text-[11px] text-cc-muted">
+              <p className="text-[11px] text-muted-foreground">
                 {resumeHistoryHasMore
                   ? (resumeHistoryLoading
                     ? "Loading older transcript..."
@@ -680,28 +683,27 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
 
           {hasMore && (
             <div className="flex justify-center pb-2">
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={handleLoadMore}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-cc-muted hover:text-cc-fg bg-cc-card border border-cc-border rounded-lg hover:bg-cc-hover transition-colors cursor-pointer"
               >
-                <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
-                  <path d="M8 2a.75.75 0 01.75.75v4.5h4.5a.75.75 0 010 1.5h-4.5v4.5a.75.75 0 01-1.5 0v-4.5h-4.5a.75.75 0 010-1.5h4.5v-4.5A.75.75 0 018 2z" />
-                </svg>
+                <Plus className="size-3" />
                 Load {Math.min(FEED_PAGE_SIZE, hiddenCount)} more ({hiddenCount} hidden)
-              </button>
+              </Button>
             </div>
           )}
           <FeedEntries entries={visibleEntries} />
 
           {/* Tool progress indicator */}
           {toolProgress && toolProgress.size > 0 && !hasStreamingAssistant && (
-            <div className="flex items-center gap-1.5 text-[11px] text-cc-muted font-mono-code pl-10">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-cc-primary animate-pulse" />
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono pl-10">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
               {Array.from(toolProgress.values()).map((p, i) => (
                 <span key={i} className="flex items-center gap-1">
-                  {i > 0 && <span className="text-cc-muted/40">·</span>}
+                  {i > 0 && <span className="text-muted-foreground/40">&middot;</span>}
                   <span>{getToolLabel(p.toolName)}</span>
-                  <span className="text-cc-muted/60">{p.elapsedSeconds}s</span>
+                  <span className="text-muted-foreground/60">{p.elapsedSeconds}s</span>
                 </span>
               ))}
             </div>
@@ -709,18 +711,18 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
 
           {/* Generation stats bar */}
           {sessionStatus === "running" && elapsed > 0 && (
-            <div className="flex items-center gap-1.5 text-[11px] text-cc-muted font-mono-code pl-10">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-cc-primary animate-pulse" />
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono pl-10">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
               <span>Generating...</span>
-              <span className="text-cc-muted/60">(</span>
+              <span className="text-muted-foreground/60">(</span>
               <span>{formatElapsed(elapsed)}</span>
               {(streamingOutputTokens ?? 0) > 0 && (
                 <>
-                  <span className="text-cc-muted/40">·</span>
-                  <span>↓ {formatTokenCount(streamingOutputTokens!)}</span>
+                  <span className="text-muted-foreground/40">&middot;</span>
+                  <span>&darr; {formatTokenCount(streamingOutputTokens!)}</span>
                 </>
               )}
-              <span className="text-cc-muted/60">)</span>
+              <span className="text-muted-foreground/60">)</span>
             </div>
           )}
 

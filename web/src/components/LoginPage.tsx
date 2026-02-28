@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useStore } from "../store.js";
 import { verifyAuthToken, autoAuth } from "../api.js";
+import { Button } from "@/components/ui/button";
 
 export function LoginPage() {
   const [token, setToken] = useState("");
@@ -62,16 +63,16 @@ export function LoginPage() {
   const [showToken, setShowToken] = useState(false);
 
   return (
-    <div className="h-[100dvh] flex items-center justify-center bg-cc-bg text-cc-fg font-sans-ui antialiased">
+    <div className="h-[100dvh] flex items-center justify-center bg-background text-foreground font-sans antialiased">
       <div className="w-full max-w-sm px-6">
         <div className="text-center mb-8">
-          <h1 className="text-xl font-semibold text-cc-fg mb-2">Moku</h1>
-          <p className="text-sm text-cc-muted">Enter your auth token to continue</p>
+          <h1 className="text-xl font-semibold text-foreground mb-2">Moku</h1>
+          <p className="text-sm text-muted-foreground">Enter your auth token to continue</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="auth-token" className="block text-xs text-cc-muted mb-1.5">
+            <label htmlFor="auth-token" className="block text-xs text-muted-foreground mb-1.5">
               Auth Token
             </label>
             <div className="relative">
@@ -84,35 +85,37 @@ export function LoginPage() {
                   setError(null);
                 }}
                 placeholder="Paste your token here"
-                className="w-full px-3 py-2 pr-16 text-sm bg-cc-hover border border-cc-border rounded-md text-cc-fg placeholder:text-cc-muted/50 focus:outline-none focus:ring-1 focus:ring-cc-primary focus:border-cc-primary font-mono"
+                className="w-full px-3 py-2 pr-16 text-sm bg-accent border border-border rounded-md text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary font-mono"
                 autoComplete="off"
                 disabled={loading}
               />
-              <button
+              <Button
                 type="button"
                 onClick={() => setShowToken(!showToken)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-cc-muted hover:text-cc-fg transition-colors cursor-pointer px-1.5 py-0.5 rounded hover:bg-cc-hover"
+                variant="ghost"
+                size="xs"
+                className="absolute right-2 top-1/2 h-auto -translate-y-1/2 px-1.5 py-0.5 text-[11px] text-muted-foreground"
                 tabIndex={-1}
               >
                 {showToken ? "Hide" : "Show"}
-              </button>
+              </Button>
             </div>
           </div>
 
           {error && (
-            <p className="text-xs text-cc-error" role="alert">{error}</p>
+            <p className="text-xs text-destructive" role="alert">{error}</p>
           )}
 
-          <button
+          <Button
             type="submit"
             disabled={loading || !token.trim()}
-            className="w-full py-2 px-4 text-sm font-medium bg-cc-primary text-white rounded-md hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer disabled:cursor-not-allowed"
+            className="w-full text-sm bg-primary text-white hover:opacity-90"
           >
             {loading ? "Verifying..." : "Login"}
-          </button>
+          </Button>
         </form>
 
-        <p className="mt-6 text-[11px] text-cc-muted text-center leading-relaxed">
+        <p className="mt-6 text-[11px] text-muted-foreground text-center leading-relaxed">
           Scan the QR code in Settings with your phone camera to authenticate,
           or find your token in the server console.
         </p>

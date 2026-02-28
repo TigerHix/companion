@@ -5,11 +5,13 @@ import "@testing-library/jest-dom";
 
 const mockGetClaudeConfig = vi.fn();
 const mockReadFile = vi.fn();
+const mockWriteFile = vi.fn();
 
 vi.mock("../api.js", () => ({
   api: {
     getClaudeConfig: (...args: unknown[]) => mockGetClaudeConfig(...args),
     readFile: (...args: unknown[]) => mockReadFile(...args),
+    writeFile: (...args: unknown[]) => mockWriteFile(...args),
     getClaudeMdFiles: vi.fn().mockResolvedValue({ files: [] }),
     saveClaudeMd: vi.fn().mockResolvedValue({ ok: true }),
   },
@@ -83,6 +85,7 @@ describe("ClaudeConfigBrowser", () => {
     resetStore();
     mockGetClaudeConfig.mockResolvedValue(fullConfig);
     mockReadFile.mockResolvedValue({ content: '{"test":true}' });
+    mockWriteFile.mockResolvedValue({ ok: true });
   });
 
   // Renders the component and waits for data to load
@@ -191,6 +194,27 @@ describe("ClaudeConfigBrowser", () => {
     // JSON viewer should appear with read-only indicator
     await waitFor(() => {
       expect(screen.getByText("Read-only")).toBeInTheDocument();
+    });
+  });
+
+  it("closes the shared dialog shell from the JSON viewer close button", async () => {
+    mockReadFile.mockResolvedValue({ content: '{"key":"value"}' });
+    render(<ClaudeConfigBrowser sessionId="s1" />);
+    await waitFor(() => {
+      expect(screen.getByText("Project (4)")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("Project (4)"));
+    fireEvent.click(screen.getAllByText("settings.json")[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText("Read-only")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Read-only")).not.toBeInTheDocument();
     });
   });
 

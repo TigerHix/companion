@@ -10,6 +10,7 @@ Element.prototype.scrollIntoView = vi.fn();
 const mockSendToSession = vi.fn();
 const mockListPrompts = vi.fn();
 const mockCreatePrompt = vi.fn();
+const mockGetClaudeConfig = vi.fn();
 
 // Build a controllable mock store state
 let mockStoreState: Record<string, unknown> = {};
@@ -23,6 +24,7 @@ vi.mock("../api.js", () => ({
     gitPull: vi.fn().mockResolvedValue({ success: true, output: "", git_ahead: 0, git_behind: 0 }),
     listPrompts: (...args: unknown[]) => mockListPrompts(...args),
     createPrompt: (...args: unknown[]) => mockCreatePrompt(...args),
+    getClaudeConfig: (...args: unknown[]) => mockGetClaudeConfig(...args),
   },
 }));
 
@@ -118,6 +120,10 @@ beforeEach(() => {
     scope: "project",
     createdAt: Date.now(),
     updatedAt: Date.now(),
+  });
+  mockGetClaudeConfig.mockResolvedValue({
+    project: { root: "/test", claudeMd: [], settings: null, settingsLocal: null, commands: [] },
+    user: { root: "/home/test/.claude", claudeMd: null, skills: [], agents: [], settings: null, commands: [] },
   });
   setupMockStore();
 });
@@ -267,7 +273,7 @@ describe("Composer slash menu", () => {
   it("slash menu opens when typing /", () => {
     setupMockStore({
       session: {
-        slash_commands: ["help", "clear"],
+        slash_commands: ["/help", "/clear"],
         skills: ["commit"],
       },
     });
@@ -282,10 +288,24 @@ describe("Composer slash menu", () => {
     expect(screen.getByText("/commit")).toBeTruthy();
   });
 
+  it("renders the slash menu above adjacent chat chrome when open", () => {
+    setupMockStore({
+      session: {
+        slash_commands: ["/help"],
+      },
+    });
+    const { container } = render(<Composer sessionId="s1" />);
+    const textarea = container.querySelector("textarea")!;
+
+    fireEvent.change(textarea, { target: { value: "/" } });
+
+    expect(screen.getByText("/help").closest("div.z-40")).toBeTruthy();
+  });
+
   it("slash commands are filtered as user types", () => {
     setupMockStore({
       session: {
-        slash_commands: ["help", "clear"],
+        slash_commands: ["/help", "/clear"],
         skills: ["commit"],
       },
     });
@@ -300,7 +320,7 @@ describe("Composer slash menu", () => {
     expect(screen.queryByText("/commit")).toBeNull();
   });
 
-  it("slash menu does not open when there are no commands", () => {
+  it("slash menu still opens with an empty-state message when there are no commands", () => {
     setupMockStore({
       session: {
         slash_commands: [],
@@ -312,14 +332,51 @@ describe("Composer slash menu", () => {
 
     fireEvent.change(textarea, { target: { value: "/" } });
 
-    // No command items should appear
-    expect(screen.queryByText("/help")).toBeNull();
+    expect(screen.getByText("No slash commands available yet.")).toBeTruthy();
+  });
+
+  it("falls back to local config commands when session slash metadata is missing", async () => {
+    mockGetClaudeConfig.mockResolvedValue({
+      project: {
+        root: "/test",
+        claudeMd: [],
+        settings: null,
+        settingsLocal: null,
+        commands: [{ name: "deploy", path: "/test/.claude/commands/deploy.md" }],
+      },
+      user: {
+        root: "/home/test/.claude",
+        claudeMd: null,
+        skills: [{ slug: "release-helper", name: "Release Helper", description: "", path: "/home/test/.claude/skills/release-helper/SKILL.md" }],
+        agents: [],
+        settings: null,
+        commands: [{ name: "ship", path: "/home/test/.claude/commands/ship.md" }],
+      },
+    });
+    setupMockStore({
+      session: {
+        slash_commands: [],
+        skills: [],
+      },
+    });
+    const { container } = render(<Composer sessionId="s1" />);
+    const textarea = container.querySelector("textarea")!;
+
+    await waitFor(() => {
+      expect(mockGetClaudeConfig).toHaveBeenCalledWith("/test");
+    });
+
+    fireEvent.change(textarea, { target: { value: "/" } });
+
+    expect(await screen.findByText("/deploy")).toBeTruthy();
+    expect(screen.getByText("/ship")).toBeTruthy();
+    expect(screen.getByText("/release-helper")).toBeTruthy();
   });
 
   it("slash menu shows command types", () => {
     setupMockStore({
       session: {
-        slash_commands: ["help"],
+        slash_commands: ["/help"],
         skills: ["commit"],
       },
     });
@@ -454,7 +511,7 @@ describe("Composer keyboard navigation", () => {
     // a message send — the key event should be consumed by the menu handler.
     setupMockStore({
       session: {
-        slash_commands: ["help", "clear"],
+        slash_commands: ["/help", "/clear"],
         skills: [],
       },
     });
@@ -476,7 +533,7 @@ describe("Composer keyboard navigation", () => {
     // Verifies keyboard arrow navigation within the slash command menu.
     setupMockStore({
       session: {
-        slash_commands: ["help", "clear"],
+        slash_commands: ["/help", "/clear"],
         skills: [],
       },
     });
@@ -503,7 +560,7 @@ describe("Composer keyboard navigation", () => {
     // without sending it as a message.
     setupMockStore({
       session: {
-        slash_commands: ["help"],
+        slash_commands: ["/help"],
         skills: [],
       },
     });
@@ -516,6 +573,26 @@ describe("Composer keyboard navigation", () => {
     fireEvent.keyDown(textarea, { key: "Enter" });
     // Should NOT send a WebSocket message — it should just fill the command
     expect(mockSendToSession).not.toHaveBeenCalled();
+    expect((textarea as HTMLTextAreaElement).value).toBe("/help ");
+  });
+
+  it("replaces the slash token at the caret instead of overwriting the whole message", () => {
+    setupMockStore({
+      session: {
+        slash_commands: ["/help"],
+        skills: [],
+      },
+    });
+    const { container } = render(<Composer sessionId="s1" />);
+    const textarea = container.querySelector("textarea")! as HTMLTextAreaElement;
+
+    fireEvent.change(textarea, {
+      target: { value: "prefix /he suffix", selectionStart: 10 },
+    });
+
+    fireEvent.click(screen.getByText("/help"));
+
+    expect(textarea.value).toBe("prefix /help suffix");
   });
 });
 

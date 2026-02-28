@@ -25,6 +25,7 @@ function makeMessage(overrides: Partial<ChatMessage> & { role: ChatMessage["role
 // ─── System messages ─────────────────────────────────────────────────────────
 
 describe("MessageBubble - system messages", () => {
+  // Validates system messages render with italic styling for the text content
   it("renders system message with italic text", () => {
     const msg = makeMessage({ role: "system", content: "Session started" });
     const { container } = render(<MessageBubble message={msg} />);
@@ -34,19 +35,21 @@ describe("MessageBubble - system messages", () => {
     expect(italicSpan?.textContent).toBe("Session started");
   });
 
-  it("renders system message with divider lines", () => {
+  // Validates system messages show separator dividers on each side of the text
+  it("renders system message with separator dividers", () => {
     const msg = makeMessage({ role: "system", content: "Divider test" });
     const { container } = render(<MessageBubble message={msg} />);
 
-    // There should be 2 divider elements (h-px)
-    const dividers = container.querySelectorAll(".h-px");
-    expect(dividers.length).toBe(2);
+    // The Separator component renders with data-slot="separator" and h-px class
+    const separators = container.querySelectorAll('[data-slot="separator"]');
+    expect(separators.length).toBe(2);
   });
 });
 
 // ─── User messages ───────────────────────────────────────────────────────────
 
 describe("MessageBubble - user messages", () => {
+  // Validates user messages are right-aligned and display the content text
   it("renders user message right-aligned with content", () => {
     const msg = makeMessage({ role: "user", content: "Hello Claude" });
     const { container } = render(<MessageBubble message={msg} />);
@@ -59,6 +62,8 @@ describe("MessageBubble - user messages", () => {
     expect(screen.getByText("Hello Claude")).toBeTruthy();
   });
 
+  // Validates user messages render image attachments as <img> elements with
+  // the correct base64 data: URIs
   it("renders user messages with image thumbnails", () => {
     const msg = makeMessage({
       role: "user",
@@ -77,6 +82,7 @@ describe("MessageBubble - user messages", () => {
     expect(images[0].getAttribute("alt")).toBe("attachment");
   });
 
+  // Validates that an empty images array results in no <img> elements
   it("does not render images section when images array is empty", () => {
     const msg = makeMessage({ role: "user", content: "No images", images: [] });
     const { container } = render(<MessageBubble message={msg} />);
@@ -89,6 +95,7 @@ describe("MessageBubble - user messages", () => {
 // ─── Assistant messages ──────────────────────────────────────────────────────
 
 describe("MessageBubble - assistant messages", () => {
+  // Validates plain assistant messages pass through markdown rendering
   it("renders plain text assistant message with markdown", () => {
     const msg = makeMessage({ role: "assistant", content: "Hello world" });
     render(<MessageBubble message={msg} />);
@@ -98,6 +105,7 @@ describe("MessageBubble - assistant messages", () => {
     expect(markdown.textContent).toBe("Hello world");
   });
 
+  // Validates text content blocks render through markdown
   it("renders assistant message with text content blocks", () => {
     const msg = makeMessage({
       role: "assistant",
@@ -112,6 +120,7 @@ describe("MessageBubble - assistant messages", () => {
     expect(markdown.textContent).toBe("Here is the answer");
   });
 
+  // Validates tool_use blocks render as ToolBlock components with correct labels
   it("renders tool_use content blocks as ToolBlock components", () => {
     const msg = makeMessage({
       role: "assistant",
@@ -128,6 +137,7 @@ describe("MessageBubble - assistant messages", () => {
     expect(screen.getByText("pwd")).toBeTruthy();
   });
 
+  // Validates thinking blocks show "Reasoning" label and character count
   it("renders thinking blocks with 'Reasoning' label and char count", () => {
     const thinkingText = "Let me analyze this problem step by step...";
     const msg = makeMessage({
@@ -143,6 +153,7 @@ describe("MessageBubble - assistant messages", () => {
     expect(screen.getByText(`${thinkingText.length} chars`)).toBeTruthy();
   });
 
+  // Validates that thinking blocks can be expanded/collapsed by clicking
   it("thinking blocks expand and collapse on click", () => {
     const thinkingText = "Deep analysis of the problem at hand.";
     const msg = makeMessage({
@@ -170,6 +181,7 @@ describe("MessageBubble - assistant messages", () => {
     expect(screen.getByText(thinkingText)).toBeTruthy();
   });
 
+  // Validates tool_result blocks render string content directly
   it("renders tool_result blocks with string content", () => {
     const msg = makeMessage({
       role: "assistant",
@@ -183,6 +195,7 @@ describe("MessageBubble - assistant messages", () => {
     expect(screen.getByText("Command output: success")).toBeTruthy();
   });
 
+  // Validates tool_result blocks with non-string content are JSON.stringify'd
   it("renders tool_result blocks with JSON content", () => {
     const jsonContent = [{ type: "text" as const, text: "nested result" }];
     const msg = makeMessage({
@@ -199,6 +212,7 @@ describe("MessageBubble - assistant messages", () => {
     expect(rendered).toBeTruthy();
   });
 
+  // Validates error tool results use destructive styling classes
   it("renders tool_result error blocks with error styling", () => {
     const msg = makeMessage({
       role: "assistant",
@@ -210,11 +224,12 @@ describe("MessageBubble - assistant messages", () => {
     const { container } = render(<MessageBubble message={msg} />);
 
     expect(screen.getByText("Error: file not found")).toBeTruthy();
-    // Check for error styling class
-    const errorDiv = container.querySelector(".text-cc-error");
+    // Check for destructive styling class (new design system uses text-destructive)
+    const errorDiv = container.querySelector(".text-destructive");
     expect(errorDiv).toBeTruthy();
   });
 
+  // Validates non-error tool results use muted styling instead of error
   it("renders non-error tool_result without error styling", () => {
     const msg = makeMessage({
       role: "assistant",
@@ -227,10 +242,12 @@ describe("MessageBubble - assistant messages", () => {
 
     expect(screen.getByText("Success output")).toBeTruthy();
     const resultDiv = screen.getByText("Success output");
-    expect(resultDiv.className).toContain("text-cc-muted");
-    expect(resultDiv.className).not.toContain("text-cc-error");
+    expect(resultDiv.className).toContain("text-muted-foreground");
+    expect(resultDiv.className).not.toContain("text-destructive");
   });
 
+  // Validates Bash tool results truncate to last 20 lines and provide
+  // a toggle to show full output
   it("renders Bash tool_result with last 20 lines and supports full output toggle", () => {
     const outputLines = Array.from({ length: 25 }, (_, i) => `line-${i + 1}`).join("\n");
     const msg = makeMessage({
@@ -260,6 +277,8 @@ describe("MessageBubble - assistant messages", () => {
 // ─── groupContentBlocks behavior (tested indirectly through MessageBubble) ──
 
 describe("MessageBubble - content block grouping", () => {
+  // Validates that consecutive tool_use blocks with the same tool name
+  // are merged into a single group with a count badge
   it("groups consecutive same-tool tool_use blocks together", () => {
     const msg = makeMessage({
       role: "assistant",
@@ -279,6 +298,7 @@ describe("MessageBubble - content block grouping", () => {
     expect(labels.length).toBe(1);
   });
 
+  // Validates that different tool types are never grouped together
   it("does not group different tool types together", () => {
     const msg = makeMessage({
       role: "assistant",
@@ -295,6 +315,7 @@ describe("MessageBubble - content block grouping", () => {
     expect(screen.getByText("Terminal")).toBeTruthy();
   });
 
+  // Validates that a single tool_use renders without the group count badge
   it("renders a single tool_use without group count badge", () => {
     const msg = makeMessage({
       role: "assistant",
@@ -310,6 +331,8 @@ describe("MessageBubble - content block grouping", () => {
     expect(screen.queryByText("1")).toBeNull();
   });
 
+  // Validates that same-named tools separated by non-tool blocks (like text)
+  // are NOT merged into one group
   it("groups same tools separated by non-tool blocks into separate groups", () => {
     const msg = makeMessage({
       role: "assistant",

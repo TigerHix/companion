@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 export default defineConfig({
   resolve: {
     alias: {
+      "@": resolve(__dirname, "src"),
       // vite-plugin-pwa provides this virtual module at build time.
       // During tests, vi.mock() handles it, but Vite's import analysis
       // runs first and fails if the module can't be resolved.

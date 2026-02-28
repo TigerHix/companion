@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useStore } from "../store.js";
 import { api } from "../api.js";
 import type { ProcessItem, SystemProcess } from "../types.js";
+import { Button } from "@/components/ui/button";
 
 const EMPTY_PROCESSES: ProcessItem[] = [];
 const SYSTEM_POLL_INTERVAL = 15_000;
@@ -136,7 +137,7 @@ function AccordionChevron({ expanded }: { expanded: boolean }) {
       fill="none"
       stroke="currentColor"
       strokeWidth={1.75}
-      className={`w-3 h-3 text-cc-muted shrink-0 transition-transform duration-150 ${expanded ? "rotate-90" : ""}`}
+      className={`w-3 h-3 text-muted-foreground shrink-0 transition-transform duration-150 ${expanded ? "rotate-90" : ""}`}
       aria-hidden="true"
     >
       <path d="M7 4l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
@@ -223,10 +224,10 @@ function ProcessRow({
   }, [process.status]);
 
   const statusColor: Record<string, string> = {
-    running: "bg-cc-primary",
-    completed: "bg-cc-success",
-    failed: "bg-cc-error",
-    stopped: "bg-cc-muted",
+    running: "bg-primary",
+    completed: "bg-success",
+    failed: "bg-destructive",
+    stopped: "bg-muted-foreground",
   };
 
   const duration = process.completedAt
@@ -236,41 +237,43 @@ function ProcessRow({
   return (
     <div
       role="listitem"
-      className={`px-4 py-2.5 hover:bg-cc-hover/50 transition-colors ${process.status !== "running" ? "opacity-60" : ""}`}
+      className={`px-4 py-2.5 hover:bg-accent/50 transition-colors ${process.status !== "running" ? "opacity-60" : ""}`}
       data-testid="process-row"
     >
       <div className="flex items-start gap-2">
         <span
-          className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${statusColor[process.status] || "bg-cc-muted"} ${process.status === "running" ? "animate-pulse" : ""}`}
+          className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${statusColor[process.status] || "bg-muted-foreground"} ${process.status === "running" ? "animate-pulse" : ""}`}
           data-testid="process-status-dot"
         />
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <button
+            <Button
               type="button"
               onClick={() => setExpanded(!expanded)}
-              className="text-[12px] text-cc-fg font-medium truncate text-left cursor-pointer hover:underline flex-1 min-w-0"
+              variant="ghost"
+              size="xs"
+              className="flex-1 min-w-0 justify-start px-0 text-left text-[12px] font-medium text-foreground hover:underline hover:bg-transparent"
               title={process.description || process.command}
             >
               {process.description || truncateCommand(process.command)}
-            </button>
-            <span className="text-[10px] text-cc-muted tabular-nums shrink-0">
+            </Button>
+            <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
               {duration}
             </span>
           </div>
 
-          <div className="text-[10px] text-cc-muted mt-0.5">
+          <div className="text-[10px] text-muted-foreground mt-0.5">
             ID: {process.taskId || "pending..."}
           </div>
 
           {expanded && (
             <div className="mt-1.5 space-y-1">
-              <pre className="text-[10px] text-cc-muted bg-cc-hover rounded px-2 py-1 overflow-x-auto whitespace-pre-wrap break-all font-mono">
+              <pre className="text-[10px] text-muted-foreground bg-accent rounded px-2 py-1 overflow-x-auto whitespace-pre-wrap break-all font-mono">
                 {process.command}
               </pre>
               {process.summary && (
-                <div className="text-[11px] text-cc-muted italic">
+                <div className="text-[11px] text-muted-foreground italic">
                   {process.summary}
                 </div>
               )}
@@ -279,16 +282,18 @@ function ProcessRow({
         </div>
 
         {onKill && process.status === "running" && (
-          <button
+          <Button
             type="button"
             onClick={onKill}
             disabled={killing}
-            className="shrink-0 text-[11px] text-cc-error hover:text-red-500 disabled:opacity-50 transition-colors cursor-pointer px-2.5 py-1.5 min-h-[44px] rounded hover:bg-cc-hover"
+            variant="ghost"
+            size="xs"
+            className="shrink-0 min-h-[44px] text-destructive hover:bg-destructive/10 hover:text-destructive"
             title="Kill process"
             aria-label={`Kill process ${process.taskId}`}
           >
             {killing ? "..." : "Kill"}
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -323,26 +328,28 @@ function SystemProcessRow({
   return (
     <div
       role="listitem"
-      className="px-4 py-2.5 hover:bg-cc-hover/50 transition-colors"
+      className="px-4 py-2.5 hover:bg-accent/50 transition-colors"
       data-testid="system-process-row"
     >
       <div className="flex items-start gap-2">
-        <span className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 bg-green-500 animate-pulse" />
+        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-success animate-pulse" />
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <button
+            <Button
               type="button"
               onClick={() => setExpanded(!expanded)}
-              className="text-[12px] text-cc-fg font-medium truncate text-left cursor-pointer hover:underline flex-1 min-w-0"
+              variant="ghost"
+              size="xs"
+              className="flex-1 min-w-0 justify-start px-0 text-left text-[12px] font-medium text-foreground hover:underline hover:bg-transparent"
               title={proc.fullCommand}
             >
               {title}
-            </button>
+            </Button>
           </div>
 
-          <div className="mt-0.5 flex items-center gap-1.5 flex-wrap text-[10px] text-cc-muted">
-            <span className="rounded px-1 py-0.5 bg-cc-active/60 text-[9px] font-mono text-cc-fg/80">
+          <div className="mt-0.5 flex items-center gap-1.5 flex-wrap text-[10px] text-muted-foreground">
+            <span className="rounded px-1 py-0.5 bg-accent/60 text-[9px] font-mono text-foreground/80">
               {proc.command}
             </span>
             <span>PID: {proc.pid}</span>
@@ -355,7 +362,7 @@ function SystemProcessRow({
                 target="_blank"
                 rel="noreferrer"
                 aria-label={`Open http://localhost:${port}`}
-                className="inline-flex items-center gap-0.5 text-[9px] rounded px-1 py-0.5 bg-cc-primary/10 text-cc-primary hover:bg-cc-primary/20 transition-colors tabular-nums font-mono underline decoration-cc-primary/30 underline-offset-2"
+                className="inline-flex items-center gap-0.5 text-[9px] rounded px-1 py-0.5 bg-primary/10 text-primary hover:bg-primary/20 transition-colors tabular-nums font-mono underline decoration-primary/30 underline-offset-2"
               >
                 localhost:{port}
                 <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-2.5 h-2.5 shrink-0" aria-hidden="true">
@@ -366,28 +373,30 @@ function SystemProcessRow({
           </div>
 
           {showCommandPreview && !expanded && (
-            <div className="mt-1 text-[10px] text-cc-muted font-mono truncate" title={proc.fullCommand}>
+            <div className="mt-1 text-[10px] text-muted-foreground font-mono truncate" title={proc.fullCommand}>
               {commandPreview}
             </div>
           )}
 
           {expanded && (
-            <pre className="mt-1.5 text-[10px] text-cc-muted bg-cc-hover rounded px-2 py-1 overflow-x-auto whitespace-pre-wrap break-all font-mono">
+            <pre className="mt-1.5 text-[10px] text-muted-foreground bg-accent rounded px-2 py-1 overflow-x-auto whitespace-pre-wrap break-all font-mono">
               {proc.fullCommand}
             </pre>
           )}
         </div>
 
-        <button
+        <Button
           type="button"
           onClick={onKill}
           disabled={killing}
-          className="shrink-0 text-[11px] text-cc-error hover:text-red-500 disabled:opacity-50 transition-colors cursor-pointer px-2.5 py-1.5 min-h-[44px] rounded hover:bg-cc-hover"
+          variant="ghost"
+          size="xs"
+          className="shrink-0 min-h-[44px] text-destructive hover:bg-destructive/10 hover:text-destructive"
           title="Kill process"
           aria-label={`Kill system process ${proc.pid}`}
         >
           {killing ? "..." : "Kill"}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -397,8 +406,8 @@ function SystemProcessRow({
 
 function SectionHeader({ title, count, action }: { title: string; count?: number; action?: React.ReactNode }) {
   return (
-    <div className="shrink-0 px-4 py-2 flex items-center justify-between bg-cc-bg">
-      <span className="text-[11px] text-cc-muted uppercase tracking-wider">
+    <div className="shrink-0 px-4 py-2 flex items-center justify-between bg-background">
+      <span className="text-[11px] text-muted-foreground uppercase tracking-wider">
         {title}{count !== undefined && count > 0 ? ` (${count})` : ""}
       </span>
       {action}
@@ -418,7 +427,7 @@ function ScanStatusPill({
   return (
     <span
       className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] ${
-        tone === "error" ? "bg-cc-error/10 text-cc-error" : "bg-cc-hover text-cc-muted"
+        tone === "error" ? "bg-destructive/10 text-destructive" : "bg-accent text-muted-foreground"
       }`}
     >
       {spinning && (
@@ -460,10 +469,10 @@ function LoadingStepRow({
       <span
         className={`inline-flex items-center justify-center w-4 h-4 rounded-full border ${
           state === "done"
-            ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-300"
+            ? "border-success/40 bg-success/10 text-success"
             : state === "active"
-              ? "border-cc-primary/50 bg-cc-primary/10 text-cc-primary"
-              : "border-cc-border text-cc-muted/70"
+              ? "border-primary/50 bg-primary/10 text-primary"
+              : "border-border text-muted-foreground/70"
         }`}
         aria-hidden="true"
       >
@@ -477,7 +486,7 @@ function LoadingStepRow({
           <span className="w-1.5 h-1.5 rounded-full bg-current/60" />
         )}
       </span>
-      <span className={state === "active" ? "text-cc-fg" : "text-cc-muted"}>{label}</span>
+      <span className={state === "active" ? "text-foreground" : "text-muted-foreground"}>{label}</span>
     </div>
   );
 }
@@ -504,23 +513,23 @@ function ProcessPanelLoadingState({
   }, [loadingSteps.length]);
 
   return (
-    <div className="h-full flex flex-col items-center justify-center px-6 text-center bg-cc-bg" aria-live="polite">
-      <div className="relative w-16 h-16 mb-3 text-cc-muted/60">
+    <div className="h-full flex flex-col items-center justify-center px-6 text-center bg-background" aria-live="polite">
+      <div className="relative w-16 h-16 mb-3 text-muted-foreground/60">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-full h-full">
           <path d="M8 9h8m-8 4h6m-2-10h2.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        <span className="absolute inset-0 rounded-full border border-cc-primary/20 motion-safe:animate-ping" aria-hidden="true" />
+        <span className="absolute inset-0 rounded-full border border-primary/20 motion-safe:animate-ping" aria-hidden="true" />
       </div>
-      <div className="mb-3 flex items-center gap-3 rounded-full border border-cc-border bg-cc-hover/20 px-3 py-2">
-        <Spinner size="lg" className="text-cc-primary" />
+      <div className="mb-3 flex items-center gap-3 rounded-full border border-border bg-accent/20 px-3 py-2">
+        <Spinner size="lg" className="text-primary" />
         <div className="text-left">
-          <div className="text-xs font-medium text-cc-fg">{title}</div>
-          <div className="text-[10px] text-cc-muted">This can take a second on larger machines.</div>
+          <div className="text-xs font-medium text-foreground">{title}</div>
+          <div className="text-[10px] text-muted-foreground">This can take a second on larger machines.</div>
         </div>
       </div>
-      <p className="text-xs text-cc-muted max-w-[320px] mb-4">{subtitle}</p>
-      <div className="w-full max-w-[360px] rounded-lg border border-cc-border bg-cc-hover/10 p-3 text-left">
-        <div className="text-[10px] uppercase tracking-wide text-cc-muted mb-2">Scan progress</div>
+      <p className="text-xs text-muted-foreground max-w-[320px] mb-4">{subtitle}</p>
+      <div className="w-full max-w-[360px] rounded-lg border border-border bg-accent/10 p-3 text-left">
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Scan progress</div>
         <div className="space-y-2">
           {loadingSteps.map((step, index) => {
             const state = index < activeStep ? "done" : index === activeStep ? "active" : "pending";
@@ -542,22 +551,24 @@ function ProcessPanelErrorState({
   retrying: boolean;
 }) {
   return (
-    <div className="h-full flex flex-col items-center justify-center px-6 text-center bg-cc-bg">
-      <div className="w-12 h-12 mb-3 text-cc-error/60">
+    <div className="h-full flex flex-col items-center justify-center px-6 text-center bg-background">
+      <div className="w-12 h-12 mb-3 text-destructive/60">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
           <path d="M12 9v4m0 4h.01M10.29 3.86l-7.4 12.82A1 1 0 003.76 18h16.48a1 1 0 00.87-1.5l-7.4-12.82a1 1 0 00-1.74 0z" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </div>
-      <h3 className="text-sm font-medium text-cc-fg mb-1">Couldn&apos;t scan dev servers</h3>
-      <p className="text-xs text-cc-muted max-w-[320px]">{message}</p>
-      <button
+      <h3 className="text-sm font-medium text-foreground mb-1">Couldn&apos;t scan dev servers</h3>
+      <p className="text-xs text-muted-foreground max-w-[320px]">{message}</p>
+      <Button
         type="button"
         onClick={onRetry}
         disabled={retrying}
-        className="mt-3 text-[11px] text-cc-muted hover:text-cc-fg disabled:opacity-50 transition-colors cursor-pointer px-3 py-2 rounded border border-cc-border hover:bg-cc-hover"
+        variant="outline"
+        size="sm"
+        className="mt-3 min-h-[44px]"
       >
         {retrying ? "Retrying..." : "Retry scan"}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -767,32 +778,34 @@ export function ProcessPanel({ sessionId }: { sessionId: string }) {
 
   if (!hasAnything) {
     return (
-      <div className="h-full flex flex-col items-center justify-center px-6 text-center bg-cc-bg">
-        <div className="w-12 h-12 mb-3 text-cc-muted/40">
+      <div className="h-full flex flex-col items-center justify-center px-6 text-center bg-background">
+        <div className="w-12 h-12 mb-3 text-muted-foreground/40">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
             <path d="M8 9h8m-8 4h6m-2-10h2.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <h3 className="text-sm font-medium text-cc-fg mb-1">No background processes</h3>
-        <p className="text-xs text-cc-muted max-w-[260px]">
+        <h3 className="text-sm font-medium text-foreground mb-1">No background processes</h3>
+        <p className="text-xs text-muted-foreground max-w-[260px]">
           Background tasks spawned by Claude and dev servers listening on ports will appear here.
         </p>
-        <button
+        <Button
           type="button"
           onClick={handleRefresh}
           disabled={isSystemScanLoading}
-          className="mt-3 text-[11px] text-cc-muted hover:text-cc-fg disabled:opacity-50 transition-colors cursor-pointer px-3 py-2 rounded border border-cc-border hover:bg-cc-hover inline-flex items-center gap-2"
+          variant="outline"
+          size="sm"
+          className="mt-3 min-h-[44px]"
           aria-label="Scan for dev servers"
         >
           {isSystemScanLoading && <Spinner size="sm" className="text-current" />}
           {isSystemScanLoading ? "Scanning..." : "Scan for dev servers"}
-        </button>
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-cc-bg">
+    <div className="h-full flex flex-col overflow-hidden bg-background">
       <div className="flex-1 overflow-y-auto">
         {/* Claude Background Tasks */}
         {processes.length > 0 && (
@@ -801,14 +814,16 @@ export function ProcessPanel({ sessionId }: { sessionId: string }) {
               title="Claude Tasks"
               count={runningProcesses.length}
               action={runningProcesses.length > 1 ? (
-                <button
+                <Button
                   type="button"
                   onClick={handleKillAll}
-                  className="text-[11px] px-2.5 py-1.5 text-cc-error hover:text-red-500 transition-colors cursor-pointer"
+                  variant="ghost"
+                  size="xs"
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                   aria-label="Kill all running processes"
                 >
                   Kill All
-                </button>
+                </Button>
               ) : undefined}
             />
             <div role="list" aria-label="Background processes">
@@ -822,7 +837,7 @@ export function ProcessPanel({ sessionId }: { sessionId: string }) {
               ))}
 
               {completedProcesses.length > 0 && runningProcesses.length > 0 && (
-                <div role="presentation" className="px-4 py-1.5 text-[10px] text-cc-muted uppercase tracking-wider">
+                <div role="presentation" className="px-4 py-1.5 text-[10px] text-muted-foreground uppercase tracking-wider">
                   Completed
                 </div>
               )}
@@ -858,16 +873,18 @@ export function ProcessPanel({ sessionId }: { sessionId: string }) {
                   {lastSystemScanAt && systemScanPhase !== "refreshing" && (
                     <ScanStatusPill text={`Updated ${formatRelativeTime(lastSystemScanAt)}`} />
                   )}
-                  <button
+                  <Button
                     type="button"
                     onClick={handleRefresh}
                     disabled={isSystemScanLoading}
-                    className="text-[11px] px-2 py-1.5 text-cc-muted hover:text-cc-fg disabled:opacity-50 transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                    variant="ghost"
+                    size="xs"
+                    className="text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-50 inline-flex items-center gap-1.5"
                     aria-label="Refresh system processes"
                   >
                     {systemScanPhase === "refreshing" && <Spinner size="sm" className="text-current" />}
                     {systemScanPhase === "refreshing" && systemScanReason === "manual" ? "Refreshing..." : "Refresh"}
-                  </button>
+                  </Button>
                 </div>
               )}
             />
@@ -876,40 +893,42 @@ export function ProcessPanel({ sessionId }: { sessionId: string }) {
               const uniquePorts = [...new Set(group.processes.flatMap((proc) => proc.ports))].sort((a, b) => a - b);
               return (
                 <div key={group.key}>
-                  <div className="px-4 py-2.5 bg-cc-hover/30">
-                    <button
+                  <div className="px-4 py-2.5 bg-accent/30">
+                    <Button
                       type="button"
                       onClick={() => toggleSystemGroup(group.key)}
-                      className="w-full flex items-start justify-between gap-3 text-left cursor-pointer rounded px-2 py-1.5 hover:bg-cc-hover/60 transition-colors"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto w-full justify-between gap-3 rounded px-2 py-1.5 text-left hover:bg-accent/60"
                       aria-expanded={!isCollapsed}
                       aria-label={`Toggle process group ${group.label}`}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <AccordionChevron expanded={!isCollapsed} />
-                          <span className="text-[9px] rounded px-1 py-0.5 bg-cc-active/60 text-cc-muted uppercase tracking-wide">
+                          <span className="text-[9px] rounded px-1 py-0.5 bg-accent/60 text-muted-foreground uppercase tracking-wide">
                             Folder
                           </span>
-                          <span className="text-[12px] text-cc-fg font-medium">
+                          <span className="text-[12px] text-foreground font-medium">
                             {group.label}
                           </span>
-                          <span className="text-[9px] rounded px-1.5 py-0.5 bg-cc-active/60 text-cc-fg/80">
+                          <span className="text-[9px] rounded px-1.5 py-0.5 bg-accent/60 text-foreground/80">
                             {group.processes.length} running
                           </span>
                           {uniquePorts.length > 0 && (
-                            <span className="text-[9px] rounded px-1.5 py-0.5 bg-cc-active/60 text-cc-muted">
+                            <span className="text-[9px] rounded px-1.5 py-0.5 bg-accent/60 text-muted-foreground">
                               {uniquePorts.length} port{uniquePorts.length === 1 ? "" : "s"}
                             </span>
                           )}
                           {group.isCurrentRepo && (
-                            <span className="text-[9px] rounded px-1.5 py-0.5 bg-cc-primary/20 text-cc-primary">
+                            <span className="text-[9px] rounded px-1.5 py-0.5 bg-primary/20 text-primary">
                               Current repo
                             </span>
                           )}
                         </div>
                         {group.path && (
                           <div
-                            className="mt-1 text-[10px] text-cc-muted font-mono truncate"
+                            className="mt-1 text-[10px] text-muted-foreground font-mono truncate"
                             title={group.path}
                           >
                             {compactPath(group.path, 96)}
@@ -920,24 +939,24 @@ export function ProcessPanel({ sessionId }: { sessionId: string }) {
                         {uniquePorts.slice(0, 4).map((port) => (
                           <span
                             key={`${group.key}-port-${port}`}
-                            className="text-[9px] rounded px-1 py-0.5 bg-cc-active/60 text-cc-muted tabular-nums font-mono"
+                            className="text-[9px] rounded px-1 py-0.5 bg-accent/60 text-muted-foreground tabular-nums font-mono"
                           >
                             :{port}
                           </span>
                         ))}
                         {uniquePorts.length > 4 && (
-                          <span className="text-[9px] text-cc-muted">
+                          <span className="text-[9px] text-muted-foreground">
                             +{uniquePorts.length - 4}
                           </span>
                         )}
                       </div>
-                    </button>
+                    </Button>
                   </div>
                   {!isCollapsed && (
                     <div
                       role="list"
                       aria-label={`System dev processes for ${group.label}`}
-                      className="ml-4 border-l border-cc-border/40"
+                      className="ml-4 border-l border-border/40"
                     >
                       {group.processes.map((proc) => (
                         <SystemProcessRow

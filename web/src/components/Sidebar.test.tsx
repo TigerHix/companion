@@ -266,7 +266,7 @@ describe("Sidebar", () => {
     expect(screen.queryByText("-7")).not.toBeInTheDocument();
   });
 
-  it("active session has highlighted styling (bg-cc-active class)", () => {
+  it("active session has highlighted styling (bg-accent class)", () => {
     const session = makeSession("s1");
     const sdk = makeSdkSession("s1");
     mockState = createMockState({
@@ -278,7 +278,7 @@ describe("Sidebar", () => {
     render(<Sidebar />);
     // Find the session button element
     const sessionButton = screen.getByText("claude-sonnet-4-6").closest("button");
-    expect(sessionButton).toHaveClass("bg-cc-active");
+    expect(sessionButton).toHaveClass("bg-accent");
   });
 
   it("clicking a session navigates to the session hash", () => {
@@ -384,7 +384,7 @@ describe("Sidebar", () => {
     });
 
     render(<Sidebar />);
-    const awaitingDot = document.querySelector(".bg-cc-warning.animate-\\[ring-pulse_1\\.5s_ease-out_infinite\\]");
+    const awaitingDot = document.querySelector(".bg-warning.animate-\\[ring-pulse_1\\.5s_ease-out_infinite\\]");
     expect(awaitingDot).toBeTruthy();
   });
 
@@ -558,7 +558,7 @@ describe("Sidebar", () => {
     });
 
     render(<Sidebar />);
-    const awaitingDot = document.querySelector(".bg-cc-warning.animate-\\[ring-pulse_1\\.5s_ease-out_infinite\\]");
+    const awaitingDot = document.querySelector(".bg-warning.animate-\\[ring-pulse_1\\.5s_ease-out_infinite\\]");
     expect(awaitingDot).toBeTruthy();
   });
 
@@ -688,7 +688,7 @@ describe("Sidebar", () => {
     // But a collapsed preview text should appear with the session name
     const previewElement = screen.getByText("hidden-model");
     expect(previewElement).toBeInTheDocument();
-    expect(previewElement.className).toContain("text-cc-muted/70");
+    expect(previewElement.className).toContain("text-muted-foreground/70");
   });
 
   it("context menu shows restore and delete for archived sessions", () => {
@@ -1188,9 +1188,10 @@ describe("Sidebar", () => {
     fireEvent.click(screen.getByText("Archive"));
 
     // Click the "Archive" confirm button in the warning panel
-    // (There are multiple "Archive" texts, find the one in the confirmation panel)
+    const warningPanel = screen.getByText(/remove the container/).closest("div");
+    expect(warningPanel).toBeTruthy();
     const archiveConfirmBtn = screen.getAllByText("Archive").find(
-      (el) => el.closest(".bg-amber-500\\/10") !== null,
+      (el) => warningPanel?.contains(el) ?? false,
     );
     expect(archiveConfirmBtn).toBeTruthy();
     fireEvent.click(archiveConfirmBtn!);
@@ -1216,9 +1217,11 @@ describe("Sidebar", () => {
     fireEvent.click(screen.getByText("Archive"));
 
     // Click Cancel in the warning panel
+    const warningPanel = screen.getByText(/remove the container/).closest("div");
     const cancelBtn = screen.getAllByText("Cancel").find(
-      (el) => el.closest(".bg-amber-500\\/10") !== null,
+      (el) => warningPanel?.contains(el) ?? false,
     );
+    expect(cancelBtn).toBeTruthy();
     fireEvent.click(cancelBtn!);
 
     // Warning should be dismissed
@@ -1453,12 +1456,12 @@ describe("Sidebar", () => {
 
   it("footer nav button shows active state when on its page", () => {
     // Verifies that the footer nav button for the current page gets the
-    // bg-cc-active class to indicate the user is on that page.
+    // bg-accent class to indicate the user is on that page.
     window.location.hash = "#/settings";
     render(<Sidebar />);
 
     const settingsBtn = screen.getByTitle("Settings");
-    expect(settingsBtn).toHaveClass("bg-cc-active");
+    expect(settingsBtn).toHaveClass("bg-accent");
   });
 
   // ─── Close sidebar button (mobile) ─────────────────────────────────────────

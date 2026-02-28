@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
 import { useStore } from "../store.js";
 import { api, type ClaudeConfigResponse } from "../api.js";
 import { ClaudeMdEditor } from "./ClaudeMdEditor.js";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface ConfigItem {
   label: string;
@@ -26,9 +28,11 @@ function SectionHeader({
   onToggle: () => void;
 }) {
   return (
-    <button
+    <Button
+      type="button"
       onClick={onToggle}
-      className="w-full flex items-center gap-2 px-4 py-2 text-left hover:bg-cc-hover/50 transition-colors cursor-pointer"
+      variant="ghost"
+      className="h-auto w-full justify-start gap-2 rounded-none px-4 py-2 text-left hover:bg-accent/50"
       aria-expanded={expanded}
     >
       {/* Chevron */}
@@ -37,26 +41,26 @@ function SectionHeader({
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
-        className={`w-3 h-3 text-cc-muted shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`}
+        className={`w-3 h-3 text-muted-foreground shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`}
       >
         <path d="M6 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       {/* Icon */}
       <div className="w-4 h-4 flex items-center justify-center shrink-0">
         {icon === "project" ? (
-          <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-cc-primary">
+          <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-primary">
             <path d="M1.5 2A1.5 1.5 0 000 3.5v2A1.5 1.5 0 001.5 7h1v5.5A1.5 1.5 0 004 14h8a1.5 1.5 0 001.5-1.5V7h1A1.5 1.5 0 0016 5.5v-2A1.5 1.5 0 0014.5 2h-13zM4 7h8v5.5a.5.5 0 01-.5.5h-7a.5.5 0 01-.5-.5V7zm10-1H2V3.5a.5.5 0 01.5-.5h11a.5.5 0 01.5.5V6z" />
           </svg>
         ) : (
-          <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-cc-primary">
+          <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-primary">
             <path d="M8.354 1.146a.5.5 0 00-.708 0l-6 6A.5.5 0 002 7.5V14a1 1 0 001 1h3.5a.5.5 0 00.5-.5V11a.5.5 0 01.5-.5h1a.5.5 0 01.5.5v3.5a.5.5 0 00.5.5H13a1 1 0 001-1V7.5a.5.5 0 00-.146-.354l-6-6z" />
           </svg>
         )}
       </div>
-      <span className="text-[11px] font-semibold text-cc-muted uppercase tracking-wider flex-1">
+      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex-1">
         {title}
       </span>
-    </button>
+    </Button>
   );
 }
 
@@ -74,29 +78,31 @@ function ConfigItemRow({
   onClick: () => void;
 }) {
   return (
-    <button
+    <Button
+      type="button"
       onClick={onClick}
-      className="w-full flex items-center gap-2 px-4 pl-10 py-1.5 text-left hover:bg-cc-hover/50 transition-colors cursor-pointer"
+      variant="ghost"
+      className="h-auto w-full justify-start gap-2 rounded-none px-4 py-1.5 pl-10 text-left hover:bg-accent/50"
     >
-      <span className="text-[12px] text-cc-fg truncate flex-1">
+      <span className="text-[12px] text-foreground truncate flex-1">
         {label}
         {count !== undefined && count > 0 && (
-          <span className="ml-1 text-[10px] text-cc-muted">({count})</span>
+          <span className="ml-1 text-[10px] text-muted-foreground">({count})</span>
         )}
       </span>
       {sublabel && (
-        <span className="text-[10px] text-cc-muted shrink-0">{sublabel}</span>
+        <span className="text-[10px] text-muted-foreground shrink-0">{sublabel}</span>
       )}
       <svg
         viewBox="0 0 16 16"
         fill="none"
         stroke="currentColor"
         strokeWidth="1.5"
-        className="w-3 h-3 text-cc-muted shrink-0"
+        className="w-3 h-3 text-muted-foreground shrink-0"
       >
         <path d="M6 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-    </button>
+    </Button>
   );
 }
 
@@ -119,43 +125,47 @@ function JsonViewer({
   }
 
   return (
-    <>
-      <div className="fixed inset-0 bg-black/40 z-50" onClick={onClose} />
-      <div className="fixed inset-4 sm:inset-8 md:inset-x-[10%] md:inset-y-[5%] z-50 flex flex-col bg-cc-bg border border-cc-border rounded-2xl shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="shrink-0 flex items-center justify-between px-4 sm:px-5 py-3 bg-cc-card border-b border-cc-border">
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent
+        showCloseButton={false}
+        className="left-4 top-4 right-4 bottom-4 h-auto w-auto max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-2xl p-0 sm:left-8 sm:top-8 sm:right-8 sm:bottom-8 sm:max-w-none md:left-[10%] md:top-[5%] md:right-[10%] md:bottom-[5%]"
+      >
+        <div className="shrink-0 flex items-center justify-between px-4 sm:px-5 py-3 bg-card border-b border-border">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-cc-primary/10 flex items-center justify-center">
-              <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-cc-primary">
+            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+              <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-primary">
                 <path d="M2 4a2 2 0 012-2h3.17a2 2 0 011.415.586l.828.828A2 2 0 0010.83 4H12a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V4z" />
               </svg>
             </div>
             <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-cc-fg truncate">{path.split("/").pop()}</h2>
-              <p className="text-[11px] text-cc-muted truncate">{path}</p>
+              <DialogHeader className="gap-0">
+                <DialogTitle className="text-sm font-semibold text-foreground truncate">{path.split("/").pop()}</DialogTitle>
+                <DialogDescription className="mt-0 text-[11px] truncate">{path}</DialogDescription>
+              </DialogHeader>
             </div>
           </div>
-          <button
+          <Button
+            type="button"
             onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+            variant="ghost"
+            size="icon-sm"
             aria-label="Close"
           >
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
               <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
             </svg>
-          </button>
+          </Button>
         </div>
-        {/* Content */}
         <div className="flex-1 overflow-auto p-4">
-          <pre className="text-[13px] font-mono-code text-cc-fg leading-relaxed whitespace-pre-wrap break-words">
+          <pre className="text-[13px] font-mono text-foreground leading-relaxed whitespace-pre-wrap break-words">
             {formatted}
           </pre>
         </div>
-        <div className="shrink-0 px-4 py-2 bg-cc-card border-t border-cc-border">
-          <span className="text-[10px] text-cc-muted">Read-only</span>
+        <div className="shrink-0 px-4 py-2 bg-card border-t border-border">
+          <span className="text-[10px] text-muted-foreground">Read-only</span>
         </div>
-      </div>
-    </>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -205,76 +215,78 @@ function MarkdownFileEditor({
   };
 
   return (
-    <>
-      <div className="fixed inset-0 bg-black/40 z-50" onClick={handleClose} />
-      <div className="fixed inset-4 sm:inset-8 md:inset-x-[10%] md:inset-y-[5%] z-50 flex flex-col bg-cc-bg border border-cc-border rounded-2xl shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="shrink-0 flex items-center justify-between px-4 sm:px-5 py-3 bg-cc-card border-b border-cc-border">
+    <Dialog open onOpenChange={(open) => { if (!open) handleClose(); }}>
+      <DialogContent
+        showCloseButton={false}
+        className="left-4 top-4 right-4 bottom-4 h-auto w-auto max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-2xl p-0 sm:left-8 sm:top-8 sm:right-8 sm:bottom-8 sm:max-w-none md:left-[10%] md:top-[5%] md:right-[10%] md:bottom-[5%]"
+      >
+        <div className="shrink-0 flex items-center justify-between px-4 sm:px-5 py-3 bg-card border-b border-border">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-cc-primary/10 flex items-center justify-center">
-              <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-cc-primary">
+            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+              <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-primary">
                 <path d="M4 1.5a.5.5 0 01.5-.5h7a.5.5 0 01.354.146l2 2A.5.5 0 0114 3.5v11a.5.5 0 01-.5.5h-11a.5.5 0 01-.5-.5v-13zm1 .5v12h8V4h-1.5a.5.5 0 01-.5-.5V2H5zm6 0v1h1l-1-1z" />
               </svg>
             </div>
             <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-cc-fg truncate">{label}</h2>
-              <p className="text-[11px] text-cc-muted truncate">{path}</p>
+              <DialogHeader className="gap-0">
+                <DialogTitle className="text-sm font-semibold text-foreground truncate">{label}</DialogTitle>
+                <DialogDescription className="mt-0 text-[11px] truncate">{path}</DialogDescription>
+              </DialogHeader>
             </div>
           </div>
-          <button
+          <Button
+            type="button"
             onClick={handleClose}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+            variant="ghost"
+            size="icon-sm"
             aria-label="Close"
           >
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
               <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
             </svg>
-          </button>
+          </Button>
         </div>
 
         {loading ? (
           <div className="flex-1 flex items-center justify-center">
-            <div className="w-5 h-5 border-2 border-cc-primary border-t-transparent rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
           <>
             {/* Save bar */}
-            <div className="shrink-0 flex items-center justify-between px-4 py-2 bg-cc-card border-b border-cc-border">
-              <span className="text-[12px] text-cc-muted font-mono-code truncate">{path.split("/").pop()}</span>
+            <div className="shrink-0 flex items-center justify-between px-4 py-2 bg-card border-b border-border">
+              <span className="text-[12px] text-muted-foreground font-mono truncate">{path.split("/").pop()}</span>
               <div className="flex items-center gap-2">
-                {dirty && <span className="text-[10px] text-cc-warning font-medium">Unsaved</span>}
-                <button
+                {dirty && <span className="text-[10px] text-warning font-medium">Unsaved</span>}
+                <Button
+                  type="button"
                   onClick={handleSave}
                   disabled={!dirty || saving}
-                  className={`px-3 py-1 text-[11px] font-medium rounded-md transition-colors cursor-pointer ${
-                    dirty && !saving
-                      ? "bg-cc-primary text-white hover:bg-cc-primary/90"
-                      : "bg-cc-hover text-cc-muted cursor-not-allowed"
-                  }`}
+                  size="sm"
+                  className="h-7 text-[11px]"
                 >
                   {saving ? "Saving..." : "Save"}
-                </button>
+                </Button>
               </div>
             </div>
 
-            {/* Textarea */}
-            <textarea
+            <Textarea
               value={content}
               onChange={(e) => { setContent(e.target.value); setDirty(true); }}
               spellCheck={false}
-              className="flex-1 w-full p-4 bg-cc-bg text-cc-fg text-[13px] font-mono-code leading-relaxed resize-none focus:outline-none"
+              className="min-h-0 flex-1 w-full rounded-none border-0 bg-background p-4 text-[13px] font-mono leading-relaxed shadow-none ring-0 focus-visible:ring-0"
               placeholder="File contents..."
             />
           </>
         )}
 
         {error && (
-          <div className="shrink-0 px-4 py-2 bg-cc-error/10 border-t border-cc-error/20 text-xs text-cc-error">
+          <div className="shrink-0 px-4 py-2 bg-destructive/10 border-t border-destructive/20 text-xs text-destructive">
             {error}
           </div>
         )}
-      </div>
-    </>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -350,7 +362,7 @@ export function ClaudeConfigBrowser({ sessionId }: { sessionId: string }) {
   if (loading) {
     return (
       <div className="shrink-0 px-4 py-2.5">
-        <span className="text-[11px] text-cc-muted">Loading config...</span>
+        <span className="text-[11px] text-muted-foreground">Loading config...</span>
       </div>
     );
   }
@@ -402,7 +414,7 @@ export function ClaudeConfigBrowser({ sessionId }: { sessionId: string }) {
           )}
           {config.project.commands.length > 0 && (
             <>
-              <div className="px-4 pl-10 py-1 text-[10px] text-cc-muted uppercase tracking-wider">
+              <div className="px-4 pl-10 py-1 text-[10px] text-muted-foreground uppercase tracking-wider">
                 Commands ({config.project.commands.length})
               </div>
               {config.project.commands.map((cmd) => (
@@ -415,7 +427,7 @@ export function ClaudeConfigBrowser({ sessionId }: { sessionId: string }) {
             </>
           )}
           {projectItemCount === 0 && (
-            <p className="px-4 pl-10 py-1.5 text-[11px] text-cc-muted">No .claude config found</p>
+            <p className="px-4 pl-10 py-1.5 text-[11px] text-muted-foreground">No .claude config found</p>
           )}
         </div>
       )}
@@ -437,7 +449,7 @@ export function ClaudeConfigBrowser({ sessionId }: { sessionId: string }) {
           )}
           {config.user.skills.length > 0 && (
             <>
-              <div className="px-4 pl-10 py-1 text-[10px] text-cc-muted uppercase tracking-wider">
+              <div className="px-4 pl-10 py-1 text-[10px] text-muted-foreground uppercase tracking-wider">
                 Skills ({config.user.skills.length})
               </div>
               {config.user.skills.map((skill) => (
@@ -452,7 +464,7 @@ export function ClaudeConfigBrowser({ sessionId }: { sessionId: string }) {
           )}
           {config.user.agents.length > 0 && (
             <>
-              <div className="px-4 pl-10 py-1 text-[10px] text-cc-muted uppercase tracking-wider">
+              <div className="px-4 pl-10 py-1 text-[10px] text-muted-foreground uppercase tracking-wider">
                 Agents ({config.user.agents.length})
               </div>
               {config.user.agents.map((agent) => (
@@ -472,7 +484,7 @@ export function ClaudeConfigBrowser({ sessionId }: { sessionId: string }) {
           )}
           {config.user.commands.length > 0 && (
             <>
-              <div className="px-4 pl-10 py-1 text-[10px] text-cc-muted uppercase tracking-wider">
+              <div className="px-4 pl-10 py-1 text-[10px] text-muted-foreground uppercase tracking-wider">
                 Commands ({config.user.commands.length})
               </div>
               {config.user.commands.map((cmd) => (
@@ -485,19 +497,18 @@ export function ClaudeConfigBrowser({ sessionId }: { sessionId: string }) {
             </>
           )}
           {userItemCount === 0 && (
-            <p className="px-4 pl-10 py-1.5 text-[11px] text-cc-muted">No user config found</p>
+            <p className="px-4 pl-10 py-1.5 text-[11px] text-muted-foreground">No user config found</p>
           )}
         </div>
       )}
 
-      {/* ── File viewer portal ───────────────────────────────────────── */}
-      {activeItem && createPortal(
+      {/* ── File viewer ──────────────────────────────────────────────── */}
+      {activeItem && (
         <FileEditorPortal
           item={activeItem}
           cwd={cwd}
           onClose={() => setActiveItem(null)}
-        />,
-        document.body,
+        />
       )}
     </div>
   );

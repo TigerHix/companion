@@ -9,6 +9,8 @@ import {
   type TerminalConnection,
 } from "../terminal-ws.js";
 import { TerminalAccessoryBar } from "./TerminalAccessoryBar.js";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface TerminalViewProps {
   cwd: string;
@@ -21,11 +23,16 @@ interface TerminalViewProps {
 }
 
 function getTerminalTheme(dark: boolean) {
+  const rootStyles = typeof window !== "undefined"
+    ? window.getComputedStyle(document.documentElement)
+    : null;
+  const readVar = (name: string, fallback: string) => rootStyles?.getPropertyValue(name).trim() || fallback;
+
   return {
-    background: dark ? "#141413" : "#1e1e1e",
-    foreground: "#d4d4d4",
-    cursor: "#d4d4d4",
-    selectionBackground: "rgba(255, 255, 255, 0.2)",
+    background: readVar("--terminal-bg", dark ? "oklch(0.145 0.004 45)" : "oklch(0.18 0.004 45)"),
+    foreground: readVar("--terminal-fg", "oklch(0.88 0.008 45)"),
+    cursor: readVar("--terminal-cursor", "oklch(0.88 0.008 45)"),
+    selectionBackground: readVar("--terminal-selection", dark ? "oklch(1 0 0 / 0.18)" : "oklch(0.97 0.008 45 / 0.22)"),
   };
 }
 
@@ -177,30 +184,34 @@ export function TerminalView({
 
   const terminalFrame = (
     <div
-      className={`flex flex-col shadow-2xl overflow-hidden border border-cc-border ${
-        embedded ? "h-full" : "w-[90vw] max-w-4xl h-[70vh]"
+      className={`flex flex-col shadow-2xl overflow-hidden border border-border ${
+        embedded ? "h-full" : "flex-1 min-h-0"
       }`}
-      style={{ background: darkMode ? "#141413" : "#1e1e1e" }}
+      style={{ background: "var(--terminal-bg)" }}
       onClick={(e) => e.stopPropagation()}
     >
       {!hideHeader && (
-        <div className="flex items-center justify-between px-4 py-2 border-b border-cc-border bg-cc-sidebar shrink-0">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-sidebar shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <svg
               viewBox="0 0 16 16"
               fill="currentColor"
-              className="w-4 h-4 text-cc-muted shrink-0"
+              className="w-4 h-4 text-muted-foreground shrink-0"
             >
               <path d="M2 3a1 1 0 011-1h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3zm2 1.5l3 2.5-3 2.5V4.5zM8.5 10h3v1h-3v-1z" />
             </svg>
-            <span className="text-xs text-cc-muted font-mono-code truncate">
+            <span className="text-xs text-muted-foreground font-mono truncate">
               {title || cwd}
             </span>
           </div>
           {onClose && (
-            <button
+            <Button
+              type="button"
               onClick={onClose}
-              className="w-6 h-6 flex items-center justify-center rounded-md text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer shrink-0"
+              variant="ghost"
+              size="icon-xs"
+              className="shrink-0"
+              aria-label="Close terminal"
             >
               <svg
                 viewBox="0 0 16 16"
@@ -211,7 +222,7 @@ export function TerminalView({
               >
                 <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
               </svg>
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -235,9 +246,19 @@ export function TerminalView({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      {terminalFrame}
-      {accessoryBar}
-    </div>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose?.();
+      }}
+    >
+      <DialogContent
+        showCloseButton={false}
+        className="w-[90vw] max-w-4xl h-[70vh] gap-0 overflow-hidden border-0 bg-transparent p-0 ring-0 shadow-none"
+      >
+        {terminalFrame}
+        {accessoryBar}
+      </DialogContent>
+    </Dialog>
   );
 }

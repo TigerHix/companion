@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { CreationProgressEvent } from "../api.js";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   steps: CreationProgressEvent[];
@@ -66,10 +67,10 @@ export function SessionCreationProgress({ steps, error }: Props) {
                 {/* Status icon */}
                 <div className="w-4 h-4 flex items-center justify-center shrink-0">
                   {step.status === "in_progress" && (
-                    <span className="w-3.5 h-3.5 border-2 border-cc-primary/30 border-t-cc-primary rounded-full animate-spin" />
+                    <span className="w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                   )}
                   {step.status === "done" && (
-                    <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 text-cc-success">
+                    <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 text-success">
                       <path
                         d="M13.25 4.75L6 12 2.75 8.75"
                         stroke="currentColor"
@@ -80,7 +81,7 @@ export function SessionCreationProgress({ steps, error }: Props) {
                     </svg>
                   )}
                   {step.status === "error" && (
-                    <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 text-cc-error">
+                    <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 text-destructive">
                       <path
                         d="M4 4l8 8M12 4l-8 8"
                         stroke="currentColor"
@@ -95,10 +96,10 @@ export function SessionCreationProgress({ steps, error }: Props) {
                 <span
                   className={`text-sm flex-1 ${
                     step.status === "in_progress"
-                      ? "text-cc-fg font-medium"
+                      ? "text-foreground font-medium"
                       : step.status === "done"
-                        ? "text-cc-muted"
-                        : "text-cc-error"
+                        ? "text-muted-foreground"
+                        : "text-destructive"
                   }`}
                 >
                   {step.label}
@@ -106,17 +107,20 @@ export function SessionCreationProgress({ steps, error }: Props) {
 
                 {/* Toggle log visibility */}
                 {hasLogs && (
-                  <button
+                  <Button
+                    type="button"
                     onClick={() => setExpandedSteps((prev) => {
                       const next = new Set(prev);
                       if (next.has(step.step)) next.delete(step.step);
                       else next.add(step.step);
                       return next;
                     })}
-                    className="text-[10px] text-cc-muted hover:text-cc-fg transition-colors cursor-pointer"
+                    variant="ghost"
+                    size="xs"
+                    className="h-auto px-0 py-0 text-[10px] text-muted-foreground"
                   >
                     {isExpanded ? "Hide logs" : "Show logs"}
-                  </button>
+                  </Button>
                 )}
               </div>
 
@@ -124,7 +128,7 @@ export function SessionCreationProgress({ steps, error }: Props) {
               {hasLogs && isExpanded && (
                 <pre
                   ref={setLogRef(step.step)}
-                  className="ml-[26px] mt-1 mb-1 px-3 py-2 text-[10px] font-mono-code bg-black/20 border border-cc-border rounded-md text-cc-muted max-h-[150px] overflow-auto whitespace-pre-wrap"
+                  className="ml-[26px] mt-1 mb-1 px-3 py-2 text-[10px] font-mono bg-black/20 border border-border rounded-md text-muted-foreground max-h-[150px] overflow-auto whitespace-pre-wrap"
                 >
                   {logs.slice(-30).join("\n")}
                 </pre>
@@ -135,8 +139,8 @@ export function SessionCreationProgress({ steps, error }: Props) {
       </div>
 
       {error && (
-        <div className="mt-2.5 px-3 py-2 rounded-lg bg-cc-error/5 border border-cc-error/20">
-          <p className="text-xs text-cc-error whitespace-pre-wrap">{error}</p>
+        <div className="mt-2.5 px-3 py-2 rounded-lg bg-destructive/5 border border-destructive/20">
+          <p className="text-xs text-destructive whitespace-pre-wrap">{error}</p>
         </div>
       )}
     </div>

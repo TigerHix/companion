@@ -3,6 +3,8 @@ import { api } from "../api.js";
 import { useStore } from "../store.js";
 
 import { navigateToSession, navigateHome } from "../utils/routing.js";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 interface SettingsPageProps {
   embedded?: boolean;
@@ -171,19 +173,25 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
     sectionRefs.current[id] = el;
   }, []);
 
+  const settingRowClass =
+    "w-full flex items-center justify-between gap-3 px-3 py-3 min-h-[44px] rounded-lg text-sm bg-accent text-foreground";
+
   return (
-    <div className={`${embedded ? "h-full" : "h-[100dvh]"} bg-cc-bg text-cc-fg font-sans-ui antialiased flex flex-col`}>
+    <div className={`${embedded ? "h-full" : "h-[100dvh]"} bg-background text-foreground font-sans antialiased flex flex-col`}>
       {/* Header */}
       <div className="shrink-0 max-w-5xl w-full mx-auto px-4 sm:px-8 pt-6 sm:pt-10">
         <div className="flex items-start justify-between gap-3 mb-6">
           <div>
-            <h1 className="text-xl font-semibold text-cc-fg">Settings</h1>
-            <p className="mt-1 text-sm text-cc-muted">
+            <h1 className="text-xl font-semibold text-foreground">Settings</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
               Configure API access, notifications, appearance, and workspace defaults.
             </p>
           </div>
           {!embedded && (
-            <button
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 const sessionId = useStore.getState().currentSessionId;
                 if (sessionId) {
@@ -192,33 +200,35 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                   navigateHome();
                 }
               }}
-              className="px-3 py-2.5 min-h-[44px] rounded-lg text-sm text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+              className="min-h-[44px] px-3 py-2.5 text-sm"
             >
               Back
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
       {/* Mobile horizontal nav */}
-      <div className="sm:hidden shrink-0 border-b border-cc-border">
+      <div className="sm:hidden shrink-0 border-b border-border">
         <nav
           className="flex gap-1 px-4 py-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           aria-label="Settings categories"
         >
           {CATEGORIES.map((cat) => (
-            <button
+            <Button
               key={cat.id}
               type="button"
               onClick={() => scrollToSection(cat.id)}
+              variant="ghost"
+              size="sm"
               className={`shrink-0 px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                 activeSection === cat.id
-                  ? "text-cc-primary bg-cc-primary/8"
-                  : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
+                  ? "text-primary bg-primary/8"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
               }`}
             >
               {cat.label}
-            </button>
+            </Button>
           ))}
         </nav>
       </div>
@@ -231,18 +241,20 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
           aria-label="Settings categories"
         >
           {CATEGORIES.map((cat) => (
-            <button
+            <Button
               key={cat.id}
               type="button"
               onClick={() => scrollToSection(cat.id)}
+              variant="ghost"
+              size="sm"
               className={`text-left px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                 activeSection === cat.id
-                  ? "text-cc-primary bg-cc-primary/8"
-                  : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
+                  ? "text-primary bg-primary/8"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
               }`}
             >
               {cat.label}
-            </button>
+            </Button>
           ))}
         </nav>
 
@@ -251,40 +263,47 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
           <div className="space-y-10 py-4 sm:py-2">
             {/* General */}
             <section id="general" ref={setSectionRef("general")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">General</h2>
+              <h2 className="text-sm font-semibold text-foreground mb-4">General</h2>
               <div className="space-y-3">
-                <button
+                <Button
                   type="button"
                   onClick={toggleDarkMode}
-                  className="w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg text-sm bg-cc-hover text-cc-fg hover:bg-cc-active transition-colors cursor-pointer"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto w-full justify-between px-3 py-3 min-h-[44px] rounded-lg text-sm bg-accent text-foreground hover:bg-accent"
                 >
                   <span>Theme</span>
-                  <span className="text-xs text-cc-muted">{darkMode ? "Dark" : "Light"}</span>
-                </button>
+                  <span className="text-xs text-muted-foreground">{darkMode ? "Dark" : "Light"}</span>
+                </Button>
 
-                <button
-                  type="button"
-                  onClick={() => setEditorTabEnabled((v) => !v)}
-                  className="w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg text-sm bg-cc-hover text-cc-fg hover:bg-cc-active transition-colors cursor-pointer"
-                >
+                <div className={settingRowClass}>
                   <span>Enable Editor tab (CodeMirror)</span>
-                  <span className="text-xs text-cc-muted">{editorTabEnabled ? "On" : "Off"}</span>
-                </button>
-                <p className="text-xs text-cc-muted px-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{editorTabEnabled ? "On" : "Off"}</span>
+                    <Switch
+                      checked={editorTabEnabled}
+                      onCheckedChange={setEditorTabEnabled}
+                      aria-label="Enable Editor tab (CodeMirror)"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground px-1">
                   Shows a simple in-app file editor in the session tabs.
                 </p>
 
-                <button
+                <Button
                   type="button"
                   onClick={() => setDiffBase(diffBase === "last-commit" ? "default-branch" : "last-commit")}
-                  className="w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg text-sm bg-cc-hover text-cc-fg hover:bg-cc-active transition-colors cursor-pointer"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto w-full justify-between px-3 py-3 min-h-[44px] rounded-lg text-sm bg-accent text-foreground hover:bg-accent"
                 >
                   <span>Diff compare against</span>
-                  <span className="text-xs text-cc-muted">
+                  <span className="text-xs text-muted-foreground">
                     {diffBase === "last-commit" ? "Last commit (HEAD)" : "Default branch"}
                   </span>
-                </button>
-                <p className="text-xs text-cc-muted px-1">
+                </Button>
+                <p className="text-xs text-muted-foreground px-1">
                   Last commit shows only uncommitted changes. Default branch shows all changes since diverging from main.
                 </p>
               </div>
@@ -292,9 +311,9 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
             {/* Authentication */}
             <section id="authentication" ref={setSectionRef("authentication")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Authentication</h2>
+              <h2 className="text-sm font-semibold text-foreground mb-4">Authentication</h2>
               <div className="space-y-4">
-                <p className="text-xs text-cc-muted">
+                <p className="text-xs text-muted-foreground">
                   Use the auth token or QR code to connect additional devices (e.g. mobile over Tailscale).
                 </p>
 
@@ -302,22 +321,24 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                 <div>
                   <label className="block text-sm font-medium mb-1.5">Auth Token</label>
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg font-mono-code select-all break-all flex items-center">
+                    <div className="flex-1 px-3 py-2.5 min-h-[44px] text-sm bg-background rounded-lg text-foreground font-mono select-all break-all flex items-center">
                       {authToken
                         ? tokenRevealed
                           ? authToken
                           : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
-                        : <span className="text-cc-muted">Loading...</span>}
+                        : <span className="text-muted-foreground">Loading...</span>}
                     </div>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setTokenRevealed((v) => !v)}
-                      className="px-3 py-2.5 min-h-[44px] rounded-lg text-sm bg-cc-hover hover:bg-cc-active text-cc-fg transition-colors cursor-pointer"
+                      variant="ghost"
+                      size="sm"
+                      className="min-h-[44px] bg-accent text-foreground hover:bg-accent"
                       title={tokenRevealed ? "Hide token" : "Show token"}
                     >
                       {tokenRevealed ? "Hide" : "Show"}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() => {
                         if (authToken) {
@@ -328,11 +349,13 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                         }
                       }}
                       disabled={!authToken}
-                      className="px-3 py-2.5 min-h-[44px] rounded-lg text-sm bg-cc-hover hover:bg-cc-active text-cc-fg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      variant="ghost"
+                      size="sm"
+                      className="min-h-[44px] bg-accent text-foreground hover:bg-accent"
                       title="Copy token to clipboard"
                     >
                       {tokenCopied ? "Copied" : "Copy"}
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -345,18 +368,20 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                       {qrCodes.length > 1 && (
                         <div className="flex gap-1">
                           {qrCodes.map((qr, i) => (
-                            <button
+                            <Button
                               key={qr.label}
                               type="button"
                               onClick={() => setSelectedQrIndex(i)}
+                              variant={i === selectedQrIndex ? "default" : "ghost"}
+                              size="xs"
                               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                                 i === selectedQrIndex
-                                  ? "bg-cc-primary text-white"
-                                  : "bg-cc-hover text-cc-muted hover:text-cc-fg"
+                                  ? "bg-primary text-white"
+                                  : "bg-accent text-muted-foreground hover:text-foreground"
                               }`}
                             >
                               {qr.label}
-                            </button>
+                            </Button>
                           ))}
                         </div>
                       )}
@@ -367,19 +392,19 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                           className="w-48 h-48"
                         />
                       </div>
-                      <div className="px-3 py-2 rounded-lg bg-cc-bg text-sm font-mono-code text-cc-fg break-all select-all">
+                      <div className="px-3 py-2 rounded-lg bg-background text-sm font-mono text-foreground break-all select-all">
                         {qrCodes[selectedQrIndex].url}
                       </div>
-                      <p className="text-xs text-cc-muted">
+                      <p className="text-xs text-muted-foreground">
                         Scan with your phone&apos;s camera app — it will open the URL and auto-authenticate.
                       </p>
                     </div>
                   ) : qrCodes && qrCodes.length === 0 ? (
-                    <p className="text-xs text-cc-muted">
+                    <p className="text-xs text-muted-foreground">
                       No remote addresses detected (LAN or Tailscale). Connect to a network to generate a QR code.
                     </p>
                   ) : (
-                    <button
+                    <Button
                       type="button"
                       onClick={async () => {
                         setQrLoading(true);
@@ -393,20 +418,22 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                         }
                       }}
                       disabled={qrLoading}
+                      variant="ghost"
+                      size="sm"
                       className={`px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
                         qrLoading
-                          ? "bg-cc-hover text-cc-muted cursor-not-allowed"
-                          : "bg-cc-hover hover:bg-cc-active text-cc-fg cursor-pointer"
+                          ? "bg-accent text-muted-foreground cursor-not-allowed"
+                          : "bg-accent hover:bg-accent text-foreground cursor-pointer"
                       }`}
                     >
                       {qrLoading ? "Generating..." : "Show QR Code"}
-                    </button>
+                    </Button>
                   )}
                 </div>
 
                 {/* Regenerate token */}
                 <div className="pt-2">
-                  <button
+                  <Button
                     type="button"
                     onClick={async () => {
                       if (!confirm("Regenerate auth token? All existing sessions on other devices will be signed out.")) return;
@@ -423,15 +450,17 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                       }
                     }}
                     disabled={regenerating}
+                    variant="ghost"
+                    size="sm"
                     className={`px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
                       regenerating
-                        ? "bg-cc-hover text-cc-muted cursor-not-allowed"
-                        : "bg-cc-error/10 hover:bg-cc-error/20 text-cc-error cursor-pointer"
+                        ? "bg-accent text-muted-foreground cursor-not-allowed"
+                        : "bg-destructive/10 hover:bg-destructive/20 text-destructive cursor-pointer"
                     }`}
                   >
                     {regenerating ? "Regenerating..." : "Regenerate Token"}
-                  </button>
-                  <p className="mt-1.5 text-xs text-cc-muted">
+                  </Button>
+                  <p className="mt-1.5 text-xs text-muted-foreground">
                     Creates a new token. All other signed-in devices will need to re-authenticate.
                   </p>
                 </div>
@@ -440,42 +469,48 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
             {/* Notifications */}
             <section id="notifications" ref={setSectionRef("notifications")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Notifications</h2>
+              <h2 className="text-sm font-semibold text-foreground mb-4">Notifications</h2>
               <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={toggleNotificationSound}
-                  className="w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg text-sm bg-cc-hover text-cc-fg hover:bg-cc-active transition-colors cursor-pointer"
-                >
+                <div className={settingRowClass}>
                   <span>Sound</span>
-                  <span className="text-xs text-cc-muted">{notificationSound ? "On" : "Off"}</span>
-                </button>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{notificationSound ? "On" : "Off"}</span>
+                    <Switch
+                      checked={notificationSound}
+                      onCheckedChange={toggleNotificationSound}
+                      aria-label="Sound"
+                    />
+                  </div>
+                </div>
                 {notificationApiAvailable && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!notificationDesktop) {
-                        if (Notification.permission !== "granted") {
-                          const result = await Notification.requestPermission();
-                          if (result !== "granted") return;
-                        }
-                        setNotificationDesktop(true);
-                      } else {
-                        setNotificationDesktop(false);
-                      }
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg text-sm bg-cc-hover text-cc-fg hover:bg-cc-active transition-colors cursor-pointer"
-                  >
+                  <div className={settingRowClass}>
                     <span>Desktop Alerts</span>
-                    <span className="text-xs text-cc-muted">{notificationDesktop ? "On" : "Off"}</span>
-                  </button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{notificationDesktop ? "On" : "Off"}</span>
+                      <Switch
+                        checked={notificationDesktop}
+                        onCheckedChange={async (checked) => {
+                          if (checked) {
+                            if (Notification.permission !== "granted") {
+                              const result = await Notification.requestPermission();
+                              if (result !== "granted") return;
+                            }
+                            setNotificationDesktop(true);
+                          } else {
+                            setNotificationDesktop(false);
+                          }
+                        }}
+                        aria-label="Desktop Alerts"
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
             </section>
 
             {/* OpenRouter */}
             <section id="openrouter" ref={setSectionRef("openrouter")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">OpenRouter</h2>
+              <h2 className="text-sm font-semibold text-foreground mb-4">OpenRouter</h2>
               <form onSubmit={onSave} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1.5" htmlFor="openrouter-key">
@@ -489,9 +524,9 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                     onFocus={() => setApiKeyFocused(true)}
                     onBlur={() => setApiKeyFocused(false)}
                     placeholder={configured ? "Enter a new key to replace" : "sk-or-v1-..."}
-                    className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
+                    className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-background rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-shadow"
                   />
-                  <p className="mt-1.5 text-xs text-cc-muted">
+                  <p className="mt-1.5 text-xs text-muted-foreground">
                     Auto-renaming is disabled until this key is configured.
                   </p>
                 </div>
@@ -506,46 +541,47 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                     value={openrouterModel}
                     onChange={(e) => setOpenrouterModel(e.target.value)}
                     placeholder="openrouter/free"
-                    className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
+                    className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-background rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-shadow"
                   />
                 </div>
 
                 {error && (
-                  <div className="px-3 py-2 rounded-lg bg-cc-error/10 border border-cc-error/20 text-xs text-cc-error">
+                  <div className="px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
                     {error}
                   </div>
                 )}
 
                 {saved && (
-                  <div className="px-3 py-2 rounded-lg bg-cc-success/10 border border-cc-success/20 text-xs text-cc-success">
+                  <div className="px-3 py-2 rounded-lg bg-success/10 border border-success/20 text-xs text-success">
                     Settings saved.
                   </div>
                 )}
 
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-cc-muted">
+                  <span className="text-xs text-muted-foreground">
                     {loading ? "Loading..." : configured ? "OpenRouter key configured" : "OpenRouter key not configured"}
                   </span>
-                  <button
+                  <Button
                     type="submit"
                     disabled={saving || loading}
+                    size="sm"
                     className={`px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
                       saving || loading
-                        ? "bg-cc-hover text-cc-muted cursor-not-allowed"
-                        : "bg-cc-primary hover:bg-cc-primary-hover text-white cursor-pointer"
+                        ? "bg-accent text-muted-foreground cursor-not-allowed"
+                        : "bg-primary hover:bg-primary/90 text-white cursor-pointer"
                     }`}
                   >
                     {saving ? "Saving..." : "Save"}
-                  </button>
+                  </Button>
                 </div>
               </form>
             </section>
 
             {/* AI Validation */}
             <section id="ai-validation" ref={setSectionRef("ai-validation")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">AI Validation</h2>
+              <h2 className="text-sm font-semibold text-foreground mb-4">AI Validation</h2>
               <div className="space-y-3">
-                <p className="text-xs text-cc-muted leading-relaxed">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   When enabled, an AI model evaluates tool calls before they execute.
                   Safe operations are auto-approved, dangerous ones are blocked,
                   and uncertain cases are shown to you with a recommendation.
@@ -554,54 +590,63 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                   independently via the shield icon in the session header.
                 </p>
 
-                <button
-                  type="button"
-                  onClick={() => toggleAiValidation("aiValidationEnabled")}
-                  disabled={!configured}
-                  className={`w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg transition-colors ${
-                    !configured
-                      ? "bg-cc-hover text-cc-muted cursor-not-allowed opacity-60"
-                      : "bg-cc-hover hover:bg-cc-active text-cc-fg cursor-pointer"
+                <div
+                  className={`${settingRowClass} ${
+                    !configured ? "text-muted-foreground opacity-60" : ""
                   }`}
                 >
                   <span className="text-sm">AI Validation Mode</span>
-                  <span className={`text-xs font-medium ${aiValidationEnabled && configured ? "text-cc-success" : "text-cc-muted"}`}>
-                    {aiValidationEnabled && configured ? "On" : "Off"}
-                  </span>
-                </button>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium ${aiValidationEnabled && configured ? "text-success" : "text-muted-foreground"}`}>
+                      {aiValidationEnabled && configured ? "On" : "Off"}
+                    </span>
+                    <Switch
+                      checked={aiValidationEnabled && configured}
+                      onCheckedChange={() => toggleAiValidation("aiValidationEnabled")}
+                      disabled={!configured}
+                      aria-label="AI Validation Mode"
+                    />
+                  </div>
+                </div>
                 {!configured && (
-                  <p className="text-[11px] text-cc-warning">Configure an OpenRouter API key above to enable AI validation.</p>
+                  <p className="text-[11px] text-warning">Configure an OpenRouter API key above to enable AI validation.</p>
                 )}
 
                 {aiValidationEnabled && configured && (
                   <>
-                    <button
-                      type="button"
-                      onClick={() => toggleAiValidation("aiValidationAutoApprove")}
-                      className="w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg bg-cc-hover hover:bg-cc-active text-cc-fg transition-colors cursor-pointer"
-                    >
+                    <div className={settingRowClass}>
                       <div>
                         <span className="text-sm">Auto-approve safe tools</span>
-                        <p className="text-[11px] text-cc-muted mt-0.5">Automatically allow read-only tools and benign commands</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">Automatically allow read-only tools and benign commands</p>
                       </div>
-                      <span className={`text-xs font-medium ${aiValidationAutoApprove ? "text-cc-success" : "text-cc-muted"}`}>
-                        {aiValidationAutoApprove ? "On" : "Off"}
-                      </span>
-                    </button>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-medium ${aiValidationAutoApprove ? "text-success" : "text-muted-foreground"}`}>
+                          {aiValidationAutoApprove ? "On" : "Off"}
+                        </span>
+                        <Switch
+                          checked={aiValidationAutoApprove}
+                          onCheckedChange={() => toggleAiValidation("aiValidationAutoApprove")}
+                          aria-label="Auto-approve safe tools"
+                        />
+                      </div>
+                    </div>
 
-                    <button
-                      type="button"
-                      onClick={() => toggleAiValidation("aiValidationAutoDeny")}
-                      className="w-full flex items-center justify-between px-3 py-3 min-h-[44px] rounded-lg bg-cc-hover hover:bg-cc-active text-cc-fg transition-colors cursor-pointer"
-                    >
+                    <div className={settingRowClass}>
                       <div>
                         <span className="text-sm">Auto-deny dangerous tools</span>
-                        <p className="text-[11px] text-cc-muted mt-0.5">Automatically block destructive commands like rm -rf</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">Automatically block destructive commands like rm -rf</p>
                       </div>
-                      <span className={`text-xs font-medium ${aiValidationAutoDeny ? "text-cc-success" : "text-cc-muted"}`}>
-                        {aiValidationAutoDeny ? "On" : "Off"}
-                      </span>
-                    </button>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-medium ${aiValidationAutoDeny ? "text-success" : "text-muted-foreground"}`}>
+                          {aiValidationAutoDeny ? "On" : "Off"}
+                        </span>
+                        <Switch
+                          checked={aiValidationAutoDeny}
+                          onCheckedChange={() => toggleAiValidation("aiValidationAutoDeny")}
+                          aria-label="Auto-deny dangerous tools"
+                        />
+                      </div>
+                    </div>
                   </>
                 )}
               </div>
@@ -609,20 +654,21 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
             {/* Environments */}
             <section id="environments" ref={setSectionRef("environments")}>
-              <h2 className="text-sm font-semibold text-cc-fg mb-4">Environments</h2>
+              <h2 className="text-sm font-semibold text-foreground mb-4">Environments</h2>
               <div className="space-y-3">
-                <p className="text-xs text-cc-muted">
+                <p className="text-xs text-muted-foreground">
                   Manage reusable environment profiles used when creating sessions.
                 </p>
-                <button
+                <Button
                   type="button"
                   onClick={() => {
                     window.location.hash = "#/environments";
                   }}
-                  className="px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium bg-cc-primary hover:bg-cc-primary-hover text-white transition-colors cursor-pointer"
+                  size="sm"
+                  className="min-h-[44px] px-3 py-2 text-sm font-medium"
                 >
                   Open Environments Page
-                </button>
+                </Button>
               </div>
             </section>
           </div>

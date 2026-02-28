@@ -90,16 +90,15 @@ describe("TopBar", () => {
     expect(screen.queryByText("3")).not.toBeInTheDocument();
   });
 
-  it("uses theme-safe classes for the diff badge in dark mode", () => {
+  it("uses semantic status classes for the diff badge", () => {
     resetStore({
       gitChangedFilesCount: new Map([["s1", 1]]),
     });
     render(<TopBar />);
     const badge = screen.getByText("1");
-    // Badge uses amber Tailwind utilities, not semantic cc-warning token.
-    expect(badge.className).toContain("bg-amber-100");
-    expect(badge.className).toContain("dark:bg-amber-900/60");
-    expect(badge.className).not.toContain("bg-cc-warning");
+    expect(badge.className).toContain("status-chip");
+    expect(badge.className).toContain("status-chip-warning");
+    expect(badge.className).not.toContain("bg-amber-100");
   });
 
   it("hides diff badge when no changed files", () => {
@@ -196,17 +195,17 @@ describe("TopBar", () => {
   });
 
   it("marks the active tab with a primary underline indicator", () => {
-    // Flat underline tabs: the active tab gets border-cc-primary, inactive tabs get border-transparent.
+    // Flat underline tabs: the active tab gets border-primary, inactive tabs get border-transparent.
     resetStore({ activeTab: "diff" });
     render(<TopBar />);
 
     const diffTab = screen.getByRole("button", { name: "Diffs tab" });
     const chatTab = screen.getByRole("button", { name: "Session tab" });
 
-    expect(diffTab.className).toContain("border-cc-primary");
-    expect(diffTab.className).toContain("text-cc-fg");
+    expect(diffTab.className).toContain("border-primary");
+    expect(diffTab.className).toContain("text-foreground");
     expect(chatTab.className).toContain("border-transparent");
-    expect(chatTab.className).toContain("text-cc-muted");
+    expect(chatTab.className).toContain("text-muted-foreground");
   });
 
   it("tab buttons have accessible names", () => {

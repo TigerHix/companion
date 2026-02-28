@@ -212,12 +212,12 @@ function FileHeader({ fileName }: { fileName: string }) {
   const dir = parts.join("/");
   return (
     <div className="diff-file-header">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5 text-cc-primary shrink-0">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5 text-primary shrink-0">
         <path d="M9 1H4a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V5L9 1z" />
         <polyline points="9 1 9 5 13 5" />
       </svg>
-      {dir && <span className="text-cc-muted">{dir}/</span>}
-      <span className="font-semibold text-cc-fg">{base}</span>
+      {dir && <span className="text-muted-foreground">{dir}/</span>}
+      <span className="font-semibold text-foreground">{base}</span>
     </div>
   );
 }
@@ -245,7 +245,7 @@ export function DiffViewer({ oldText, newText, unifiedDiff, fileName, mode = "co
   if (data.length === 0 || data.every((f) => f.hunks.length === 0)) {
     return (
       <div className="diff-viewer diff-empty">
-        <span className="text-cc-muted text-xs">No changes</span>
+        <span className="text-muted-foreground text-xs">No changes</span>
       </div>
     );
   }

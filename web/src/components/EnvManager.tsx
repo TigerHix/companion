@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { createPortal } from "react-dom";
 import { api, type MokuEnv, type ImagePullState } from "../api.js";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Props {
   onClose?: () => void;
@@ -24,6 +28,8 @@ WORKDIR /workspace
 CMD ["sleep", "infinity"]
 `;
 
+const TAB_ORDER: Tab[] = ["variables", "docker", "ports", "init"];
+
 export function EnvManager({ onClose, embedded = false }: Props) {
   const [envs, setEnvs] = useState<MokuEnv[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,27 +42,32 @@ export function EnvManager({ onClose, embedded = false }: Props) {
   const [editInitScript, setEditInitScript] = useState("");
   const [error, setError] = useState("");
 
-  // Docker build state
   const [building, setBuilding] = useState(false);
   const [buildLog, setBuildLog] = useState("");
   const [showBuildLog, setShowBuildLog] = useState(false);
 
-  // Docker availability
   const [dockerAvailable, setDockerAvailable] = useState<boolean | null>(null);
   const [availableImages, setAvailableImages] = useState<string[]>([]);
-
-  // Image pull state tracking (keyed by image tag)
   const [imageStates, setImageStates] = useState<Record<string, ImagePullState>>({});
   const pullPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pullingImagesRef = useRef<string[]>([]);
 
-  /** Fetch pull status for a specific image and update state */
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newVars, setNewVars] = useState<VarRow[]>([{ key: "", value: "" }]);
+  const [newDockerfile, setNewDockerfile] = useState("");
+  const [newBaseImage, setNewBaseImage] = useState("");
+  const [newPorts, setNewPorts] = useState<number[]>([]);
+  const [newInitScript, setNewInitScript] = useState("");
+  const [newTab, setNewTab] = useState<Tab>("variables");
+  const [creating, setCreating] = useState(false);
+
   const refreshImageStatus = useCallback((tag: string) => {
     api.getImageStatus(tag).then((state) => {
       setImageStates((prev) => ({ ...prev, [tag]: state }));
     }).catch(() => {});
   }, []);
 
-  /** Trigger a pull for an image and start polling */
   const handlePullImage = useCallback((tag: string) => {
     api.pullImage(tag).then((res) => {
       if (res.state) {
@@ -65,11 +76,9 @@ export function EnvManager({ onClose, embedded = false }: Props) {
     }).catch(() => {});
   }, []);
 
-  // Track pulling images in a ref so the interval callback always reads current values
-  const pullingImagesRef = useRef<string[]>([]);
   useEffect(() => {
     const pullingImages = Object.entries(imageStates)
-      .filter(([, s]) => s.status === "pulling")
+      .filter(([, state]) => state.status === "pulling")
       .map(([tag]) => tag);
     pullingImagesRef.current = pullingImages;
 
@@ -97,25 +106,13 @@ export function EnvManager({ onClose, embedded = false }: Props) {
     };
   }, [imageStates, refreshImageStatus]);
 
-  // On mount, check image status for all envs that have docker images
   useEffect(() => {
     if (!dockerAvailable) return;
     for (const env of envs) {
-      const img = env.imageTag || env.baseImage;
-      if (img) refreshImageStatus(img);
+      const image = env.imageTag || env.baseImage;
+      if (image) refreshImageStatus(image);
     }
-  }, [envs, dockerAvailable, refreshImageStatus]);
-
-  // New env form
-  const [showCreate, setShowCreate] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newVars, setNewVars] = useState<VarRow[]>([{ key: "", value: "" }]);
-  const [newDockerfile, setNewDockerfile] = useState("");
-  const [newBaseImage, setNewBaseImage] = useState("");
-  const [newPorts, setNewPorts] = useState<number[]>([]);
-  const [newInitScript, setNewInitScript] = useState("");
-  const [newTab, setNewTab] = useState<Tab>("variables");
-  const [creating, setCreating] = useState(false);
+  }, [dockerAvailable, envs, refreshImageStatus]);
 
   const refresh = useCallback(() => {
     api.listEnvs().then(setEnvs).catch(() => {}).finally(() => setLoading(false));
@@ -123,14 +120,23 @@ export function EnvManager({ onClose, embedded = false }: Props) {
 
   useEffect(() => {
     refresh();
-    // Check Docker availability
-    api.getContainerStatus().then((s) => {
-      setDockerAvailable(s.available);
-      if (s.available) {
+    api.getContainerStatus().then((status) => {
+      setDockerAvailable(status.available);
+      if (status.available) {
         api.getContainerImages().then(setAvailableImages).catch(() => {});
       }
     }).catch(() => setDockerAvailable(false));
   }, [refresh]);
+
+  function resetCreateForm() {
+    setNewName("");
+    setNewVars([{ key: "", value: "" }]);
+    setNewDockerfile("");
+    setNewBaseImage("");
+    setNewPorts([]);
+    setNewInitScript("");
+    setNewTab("variables");
+  }
 
   function startEdit(env: MokuEnv) {
     setEditingSlug(env.slug);
@@ -156,8 +162,8 @@ export function EnvManager({ onClose, embedded = false }: Props) {
     if (!editingSlug) return;
     const variables: Record<string, string> = {};
     for (const row of editVars) {
-      const k = row.key.trim();
-      if (k) variables[k] = row.value;
+      const key = row.key.trim();
+      if (key) variables[key] = row.value;
     }
     try {
       await api.updateEnv(editingSlug, {
@@ -189,12 +195,14 @@ export function EnvManager({ onClose, embedded = false }: Props) {
   async function handleCreate() {
     const name = newName.trim();
     if (!name) return;
+
     setCreating(true);
     const variables: Record<string, string> = {};
     for (const row of newVars) {
-      const k = row.key.trim();
-      if (k) variables[k] = row.value;
+      const key = row.key.trim();
+      if (key) variables[key] = row.value;
     }
+
     try {
       await api.createEnv(name, variables, {
         dockerfile: newDockerfile || undefined,
@@ -202,13 +210,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
         ports: newPorts.length > 0 ? newPorts : undefined,
         initScript: newInitScript || undefined,
       });
-      setNewName("");
-      setNewVars([{ key: "", value: "" }]);
-      setNewDockerfile("");
-      setNewBaseImage("");
-      setNewPorts([]);
-      setNewInitScript("");
-      setNewTab("variables");
+      resetCreateForm();
       setShowCreate(false);
       setError("");
       refresh();
@@ -223,25 +225,26 @@ export function EnvManager({ onClose, embedded = false }: Props) {
     setBuilding(true);
     setBuildLog("Starting build...\n");
     setShowBuildLog(true);
+
     try {
       await api.buildEnvImage(slug);
-      // Poll build status
       const poll = async () => {
         const status = await api.getEnvBuildStatus(slug);
         if (status.buildStatus === "building") {
           setTimeout(poll, 2000);
-        } else {
-          setBuilding(false);
-          if (status.buildStatus === "success") {
-            setBuildLog((prev) => prev + "\nBuild successful!");
-          } else {
-            setBuildLog((prev) => prev + `\nBuild failed: ${status.buildError || "Unknown error"}`);
-          }
-          refresh();
-          // Refresh images list
-          api.getContainerImages().then(setAvailableImages).catch(() => {});
+          return;
         }
+
+        setBuilding(false);
+        if (status.buildStatus === "success") {
+          setBuildLog((prev) => prev + "\nBuild successful!");
+        } else {
+          setBuildLog((prev) => prev + `\nBuild failed: ${status.buildError || "Unknown error"}`);
+        }
+        refresh();
+        api.getContainerImages().then(setAvailableImages).catch(() => {});
       };
+
       setTimeout(poll, 2000);
     } catch (e: unknown) {
       setBuilding(false);
@@ -250,153 +253,119 @@ export function EnvManager({ onClose, embedded = false }: Props) {
   }
 
   const dockerBadge = dockerAvailable === null ? null : dockerAvailable ? (
-    <span className="text-[10px] px-2 py-1 rounded-md bg-green-500/10 text-green-500 font-medium">Docker</span>
+    <StatusChip tone="success">Docker</StatusChip>
   ) : (
-    <span className="text-[10px] px-2 py-1 rounded-md bg-amber-500/10 text-amber-500 font-medium">No Docker</span>
+    <StatusChip tone="warning">No Docker</StatusChip>
   );
 
-  /* ─── Embedded (full page) ───────────────────────────────────────── */
+  const createForm = (
+    <div className="card-moku space-y-3 rounded-xl p-4">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-medium text-foreground">New Environment</span>
+        {!embedded && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              resetCreateForm();
+              setError("");
+            }}
+          >
+            Reset
+          </Button>
+        )}
+      </div>
+
+      <Input
+        type="text"
+        value={newName}
+        onChange={(e) => setNewName(e.target.value)}
+        placeholder="Environment name (e.g. production)"
+        className="min-h-11 px-3 py-2.5"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && newName.trim()) handleCreate();
+        }}
+      />
+
+      {renderTabs(newTab, setNewTab)}
+      {newTab === "variables" && <VarEditor rows={newVars} onChange={setNewVars} />}
+      {newTab === "docker" && renderDockerTab(newDockerfile, setNewDockerfile, newBaseImage, setNewBaseImage)}
+      {newTab === "ports" && renderPortsTab(newPorts, setNewPorts)}
+      {newTab === "init" && renderInitScriptTab(newInitScript, setNewInitScript)}
+
+      {error && <ErrorBanner message={error} />}
+
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <p className="text-[11px] text-muted-foreground">
+          Stored in <code className="rounded bg-accent px-1 py-0.5 text-[10px]">~/.moku/envs/</code>
+        </p>
+        <Button
+          type="button"
+          onClick={handleCreate}
+          disabled={!newName.trim() || creating}
+          className="min-h-11"
+        >
+          {creating ? "Creating..." : "Create"}
+        </Button>
+      </div>
+    </div>
+  );
 
   if (embedded) {
     return (
-      <div className="h-full bg-cc-bg text-cc-fg font-sans-ui antialiased overflow-y-auto overflow-x-hidden">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-safe">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-3 mb-2">
+      <div className="h-full overflow-x-hidden overflow-y-auto bg-background font-sans text-foreground antialiased">
+        <div className="mx-auto max-w-2xl px-4 py-6 pb-safe sm:px-6 sm:py-10">
+          <div className="mb-2 flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-lg font-semibold text-cc-fg">Environments</h1>
-              <p className="mt-0.5 text-[13px] text-cc-muted leading-relaxed">
+              <h1 className="text-lg font-semibold text-foreground">Environments</h1>
+              <p className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground">
                 Reusable environment profiles with optional Docker isolation.
               </p>
             </div>
             {dockerBadge}
           </div>
 
-          {/* Toolbar */}
-          <div className="flex items-center gap-2 mt-4 mb-5">
+          <div className="mb-5 mt-4 flex items-center gap-2">
             <div className="flex-1" />
-            <button
-              onClick={() => setShowCreate(!showCreate)}
-              className={`flex items-center gap-1.5 px-3.5 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors cursor-pointer shrink-0 ${
-                showCreate
-                  ? "bg-cc-active text-cc-fg"
-                  : "bg-cc-primary hover:bg-cc-primary-hover text-white"
-              }`}
+            <Button
+              type="button"
+              variant={showCreate ? "secondary" : "default"}
+              size="sm"
+              className="min-h-11 shrink-0"
+              onClick={() => {
+                setShowCreate((current) => !current);
+                setError("");
+              }}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-4">
                 {showCreate ? <path d="M18 6 6 18M6 6l12 12" /> : <path d="M12 5v14M5 12h14" />}
               </svg>
               <span className="hidden sm:inline">{showCreate ? "Cancel" : "New Environment"}</span>
-            </button>
+            </Button>
           </div>
 
-          {/* Inline create form */}
           {showCreate && (
-            <div
-              className="mb-6 rounded-xl bg-cc-card p-4 sm:p-5 space-y-3"
-              style={{ animation: "fadeSlideIn 150ms ease-out" }}
-            >
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="Environment name (e.g. production)"
-                className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && newName.trim()) handleCreate();
-                }}
-              />
-              {renderTabs(newTab, setNewTab)}
-              {newTab === "variables" && <VarEditor rows={newVars} onChange={setNewVars} />}
-              {newTab === "docker" && renderDockerTab(newDockerfile, setNewDockerfile, newBaseImage, setNewBaseImage)}
-              {newTab === "ports" && renderPortsTab(newPorts, setNewPorts)}
-              {newTab === "init" && renderInitScriptTab(newInitScript, setNewInitScript)}
-
-              {error && (
-                <div className="px-3 py-2 rounded-lg bg-cc-error/10 text-xs text-cc-error">{error}</div>
-              )}
-
-              <div className="flex items-center justify-between pt-1">
-                <p className="text-[11px] text-cc-muted">
-                  Stored in <code className="text-[10px]">~/.moku/envs/</code>
-                </p>
-                <button
-                  onClick={handleCreate}
-                  disabled={!newName.trim() || creating}
-                  className={`px-4 py-2.5 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
-                    newName.trim() && !creating
-                      ? "bg-cc-primary hover:bg-cc-primary-hover text-white cursor-pointer"
-                      : "bg-cc-hover text-cc-muted cursor-not-allowed"
-                  }`}
-                >
-                  {creating ? "Creating..." : "Create"}
-                </button>
-              </div>
+            <div className="mb-6" style={{ animation: "fadeSlideIn 150ms ease-out" }}>
+              {createForm}
             </div>
           )}
 
-          {/* Stats */}
-          <div className="flex items-center gap-2 mb-3 text-[12px] text-cc-muted">
+          <div className="mb-3 flex items-center gap-2 text-[12px] text-muted-foreground">
             <span>{envs.length} environment{envs.length !== 1 ? "s" : ""}</span>
           </div>
 
-          {/* Env list */}
           {loading ? (
-            <div className="py-12 text-center text-sm text-cc-muted">Loading environments...</div>
+            <div className="py-12 text-center text-sm text-muted-foreground">Loading environments...</div>
           ) : envs.length === 0 ? (
-            <div className="py-12 text-center text-sm text-cc-muted">No environments yet.</div>
+            <div className="py-12 text-center text-sm text-muted-foreground">No environments yet.</div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-2">
               {envs.map((env) => {
-                const isEditing = editingSlug === env.slug;
-                const varCount = Object.keys(env.variables).length;
-
-                if (isEditing) {
+                if (editingSlug === env.slug) {
                   return (
-                    <div
-                      key={env.slug}
-                      className="rounded-xl bg-cc-card p-4 space-y-3"
-                      style={{ animation: "fadeSlideIn 150ms ease-out" }}
-                    >
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        placeholder="Environment name"
-                        className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
-                      />
-                      <div className="space-y-3">
-                        <div>
-                          <div className="text-[11px] font-medium text-cc-muted mb-1.5">Variables</div>
-                          <VarEditor rows={editVars} onChange={setEditVars} />
-                        </div>
-                        <div>
-                          <div className="text-[11px] font-medium text-cc-muted mb-1.5">Docker</div>
-                          {renderDockerTab(editDockerfile, setEditDockerfile, editBaseImage, setEditBaseImage, env.slug, env)}
-                        </div>
-                        <div>
-                          <div className="text-[11px] font-medium text-cc-muted mb-1.5">Ports</div>
-                          {renderPortsTab(editPorts, setEditPorts)}
-                        </div>
-                        <div>
-                          <div className="text-[11px] font-medium text-cc-muted mb-1.5">Init Script</div>
-                          {renderInitScriptTab(editInitScript, setEditInitScript)}
-                        </div>
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={cancelEdit}
-                          className="px-3 py-2.5 min-h-[44px] text-sm rounded-lg text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => void saveEdit()}
-                          className="px-4 py-2.5 min-h-[44px] text-sm rounded-lg font-medium bg-cc-primary hover:bg-cc-primary-hover text-white transition-colors cursor-pointer"
-                        >
-                          Save
-                        </button>
-                      </div>
+                    <div key={env.slug} style={{ animation: "fadeSlideIn 150ms ease-out" }}>
+                      {renderEditor(env, false)}
                     </div>
                   );
                 }
@@ -405,7 +374,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
                   <EnvRow
                     key={env.slug}
                     env={env}
-                    varCount={varCount}
+                    varCount={Object.keys(env.variables).length}
                     onStartEdit={() => startEdit(env)}
                     onDelete={() => void handleDelete(env.slug)}
                   />
@@ -414,161 +383,124 @@ export function EnvManager({ onClose, embedded = false }: Props) {
             </div>
           )}
 
-          {/* Error banner (when not inside create form) */}
-          {error && !showCreate && (
-            <div className="mt-4 px-3 py-2 rounded-lg bg-cc-error/10 text-xs text-cc-error">{error}</div>
-          )}
+          {error && !showCreate && <div className="mt-4"><ErrorBanner message={error} /></div>}
         </div>
       </div>
     );
   }
 
-  /* ─── Modal mode ─────────────────────────────────────────────────── */
-
-  const createForm = (
-    <div className="rounded-xl bg-cc-card p-4 space-y-2.5">
-      <span className="text-sm font-medium text-cc-fg">New Environment</span>
-      <input
-        type="text"
-        value={newName}
-        onChange={(e) => setNewName(e.target.value)}
-        placeholder="Environment name (e.g. production)"
-        className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && newName.trim()) handleCreate();
-        }}
-      />
-      {renderTabs(newTab, setNewTab)}
-      {newTab === "variables" && <VarEditor rows={newVars} onChange={setNewVars} />}
-      {newTab === "docker" && renderDockerTab(newDockerfile, setNewDockerfile, newBaseImage, setNewBaseImage)}
-      {newTab === "ports" && renderPortsTab(newPorts, setNewPorts)}
-      {newTab === "init" && renderInitScriptTab(newInitScript, setNewInitScript)}
-      <button
-        onClick={handleCreate}
-        disabled={!newName.trim() || creating}
-        className={`px-4 py-2.5 min-h-[44px] text-sm font-medium rounded-lg transition-colors ${
-          newName.trim() && !creating
-            ? "bg-cc-primary hover:bg-cc-primary-hover text-white cursor-pointer"
-            : "bg-cc-hover text-cc-muted cursor-not-allowed"
-        }`}
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose?.(); }}>
+      <DialogContent
+        showCloseButton={false}
+        className="top-auto left-0 bottom-0 w-full max-w-none translate-x-0 translate-y-0 gap-0 rounded-t-[14px] rounded-b-none p-0 sm:top-1/2 sm:left-1/2 sm:bottom-auto sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[14px]"
       >
-        {creating ? "Creating..." : "Create"}
-      </button>
-    </div>
-  );
-
-  const environmentsList = loading ? (
-    <div className="text-sm text-cc-muted text-center py-6">Loading environments...</div>
-  ) : envs.length === 0 ? (
-    <div className="text-sm text-cc-muted text-center py-6">No environments yet.</div>
-  ) : (
-    <div className="space-y-3">
-      {envs.map((env) => (
-        <div key={env.slug} className="rounded-xl bg-cc-card overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-2.5">
-            <span className="text-sm font-medium text-cc-fg flex-1">{env.name}</span>
-            {env.imageTag && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono-code">
-                {env.imageTag.split(":")[0]?.split("/").pop() || env.imageTag}
-              </span>
+        <div className="flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[14px] border border-border bg-background sm:max-h-[80dvh] sm:rounded-[14px]">
+          <DialogHeader className="shrink-0 flex-row items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5 sm:py-4">
+            <div className="flex items-center gap-2">
+              <DialogTitle className="text-sm font-semibold text-foreground">Manage Environments</DialogTitle>
+              {dockerBadge}
+            </div>
+            {onClose && (
+              <Button type="button" variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose}>
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="size-3.5">
+                  <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
+                </svg>
+              </Button>
             )}
-            <span className="text-xs text-cc-muted">
-              {Object.keys(env.variables).length} var{Object.keys(env.variables).length !== 1 ? "s" : ""}
-            </span>
-            {editingSlug === env.slug ? (
-              <button onClick={cancelEdit} className="text-xs px-2 py-1.5 min-h-[44px] text-cc-muted hover:text-cc-fg cursor-pointer">Cancel</button>
+          </DialogHeader>
+
+          <div className="flex-1 space-y-4 overflow-y-auto px-3 py-3 pb-safe sm:px-5 sm:py-4">
+            {error && <ErrorBanner message={error} />}
+
+            {loading ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">Loading environments...</div>
+            ) : envs.length === 0 ? (
+              <div className="py-6 text-center text-sm text-muted-foreground">No environments yet.</div>
             ) : (
-              <>
-                <button onClick={() => startEdit(env)} className="text-xs px-2 py-1.5 min-h-[44px] text-cc-muted hover:text-cc-fg cursor-pointer">Edit</button>
-                <button onClick={() => handleDelete(env.slug)} className="text-xs px-2 py-1.5 min-h-[44px] text-cc-muted hover:text-cc-error cursor-pointer">Delete</button>
-              </>
-            )}
-          </div>
-
-          {editingSlug === env.slug && (
-            <div className="px-3 py-3 space-y-2">
-              <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Environment name"
-                className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow" />
               <div className="space-y-3">
-                <div><div className="text-[11px] font-medium text-cc-muted mb-1.5">Variables</div><VarEditor rows={editVars} onChange={setEditVars} /></div>
-                <div><div className="text-[11px] font-medium text-cc-muted mb-1.5">Docker</div>{renderDockerTab(editDockerfile, setEditDockerfile, editBaseImage, setEditBaseImage, env.slug, env)}</div>
-                <div><div className="text-[11px] font-medium text-cc-muted mb-1.5">Ports</div>{renderPortsTab(editPorts, setEditPorts)}</div>
-                <div><div className="text-[11px] font-medium text-cc-muted mb-1.5">Init Script</div>{renderInitScriptTab(editInitScript, setEditInitScript)}</div>
+                {envs.map((env) => (
+                  <div key={env.slug}>
+                    {editingSlug === env.slug ? (
+                      renderEditor(env, true)
+                    ) : (
+                      <ModalEnvRow
+                        env={env}
+                        onEdit={() => startEdit(env)}
+                        onDelete={() => void handleDelete(env.slug)}
+                      />
+                    )}
+                  </div>
+                ))}
               </div>
-              <button onClick={saveEdit} className="px-4 py-2.5 min-h-[44px] text-sm font-medium bg-cc-primary hover:bg-cc-primary-hover text-white rounded-lg transition-colors cursor-pointer">Save</button>
-            </div>
-          )}
+            )}
 
-          {editingSlug !== env.slug && Object.keys(env.variables).length > 0 && (
-            <div className="px-3 py-2.5 space-y-1">
-              {Object.entries(env.variables).map(([k, v]) => (
-                <div key={k} className="grid grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-1.5 text-xs leading-5">
-                  <span className="font-mono-code text-cc-fg break-all">{k}</span>
-                  <span className="text-cc-muted">=</span>
-                  <span className="font-mono-code text-cc-muted break-all whitespace-pre-wrap">{v}</span>
-                </div>
-              ))}
-            </div>
-          )}
+            {createForm}
+          </div>
         </div>
-      ))}
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 
-  const panel = (
-    <div
-      className="w-full max-w-lg max-h-[90dvh] sm:max-h-[80dvh] mx-0 sm:mx-4 flex flex-col bg-cc-bg rounded-t-[14px] sm:rounded-[14px] shadow-2xl overflow-hidden"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4">
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold text-cc-fg">Manage Environments</h2>
-          {dockerBadge}
-        </div>
-        {onClose && (
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="w-8 h-8 flex items-center justify-center rounded-md text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
-          >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
-              <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
-            </svg>
-          </button>
-        )}
-      </div>
-      <div className="flex-1 overflow-y-auto px-3 sm:px-5 py-3 sm:py-4 pb-safe space-y-4">
-        {error && <div className="px-3 py-2 rounded-lg bg-cc-error/10 text-xs text-cc-error">{error}</div>}
-        {environmentsList}
-        {createForm}
-      </div>
-    </div>
-  );
-
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" onClick={onClose}>
-      {panel}
-    </div>,
-    document.body,
-  );
-
-  /* ─── Shared tab/section renderers ───────────────────────────────── */
-
-  function renderTabs(activeTab: Tab, setTab: (t: Tab) => void) {
+  function renderEditor(env: MokuEnv, compact: boolean) {
     return (
-      <div className="flex gap-0.5 mb-2.5">
-        {(["variables", "docker", "ports", "init"] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-3 py-2.5 min-h-[44px] text-[11px] font-medium transition-colors cursor-pointer capitalize rounded-md ${
-              activeTab === t
-                ? "text-cc-primary bg-cc-primary/8"
-                : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
-            }`}
+      <div className={cn("card-moku space-y-3 rounded-xl p-4", compact && "p-3")}>
+        <Input
+          type="text"
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          placeholder="Environment name"
+          className="min-h-11 px-3 py-2.5"
+        />
+
+        <div className="space-y-3">
+          <div>
+            <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">Variables</div>
+            <VarEditor rows={editVars} onChange={setEditVars} />
+          </div>
+          <div>
+            <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">Docker</div>
+            {renderDockerTab(editDockerfile, setEditDockerfile, editBaseImage, setEditBaseImage, env.slug, env)}
+          </div>
+          <div>
+            <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">Ports</div>
+            {renderPortsTab(editPorts, setEditPorts)}
+          </div>
+          <div>
+            <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">Init Script</div>
+            {renderInitScriptTab(editInitScript, setEditInitScript)}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={cancelEdit} className="min-h-11">
+            Cancel
+          </Button>
+          <Button type="button" onClick={() => void saveEdit()} className="min-h-11">
+            Save
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderTabs(activeTab: Tab, setTab: (tab: Tab) => void) {
+    return (
+      <div className="flex flex-wrap gap-1">
+        {TAB_ORDER.map((tab) => (
+          <Button
+            key={tab}
+            type="button"
+            variant={activeTab === tab ? "secondary" : "ghost"}
+            size="xs"
+            className={cn(
+              "min-h-11 rounded-md px-3 py-2.5 text-[11px] font-medium capitalize",
+              activeTab === tab && "text-primary",
+            )}
+            onClick={() => setTab(tab)}
           >
-            {t}
-          </button>
+            {tab}
+          </Button>
         ))}
       </div>
     );
@@ -576,141 +508,123 @@ export function EnvManager({ onClose, embedded = false }: Props) {
 
   function renderDockerTab(
     dockerfile: string,
-    setDockerfile: (v: string) => void,
+    setDockerfile: (value: string) => void,
     baseImage: string,
-    setBaseImage: (v: string) => void,
+    setBaseImage: (value: string) => void,
     slug?: string,
     env?: MokuEnv,
   ) {
-    const effectiveImg = env?.imageTag || baseImage;
-    const imgState = effectiveImg ? imageStates[effectiveImg] : undefined;
-    const isPulling = imgState?.status === "pulling";
+    const effectiveImage = env?.imageTag || baseImage;
+    const imageState = effectiveImage ? imageStates[effectiveImage] : undefined;
+    const isPulling = imageState?.status === "pulling";
 
     return (
       <div className="space-y-3">
-        {/* Base image selector */}
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-[11px] text-cc-muted">Base Image</label>
-            {effectiveImg && (
-              <div className="flex items-center gap-1.5">
-                {imgState?.status === "ready" && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500">Ready</span>
-                )}
-                {imgState?.status === "pulling" && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 flex items-center gap-1">
-                    <span className="w-2.5 h-2.5 border border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="text-[11px] text-muted-foreground">Base Image</label>
+            {effectiveImage && (
+              <div className="flex flex-wrap items-center justify-end gap-1.5">
+                {imageState?.status === "ready" && <StatusChip tone="success">Ready</StatusChip>}
+                {imageState?.status === "pulling" && (
+                  <StatusChip tone="warning">
+                    <span className="size-2.5 rounded-full border border-warning/30 border-t-warning animate-spin" />
                     Pulling...
-                  </span>
+                  </StatusChip>
                 )}
-                {imgState?.status === "idle" && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-cc-hover text-cc-muted">Not downloaded</span>
-                )}
-                {imgState?.status === "error" && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-cc-error/10 text-cc-error">Pull failed</span>
-                )}
-                <button
-                  onClick={() => handlePullImage(effectiveImg)}
+                {imageState?.status === "idle" && <StatusChip tone="muted">Not downloaded</StatusChip>}
+                {imageState?.status === "error" && <StatusChip tone="destructive">Pull failed</StatusChip>}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
                   disabled={isPulling}
-                  className={`text-xs px-2.5 py-1.5 min-h-[44px] rounded transition-colors ${
-                    isPulling
-                      ? "bg-cc-hover text-cc-muted cursor-not-allowed"
-                      : "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 cursor-pointer"
-                  }`}
+                  onClick={() => handlePullImage(effectiveImage)}
+                  className="min-h-11"
                 >
-                  {isPulling ? "Pulling..." : imgState?.status === "ready" ? "Update" : "Pull"}
-                </button>
+                  {isPulling ? "Pulling..." : imageState?.status === "ready" ? "Update" : "Pull"}
+                </Button>
               </div>
             )}
           </div>
+
           <select
             value={baseImage}
             onChange={(e) => {
               setBaseImage(e.target.value);
               if (e.target.value) refreshImageStatus(e.target.value);
             }}
-            className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-cc-bg rounded-lg text-cc-fg focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
+            className="input-moku min-h-11 w-full rounded-md px-3 py-2.5 text-sm text-foreground outline-none"
           >
             <option value="">None (local execution)</option>
             <option value="moku:latest">moku:latest</option>
-            {availableImages
-              .filter((img) => img !== "moku:latest")
-              .map((img) => (
-                <option key={img} value={img}>{img}</option>
-              ))}
+            {availableImages.filter((img) => img !== "moku:latest").map((img) => (
+              <option key={img} value={img}>{img}</option>
+            ))}
           </select>
         </div>
 
-        {/* Pull progress */}
-        {isPulling && imgState?.progress && imgState.progress.length > 0 && (
-          <pre className="px-3 py-2 text-[10px] font-mono-code bg-cc-code-bg rounded-lg text-cc-muted max-h-[120px] overflow-auto whitespace-pre-wrap">
-            {imgState.progress.slice(-20).join("\n")}
+        {isPulling && imageState?.progress && imageState.progress.length > 0 && (
+          <pre className="max-h-[120px] overflow-auto whitespace-pre-wrap rounded-lg bg-code-bg px-3 py-2 font-mono text-[10px] text-muted-foreground">
+            {imageState.progress.slice(-20).join("\n")}
           </pre>
         )}
 
-        {/* Dockerfile editor */}
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-[11px] text-cc-muted">Dockerfile (optional override)</label>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="text-[11px] text-muted-foreground">Dockerfile (optional override)</label>
             {!dockerfile && (
-              <button
-                onClick={() => setDockerfile(DEFAULT_DOCKERFILE)}
-                className="text-[10px] text-cc-primary hover:underline cursor-pointer"
-              >
+              <Button type="button" variant="link" size="xs" className="h-auto px-0 py-0" onClick={() => setDockerfile(DEFAULT_DOCKERFILE)}>
                 Use template
-              </button>
+              </Button>
             )}
           </div>
-          <textarea
+
+          <Textarea
             value={dockerfile}
             onChange={(e) => setDockerfile(e.target.value)}
             placeholder="# Custom Dockerfile content..."
             rows={10}
-            className="w-full px-3 py-2.5 text-[11px] font-mono-code bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 resize-y transition-shadow"
-            style={{ minHeight: "120px" }}
+            className="min-h-[120px] resize-y px-3 py-2.5 font-mono text-[11px]"
           />
         </div>
 
-        {/* Build button + status */}
         {slug && dockerfile && (
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <button
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
                 onClick={() => handleBuild(slug)}
                 disabled={building}
-                className={`px-3 py-2.5 min-h-[44px] text-xs font-medium rounded-lg transition-colors ${
-                  building
-                    ? "bg-cc-hover text-cc-muted cursor-not-allowed"
-                    : "bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 cursor-pointer"
-                }`}
+                size="sm"
+                className="min-h-11"
               >
                 {building ? "Building..." : "Build Image"}
-              </button>
+              </Button>
               {env?.buildStatus === "success" && env.lastBuiltAt && (
-                <span className="text-[10px] text-green-500">
+                <span className="text-[10px] text-success">
                   Built {new Date(env.lastBuiltAt).toLocaleDateString()}
                 </span>
               )}
-              {env?.buildStatus === "error" && (
-                <span className="text-[10px] text-cc-error">Build failed</span>
-              )}
-              {env?.imageTag && (
-                <span className="text-[10px] text-cc-muted font-mono-code">{env.imageTag}</span>
-              )}
+              {env?.buildStatus === "error" && <span className="text-[10px] text-destructive">Build failed</span>}
+              {env?.imageTag && <StatusChip tone="primary" mono>{env.imageTag}</StatusChip>}
             </div>
 
             {showBuildLog && buildLog && (
               <div className="relative">
-                <button
-                  onClick={() => setShowBuildLog(false)}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
                   aria-label="Close build log"
-                  className="absolute top-1 right-1 text-cc-muted hover:text-cc-fg cursor-pointer"
+                  className="absolute top-1 right-1"
+                  onClick={() => setShowBuildLog(false)}
                 >
-                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="size-3">
                     <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
                   </svg>
-                </button>
-                <pre className="px-3 py-2 text-[10px] font-mono-code bg-cc-code-bg rounded-lg text-cc-muted max-h-[200px] overflow-auto whitespace-pre-wrap">
+                </Button>
+                <pre className="max-h-[200px] overflow-auto whitespace-pre-wrap rounded-lg bg-code-bg px-3 py-2 font-mono text-[10px] text-muted-foreground">
                   {buildLog}
                 </pre>
               </div>
@@ -721,75 +635,67 @@ export function EnvManager({ onClose, embedded = false }: Props) {
     );
   }
 
-  function renderPortsTab(ports: number[], setPorts: (p: number[]) => void) {
+  function renderPortsTab(ports: number[], setPorts: (ports: number[]) => void) {
     return (
       <div className="space-y-2">
-        <label className="block text-[11px] text-cc-muted">Ports to expose in the container</label>
-        {ports.map((port, i) => (
-          <div key={i} className="flex items-center gap-1.5">
-            <input
+        <label className="block text-[11px] text-muted-foreground">Ports to expose in the container</label>
+        {ports.map((port, index) => (
+          <div key={`${port}-${index}`} className="flex items-center gap-1.5">
+            <Input
               type="number"
               value={port}
               onChange={(e) => {
                 const next = [...ports];
-                next[i] = parseInt(e.target.value, 10) || 0;
+                next[index] = parseInt(e.target.value, 10) || 0;
                 setPorts(next);
               }}
               min={1}
               max={65535}
-              className="w-28 px-3 py-2.5 min-h-[44px] text-xs font-mono-code bg-cc-bg rounded-lg text-cc-fg focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
+              className="min-h-11 w-28 px-3 py-2.5 font-mono text-xs"
             />
-            <button
-              onClick={() => setPorts(ports.filter((_, idx) => idx !== i))}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
               aria-label="Remove port"
-              className="w-10 h-10 min-h-[44px] flex items-center justify-center rounded-lg text-cc-muted hover:text-cc-error hover:bg-cc-error/10 transition-colors cursor-pointer shrink-0"
+              className="min-h-11 text-muted-foreground hover:text-destructive"
+              onClick={() => setPorts(ports.filter((_, portIndex) => portIndex !== index))}
             >
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="size-3">
                 <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
               </svg>
-            </button>
+            </Button>
           </div>
         ))}
-        <button
-          onClick={() => setPorts([...ports, 3000])}
-          className="text-xs py-2 min-h-[44px] text-cc-muted hover:text-cc-fg transition-colors cursor-pointer"
-        >
+        <Button type="button" variant="ghost" size="sm" className="min-h-11 px-0" onClick={() => setPorts([...ports, 3000])}>
           + Add port
-        </button>
+        </Button>
       </div>
     );
   }
 
-  function renderInitScriptTab(
-    initScript: string,
-    setInitScript: (v: string) => void,
-  ) {
+  function renderInitScriptTab(initScript: string, setInitScript: (value: string) => void) {
     return (
       <div className="space-y-3">
         <div>
-          <label className="block text-[11px] text-cc-muted mb-1">
-            Init Script
-          </label>
-          <textarea
+          <label className="mb-1 block text-[11px] text-muted-foreground">Init Script</label>
+          <Textarea
             value={initScript}
             onChange={(e) => setInitScript(e.target.value)}
             placeholder={"# Runs inside the container before Claude starts\n# Example:\nbun install\npip install -r requirements.txt"}
             rows={10}
-            className="w-full px-3 py-2.5 text-[11px] font-mono-code bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 resize-y transition-shadow"
-            style={{ minHeight: "120px" }}
+            className="min-h-[120px] resize-y px-3 py-2.5 font-mono text-[11px]"
           />
         </div>
-        <p className="text-[10px] text-cc-muted">
+        <p className="text-[10px] text-muted-foreground">
           This shell script runs as root inside the container via{" "}
-          <code className="bg-cc-hover px-1 rounded">sh -lc</code> before the session starts.
+          <code className="rounded bg-accent px-1 py-0.5">sh -lc</code> before the session starts.
           Timeout: 120s.
         </p>
       </div>
     );
   }
 }
-
-/* ─── Env Row (for embedded page — display only) ─────────────────── */
 
 interface EnvRowProps {
   env: MokuEnv;
@@ -800,74 +706,105 @@ interface EnvRowProps {
 
 function EnvRow({ env, varCount, onStartEdit, onDelete }: EnvRowProps) {
   return (
-    <div className="group flex items-start gap-3 px-3 py-3 min-h-[44px] rounded-lg hover:bg-cc-hover/60 transition-colors">
-      {/* Icon */}
-      <div className="shrink-0 mt-0.5 w-7 h-7 rounded-md bg-cc-primary/10 flex items-center justify-center">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5 text-cc-primary">
+    <div className="group flex min-h-[44px] items-start gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-accent/60">
+      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-3.5">
           <path d="M12 3v18M3 12h18M4.5 6.5l15 0M4.5 17.5h15M6.5 4.5v15M17.5 4.5v15" />
         </svg>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-cc-fg truncate">{env.name}</span>
-          {env.imageTag && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono-code">
-              {env.imageTag.split(":")[0]?.split("/").pop() || env.imageTag}
-            </span>
-          )}
-          {!env.imageTag && env.baseImage && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-cc-hover text-cc-muted font-mono-code">
-              {env.baseImage}
-            </span>
-          )}
+          <span className="truncate text-sm font-medium text-foreground">{env.name}</span>
+          {env.imageTag && <StatusChip tone="primary" mono>{env.imageTag.split(":")[0]?.split("/").pop() || env.imageTag}</StatusChip>}
+          {!env.imageTag && env.baseImage && <StatusChip tone="muted" mono>{env.baseImage}</StatusChip>}
         </div>
-        <p className="mt-0.5 text-xs text-cc-muted">
+        <p className="mt-0.5 text-xs text-muted-foreground">
           {varCount} variable{varCount !== 1 ? "s" : ""}
           {env.ports && env.ports.length > 0 && ` · ${env.ports.length} port${env.ports.length !== 1 ? "s" : ""}`}
           {env.initScript && " · init script"}
         </p>
       </div>
 
-      {/* Actions */}
-      <div className="shrink-0 flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={onStartEdit}
-          className="p-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 sm:p-1.5 rounded-md text-cc-muted hover:text-cc-fg hover:bg-cc-active transition-colors cursor-pointer"
+      <div className="flex shrink-0 items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
           aria-label="Edit"
+          onClick={onStartEdit}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-3.5">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z" />
           </svg>
-        </button>
-        <button
-          onClick={onDelete}
-          className="p-2 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 sm:p-1.5 rounded-md text-cc-muted hover:text-cc-error hover:bg-cc-error/10 transition-colors cursor-pointer"
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="min-h-[44px] min-w-[44px] text-muted-foreground hover:text-destructive sm:min-h-0 sm:min-w-0"
           aria-label="Delete"
+          onClick={onDelete}
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-3.5">
             <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14Z" />
           </svg>
-        </button>
+        </Button>
       </div>
     </div>
   );
 }
 
+function ModalEnvRow({
+  env,
+  onEdit,
+  onDelete,
+}: {
+  env: MokuEnv;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="card-moku overflow-hidden rounded-xl">
+      <div className="flex items-center gap-2 px-3 py-2.5">
+        <span className="flex-1 text-sm font-medium text-foreground">{env.name}</span>
+        {env.imageTag && <StatusChip tone="primary" mono>{env.imageTag.split(":")[0]?.split("/").pop() || env.imageTag}</StatusChip>}
+        {env.baseImage && !env.imageTag && <StatusChip tone="muted" mono>{env.baseImage}</StatusChip>}
+        <span className="text-xs text-muted-foreground">
+          {Object.keys(env.variables).length} var{Object.keys(env.variables).length !== 1 ? "s" : ""}
+        </span>
+        <Button type="button" variant="ghost" size="xs" className="min-h-11" onClick={onEdit}>Edit</Button>
+        <Button type="button" variant="ghost" size="xs" className="min-h-11 text-muted-foreground hover:text-destructive" onClick={onDelete}>
+          Delete
+        </Button>
+      </div>
 
-/* ─── Key-Value Editor ────────────────────────────────────────────── */
+      {Object.keys(env.variables).length > 0 && (
+        <div className="space-y-1 px-3 py-2.5">
+          {Object.entries(env.variables).map(([key, value]) => (
+            <div key={key} className="grid grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-1.5 text-xs leading-5">
+              <span className="break-all font-mono text-foreground">{key}</span>
+              <span className="text-muted-foreground">=</span>
+              <span className="break-all whitespace-pre-wrap font-mono text-muted-foreground">{value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function VarEditor({ rows, onChange }: { rows: VarRow[]; onChange: (rows: VarRow[]) => void }) {
-  function updateRow(i: number, field: "key" | "value", val: string) {
+  function updateRow(index: number, field: "key" | "value", value: string) {
     const next = [...rows];
-    next[i] = { ...next[i], [field]: val };
+    next[index] = { ...next[index], [field]: value };
     onChange(next);
   }
 
-  function removeRow(i: number) {
-    const next = rows.filter((_, idx) => idx !== i);
+  function removeRow(index: number) {
+    const next = rows.filter((_, rowIndex) => rowIndex !== index);
     if (next.length === 0) next.push({ key: "", value: "" });
     onChange(next);
   }
@@ -878,40 +815,78 @@ function VarEditor({ rows, onChange }: { rows: VarRow[]; onChange: (rows: VarRow
 
   return (
     <div className="space-y-1.5">
-      {rows.map((row, i) => (
-        <div key={i} className="flex items-center gap-1.5">
-          <input
+      {rows.map((row, index) => (
+        <div key={index} className="flex items-center gap-1.5">
+          <Input
             type="text"
             value={row.key}
-            onChange={(e) => updateRow(i, "key", e.target.value)}
+            onChange={(e) => updateRow(index, "key", e.target.value)}
             placeholder="KEY"
-            className="flex-1 min-w-0 px-3 py-2.5 min-h-[44px] text-xs font-mono-code bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
+            className="min-h-11 flex-1 px-3 py-2.5 font-mono text-xs"
           />
-          <span className="text-[10px] text-cc-muted">=</span>
-          <input
+          <span className="text-[10px] text-muted-foreground">=</span>
+          <Input
             type="text"
             value={row.value}
-            onChange={(e) => updateRow(i, "value", e.target.value)}
+            onChange={(e) => updateRow(index, "value", e.target.value)}
             placeholder="value"
-            className="flex-1 min-w-0 px-3 py-2.5 min-h-[44px] text-xs font-mono-code bg-cc-bg rounded-lg text-cc-fg placeholder:text-cc-muted focus:outline-none focus:ring-1 focus:ring-cc-primary/40 transition-shadow"
+            className="min-h-11 flex-1 px-3 py-2.5 font-mono text-xs"
           />
-          <button
-            onClick={() => removeRow(i)}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
             aria-label="Remove variable"
-            className="w-10 h-10 min-h-[44px] flex items-center justify-center rounded-lg text-cc-muted hover:text-cc-error hover:bg-cc-error/10 transition-colors cursor-pointer shrink-0"
+            className="min-h-11 text-muted-foreground hover:text-destructive"
+            onClick={() => removeRow(index)}
           >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="size-3">
               <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
             </svg>
-          </button>
+          </Button>
         </div>
       ))}
-      <button
-        onClick={addRow}
-        className="text-xs py-2 min-h-[44px] text-cc-muted hover:text-cc-fg transition-colors cursor-pointer"
-      >
+
+      <Button type="button" variant="ghost" size="sm" className="min-h-11 px-0" onClick={addRow}>
         + Add variable
-      </button>
+      </Button>
     </div>
+  );
+}
+
+function ErrorBanner({ message }: { message: string }) {
+  return (
+    <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+      {message}
+    </div>
+  );
+}
+
+function StatusChip({
+  children,
+  className,
+  mono = false,
+  tone = "muted",
+}: {
+  children: React.ReactNode;
+  className?: string;
+  mono?: boolean;
+  tone?: "muted" | "primary" | "success" | "warning" | "destructive";
+}) {
+  return (
+    <span
+      className={cn(
+        "status-chip",
+        tone === "muted" && "status-chip-muted",
+        tone === "primary" && "status-chip-primary",
+        tone === "success" && "status-chip-success",
+        tone === "warning" && "status-chip-warning",
+        tone === "destructive" && "status-chip-destructive",
+        mono && "font-mono",
+        className,
+      )}
+    >
+      {children}
+    </span>
   );
 }

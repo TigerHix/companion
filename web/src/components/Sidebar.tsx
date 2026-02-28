@@ -1,8 +1,18 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { Plus, X, ChevronRight, AlertTriangle, Trash2 } from "lucide-react";
 import { useStore } from "../store.js";
 import { api } from "../api.js";
 import { connectSession, connectAllSessions, disconnectSession } from "../ws.js";
 import { navigateToSession, navigateHome, parseHash } from "../utils/routing.js";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ProjectGroup } from "./ProjectGroup.js";
 import { SessionItem } from "./SessionItem.js";
 import { groupSessionsByProject, type SessionItem as SessionItemType } from "../utils/project-grouping.js";
@@ -353,59 +363,58 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-full md:w-[260px] h-full flex flex-col bg-cc-sidebar">
+    <aside className="w-full md:w-[260px] h-full flex flex-col bg-sidebar">
       {/* Header */}
       <div className="p-3.5 pb-2">
         <div className="flex items-center gap-2.5">
           <img src={logoSrc} alt="" className="w-6 h-6" />
-          <span className="text-[13px] font-semibold text-cc-fg tracking-tight">Moku</span>
-          <button
+          <span className="text-[13px] font-semibold text-foreground tracking-tight">Moku</span>
+          <Button
             onClick={handleNewSession}
             title="New Session"
             aria-label="New Session"
-            className="ml-auto hidden md:flex w-8 h-8 rounded-lg bg-cc-primary hover:bg-cc-primary-hover text-white items-center justify-center transition-colors duration-150 cursor-pointer"
+            size="icon-sm"
+            className="ml-auto hidden md:inline-flex"
           >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3.5 h-3.5">
-              <path d="M8 3v10M3 8h10" />
-            </svg>
-          </button>
+            <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+          </Button>
           {/* Close button — mobile only (sidebar is full-width on mobile, so no backdrop to tap) */}
-          <button
+          <Button
             onClick={() => useStore.getState().setSidebarOpen(false)}
             aria-label="Close sidebar"
-            className="md:hidden ml-auto w-8 h-8 rounded-lg flex items-center justify-center text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+            variant="ghost"
+            size="icon-sm"
+            className="ml-auto md:hidden"
           >
-            <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4">
-              <path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z" />
-            </svg>
-          </button>
+            <X className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
       {/* Container archive confirmation */}
       {confirmArchiveId && (
-        <div className="mx-2 mb-1 p-2.5 rounded-[10px] bg-amber-500/10 border border-amber-500/20">
+        <div className="mx-2 mb-1 rounded-[10px] border border-warning/20 bg-warning/10 p-2.5">
           <div className="flex items-start gap-2">
-            <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4 text-amber-500 shrink-0 mt-0.5">
-              <path d="M8.982 1.566a1.13 1.13 0 00-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 01-1.1 0L7.1 5.995A.905.905 0 018 5zm.002 6a1 1 0 110 2 1 1 0 010-2z" />
-            </svg>
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] text-cc-fg leading-snug">
+              <p className="text-[11px] text-foreground leading-snug">
                 Archiving will <strong>remove the container</strong> and any uncommitted changes.
               </p>
               <div className="flex gap-2 mt-2">
-                <button
+                <Button
                   onClick={cancelArchive}
-                  className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-cc-hover text-cc-muted hover:text-cc-fg transition-colors cursor-pointer"
+                  variant="secondary"
+                  size="xs"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={confirmArchive}
-                  className="px-2.5 py-1 text-[11px] font-medium rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors cursor-pointer"
+                  variant="destructive"
+                  size="xs"
                 >
                   Archive
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -415,7 +424,7 @@ export function Sidebar() {
       {/* Session list */}
       <div className="flex-1 overflow-y-auto px-2.5 pb-2">
         {activeSessions.length === 0 && cronSessions.length === 0 && archivedSessions.length === 0 ? (
-          <p className="px-3 py-8 text-xs text-cc-muted text-center leading-relaxed">
+          <p className="px-3 py-8 text-xs text-muted-foreground text-center leading-relaxed">
             No sessions yet.
           </p>
         ) : (
@@ -437,18 +446,18 @@ export function Sidebar() {
 
             {cronSessions.length > 0 && (
               <div className="mt-2 pt-2">
-                <button
+                <Button
                   onClick={() => setShowCronSessions(!showCronSessions)}
-                  className="w-full px-3 py-1.5 text-[11px] font-medium text-violet-400 uppercase tracking-wider flex items-center gap-1.5 hover:text-violet-300 transition-colors cursor-pointer"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto w-full justify-start px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
                 >
-                  <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 transition-transform ${showCronSessions ? "rotate-90" : ""}`}>
-                    <path d="M6 4l4 4-4 4" />
-                  </svg>
+                  <ChevronRight className={`w-3 h-3 transition-transform ${showCronSessions ? "rotate-90" : ""}`} />
                   <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-60">
                     <path d="M8 2a6 6 0 100 12A6 6 0 008 2zM0 8a8 8 0 1116 0A8 8 0 010 8zm9-3a1 1 0 10-2 0v3a1 1 0 00.293.707l2 2a1 1 0 001.414-1.414L9 7.586V5z" />
                   </svg>
                   Scheduled Runs ({cronSessions.length})
-                </button>
+                </Button>
                 {showCronSessions && (
                   <div className="space-y-0.5 mt-1">
                     {cronSessions.map((s) => (
@@ -468,19 +477,19 @@ export function Sidebar() {
             )}
 
             {agentSessions.length > 0 && (
-              <div className="mt-2 pt-2 border-t border-cc-border">
-                <button
+              <div className="mt-2 pt-2 border-t border-border">
+                <Button
                   onClick={() => setShowAgentSessions(!showAgentSessions)}
-                  className="w-full px-3 py-1.5 text-[11px] font-medium text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 hover:text-emerald-300 transition-colors cursor-pointer"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto w-full justify-start px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
                 >
-                  <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 transition-transform ${showAgentSessions ? "rotate-90" : ""}`}>
-                    <path d="M6 4l4 4-4 4" />
-                  </svg>
+                  <ChevronRight className={`w-3 h-3 transition-transform ${showAgentSessions ? "rotate-90" : ""}`} />
                   <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-60">
                     <path d="M8 1.5a2.5 2.5 0 00-2.5 2.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5S9.38 1.5 8 1.5zM4 8a4 4 0 00-4 4v1.5a.5.5 0 00.5.5h15a.5.5 0 00.5-.5V12a4 4 0 00-4-4H4z" />
                   </svg>
                   Agent Runs ({agentSessions.length})
-                </button>
+                </Button>
                 {showAgentSessions && (
                   <div className="space-y-0.5 mt-1">
                     {agentSessions.map((s) => (
@@ -500,25 +509,27 @@ export function Sidebar() {
             )}
 
             {archivedSessions.length > 0 && (
-              <div className="mt-2 pt-2 border-t border-cc-border/50">
+              <div className="mt-2 pt-2 border-t border-border/50">
                 <div className="flex items-center">
-                  <button
+                  <Button
                     onClick={() => setShowArchived(!showArchived)}
-                    className="flex-1 px-3 py-1.5 text-[11px] font-medium text-cc-muted uppercase tracking-wider flex items-center gap-1.5 hover:text-cc-fg transition-colors cursor-pointer"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto flex-1 justify-start px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
                   >
-                    <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 transition-transform ${showArchived ? "rotate-90" : ""}`}>
-                      <path d="M6 4l4 4-4 4" />
-                    </svg>
+                    <ChevronRight className={`w-3 h-3 transition-transform ${showArchived ? "rotate-90" : ""}`} />
                     Archived ({archivedSessions.length})
-                  </button>
+                  </Button>
                   {showArchived && archivedSessions.length > 1 && (
-                    <button
+                    <Button
                       onClick={handleDeleteAllArchived}
-                      className="px-2 py-1 mr-1 text-[10px] text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors cursor-pointer"
+                      variant="ghost"
+                      size="xs"
+                      className="mr-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
                       title="Delete all archived sessions"
                     >
                       Delete all
-                    </button>
+                    </Button>
                   )}
                 </div>
                 {showArchived && (
@@ -545,27 +556,27 @@ export function Sidebar() {
 
       {/* Mobile FAB — New Session button in thumb zone */}
       <div className="md:hidden flex justify-end px-4 pb-2">
-        <button
+        <Button
           onClick={handleNewSession}
           title="New Session"
           aria-label="New Session"
-          className="w-12 h-12 rounded-full bg-cc-primary hover:bg-cc-primary-hover text-white flex items-center justify-center shadow-lg transition-colors duration-150 cursor-pointer"
+          size="icon-lg"
+          className="size-12 rounded-full shadow-lg"
         >
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5">
-            <path d="M8 3v10M3 8h10" />
-          </svg>
-        </button>
+          <Plus className="w-5 h-5" strokeWidth={2.5} />
+        </Button>
       </div>
 
       {/* Footer */}
-      <div className="p-2 pb-safe bg-cc-sidebar-footer">
+      <div className="p-2 pb-safe bg-sidebar">
         <div className="grid grid-cols-3 gap-1">
           {NAV_ITEMS.map((item) => {
             const isActive = item.activePages
               ? item.activePages.some((p) => route.page === p)
               : route.page === item.id;
             return (
-              <button
+              <Button
+                type="button"
                 key={item.id}
                 onClick={() => {
                   if (item.id !== "terminal") {
@@ -578,70 +589,70 @@ export function Sidebar() {
                   }
                 }}
                 title={item.label}
-                className={`flex flex-col items-center justify-center gap-0.5 py-2.5 px-1.5 min-h-[44px] rounded-lg transition-colors cursor-pointer ${
+                variant="ghost"
+                className={`min-h-[44px] h-auto flex-col gap-0.5 px-1.5 py-2.5 ${
                   isActive
-                    ? "bg-cc-active text-cc-fg"
-                    : "text-cc-muted hover:text-cc-fg hover:bg-cc-hover"
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 }`}
               >
                 <svg viewBox={item.viewBox} fill="currentColor" className="w-4 h-4">
                   <path d={item.iconPath} fillRule={item.fillRule} clipRule={item.clipRule} />
                 </svg>
                 <span className="text-[10px] font-medium leading-none">{item.shortLabel}</span>
-              </button>
+              </Button>
             );
           })}
         </div>
       </div>
 
       {/* Delete confirmation modal */}
-      {(confirmDeleteId || confirmDeleteAll) && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-[fadeIn_150ms_ease-out]"
-          onClick={confirmDeleteAll ? cancelDeleteAll : cancelDelete}
-        >
-          <div
-            className="mx-4 w-full max-w-[280px] bg-cc-card border border-cc-border rounded-xl shadow-2xl p-5 animate-[menu-appear_150ms_ease-out]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Icon */}
-            <div className="flex justify-center mb-3">
-              <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
-                <svg viewBox="0 0 16 16" fill="currentColor" className="w-5 h-5 text-red-400">
-                  <path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z" />
-                  <path fillRule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 010-2H6a1 1 0 011-1h2a1 1 0 011 1h3.5a1 1 0 011 1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118zM6 2h4v1H6V2z" clipRule="evenodd" />
-                </svg>
-              </div>
+      <Dialog
+        open={!!(confirmDeleteId || confirmDeleteAll)}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (confirmDeleteAll) {
+              cancelDeleteAll();
+            } else {
+              cancelDelete();
+            }
+          }
+        }}
+      >
+        <DialogContent showCloseButton={false} className="max-w-[280px] p-5">
+          <div className="mb-3 flex justify-center">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+              <Trash2 className="h-5 w-5" />
             </div>
-
-            {/* Text */}
-            <h3 className="text-[13px] font-semibold text-cc-fg text-center">
+          </div>
+          <DialogHeader className="items-center text-center">
+            <DialogTitle className="text-[13px] font-semibold text-foreground">
               {confirmDeleteAll ? "Delete all archived?" : "Delete session?"}
-            </h3>
-            <p className="text-[12px] text-cc-muted text-center mt-1.5 leading-relaxed">
+            </DialogTitle>
+            <DialogDescription className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
               {confirmDeleteAll
                 ? `This will permanently delete ${archivedSessions.length} archived session${archivedSessions.length === 1 ? "" : "s"}. This cannot be undone.`
                 : "This will permanently delete this session and its history. This cannot be undone."}
-            </p>
-
-            {/* Actions */}
-            <div className="flex gap-2.5 mt-4">
-              <button
-                onClick={confirmDeleteAll ? cancelDeleteAll : cancelDelete}
-                className="flex-1 px-3 py-2 text-[12px] font-medium rounded-lg bg-cc-hover text-cc-muted hover:text-cc-fg transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDeleteAll ? confirmDeleteAllArchived : confirmDelete}
-                className="flex-1 px-3 py-2 text-[12px] font-medium rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors cursor-pointer"
-              >
-                {confirmDeleteAll ? "Delete all" : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 flex-row gap-2.5 sm:flex-row">
+            <Button
+              onClick={confirmDeleteAll ? cancelDeleteAll : cancelDelete}
+              variant="secondary"
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteAll ? confirmDeleteAllArchived : confirmDelete}
+              variant="destructive"
+              className="flex-1"
+            >
+              {confirmDeleteAll ? "Delete all" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </aside>
   );
 }

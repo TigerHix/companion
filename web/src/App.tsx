@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { PanelRight } from "lucide-react";
 import { useStore } from "./store.js";
 import { connectSession } from "./ws.js";
 import { api } from "./api.js";
@@ -27,7 +28,7 @@ const ProcessPanel = lazy(() => import("./components/ProcessPanel.js").then((m) 
 function LazyFallback() {
   return (
     <div className="flex items-center justify-center h-full">
-      <div className="text-sm text-cc-muted">Loading...</div>
+      <div className="text-sm text-muted-foreground">Loading...</div>
     </div>
   );
 }
@@ -135,7 +136,7 @@ export default function App() {
   }
 
   return (
-    <div className="fixed inset-0 flex font-sans-ui bg-cc-bg text-cc-fg antialiased pt-safe overflow-hidden overscroll-none">
+    <div className="fixed inset-0 flex font-sans bg-background text-foreground antialiased pt-safe overflow-hidden overscroll-none">
       {/* Mobile overlay backdrop */}
       {sidebarOpen && (
         <div
@@ -245,12 +246,10 @@ export default function App() {
             <button
               type="button"
               onClick={() => useStore.getState().setTaskPanelOpen(true)}
-              className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-30 items-center gap-1 rounded-l-lg border border-r-0 border-cc-border bg-cc-card/95 backdrop-blur px-2 py-2 text-[11px] text-cc-muted hover:text-cc-fg hover:bg-cc-hover transition-colors cursor-pointer"
+              className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-30 items-center gap-1 rounded-l-lg border border-r-0 border-border bg-card/95 backdrop-blur px-2 py-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
               title="Open context panel"
             >
-              <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
-                <path d="M3 2.5A1.5 1.5 0 014.5 1h7A1.5 1.5 0 0113 2.5v11a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 013 13.5v-11zm2 .5v10h6V3H5z" />
-              </svg>
+              <PanelRight className="w-3 h-3" />
               <span className="[writing-mode:vertical-rl] rotate-180 tracking-wide">Context</span>
             </button>
           )}
