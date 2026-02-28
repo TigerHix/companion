@@ -11,9 +11,6 @@
   },
   "author": "Moku",
   "license": "MIT",
-  "dependencies": {
-    "moku": "^0.2.2"
-  },
   "devDependencies": {
     "husky": "^9.1.7"
   }
