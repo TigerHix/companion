@@ -510,12 +510,12 @@ describe("Composer layout", () => {
 
   it("send button has consistent dimensions", () => {
     // Verifies the send button has explicit sizing classes for consistent layout.
-    // Both mobile (w-10 h-10) and desktop (w-9 h-9) send buttons exist in JSDOM.
+    // The button uses shadcn size variants, so it should expose either
+    // explicit width/height classes or a compact `size-*` utility.
     render(<Composer sessionId="s1" />);
     const sendBtns = screen.getAllByTitle("Send message");
     expect(sendBtns.length).toBeGreaterThanOrEqual(1);
-    // At least one button should have explicit width/height classes
-    const hasSize = sendBtns.some((btn) => btn.className.includes("w-"));
+    const hasSize = sendBtns.some((btn) => btn.className.includes("w-") || btn.className.includes("size-"));
     expect(hasSize).toBe(true);
   });
 

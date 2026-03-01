@@ -145,8 +145,10 @@ describe("DiffPanel", () => {
 
     expect(container.textContent).toContain("Single-file rendered diff with sidebar switching to keep mobile scrolling fast");
     expect(container.textContent).toContain("app.ts");
-    expect(container.querySelector(".diff-viewer")).toBeTruthy();
-    expect(container.querySelector(".diff-line-add")).toBeTruthy();
+    await waitFor(() => {
+      expect(container.querySelector(".diff-viewer")).toBeTruthy();
+      expect(container.querySelector(".diff-line-add")).toBeTruthy();
+    });
   });
 
   it("shows rendered diff content for each changed file", async () => {
@@ -172,8 +174,10 @@ describe("DiffPanel", () => {
     await waitFor(() => {
       expect(screen.getAllByText("file.ts").length).toBeGreaterThan(0);
     });
-    expect(document.querySelector(".diff-viewer")).toBeTruthy();
-    expect(document.querySelector(".diff-line-add")).toBeTruthy();
+    await waitFor(() => {
+      expect(document.querySelector(".diff-viewer")).toBeTruthy();
+      expect(document.querySelector(".diff-line-add")).toBeTruthy();
+    });
     expect(mockApi.getFileDiff).toHaveBeenCalledWith("/repo/file.ts", "last-commit");
   });
 

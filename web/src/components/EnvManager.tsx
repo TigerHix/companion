@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 interface Props {
   onClose?: () => void;
+  embedded?: boolean;
 }
 
 interface VarRow {
