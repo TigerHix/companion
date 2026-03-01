@@ -1,17 +1,17 @@
 # Upstream Merge Guide
 
-This repo ("moku") is a private fork of [The Companion](https://github.com/StanGirard/companion) (upstream). This guide tells agents how to pull, evaluate, and merge upstream commits.
+This repo ("moku") is a private fork of [The Companion](https://github.com/The-Vibe-Company/companion) (upstream). This guide tells agents how to pull, evaluate, and merge upstream commits.
 
 ## Setup
 
 ```bash
 # Add upstream remote (one-time)
-git remote add upstream https://github.com/StanGirard/companion.git
+git remote add upstream https://github.com/The-Vibe-Company/companion.git
 
 # Verify
 git remote -v
 # origin    https://github.com/TigerHix/companion (fetch/push)
-# upstream  https://github.com/StanGirard/companion (fetch/push)
+# upstream  https://github.com/The-Vibe-Company/companion (fetch/push)
 ```
 
 ## Principles
@@ -179,6 +179,18 @@ These features were **deleted entirely** from moku. If upstream introduces commi
 - `.github/workflows/docker.yml` (Docker Hub push)
 - `.release-please-manifest.json`, `release-please-config.json`
 - `CHANGELOG.md` (root)
+
+### Saved Prompts (fully removed)
+- `web/server/prompt-manager.ts` (+ test)
+- `web/server/routes/prompt-routes.ts`
+- `web/src/components/PromptsPage.tsx` (+ test)
+- `web/src/components/MentionMenu.tsx` (+ test)
+- `web/src/utils/use-mention-menu.ts` (+ test)
+- Saved prompt API methods in `web/src/api.ts`
+- Prompts page route (`#/prompts`)
+- "Prompts" sidebar nav item
+- Prompt insertion and prompt-saving affordances in `web/src/components/Composer.tsx`
+- Prompt insertion affordances in `web/src/components/HomePage.tsx`
 
 ## What Was Renamed (Phase 3 — Branding)
 
