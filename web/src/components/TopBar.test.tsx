@@ -24,20 +24,18 @@ vi.mock("./InfoPopover.js", () => ({
   ),
 }));
 
-// Mock shadcn sidebar components — SidebarTrigger uses useSidebar context internally.
-// We stub it with a plain button to isolate TopBar logic.
+// Mock useSidebar hook — TopBar calls toggleSidebar from it.
 const mockToggleSidebar = vi.fn();
 vi.mock("@/components/ui/sidebar", () => ({
-  SidebarTrigger: (props: React.ComponentProps<"button">) => (
-    <button
-      type="button"
-      {...props}
-      onClick={(e) => {
-        mockToggleSidebar();
-        props.onClick?.(e);
-      }}
-    />
-  ),
+  useSidebar: () => ({
+    toggleSidebar: mockToggleSidebar,
+    state: "expanded",
+    open: true,
+    setOpen: vi.fn(),
+    isMobile: false,
+    openMobile: false,
+    setOpenMobile: vi.fn(),
+  }),
 }));
 
 interface MockStoreState {

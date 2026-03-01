@@ -30,10 +30,10 @@ export function ChatView({ sessionId }: { sessionId: string }) {
             CLI disconnected
           </span>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => api.relaunchSession(sessionId).catch(() => {})}
-            className="text-xs font-medium px-3 py-2 bg-warning/20 hover:bg-warning/30 text-warning"
+            className="text-xs font-medium px-3 py-1 border-warning/50 bg-warning/20 hover:bg-warning/30 text-warning"
           >
             Reconnect
           </Button>

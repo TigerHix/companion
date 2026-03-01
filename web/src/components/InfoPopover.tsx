@@ -9,7 +9,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Info } from "lucide-react";
 import { useStore } from "../store.js";
-import { Button } from "@/components/ui/button";
+import { LiquidGlassButton } from "@/components/ui/liquid-glass-button";
 import { SectionErrorBoundary } from "./SectionErrorBoundary.js";
 import { ClaudeConfigBrowser } from "./ClaudeConfigBrowser.js";
 import { McpSection } from "./McpPanel.js";
@@ -58,27 +58,20 @@ export function InfoPopover({ sessionId }: InfoPopoverProps) {
 
   return (
     <div ref={ref} className="relative">
-      <Button
-        type="button"
+      <LiquidGlassButton
         onClick={() => setOpen(!open)}
-        variant="ghost"
-        size="icon-sm"
-        className={`relative ${
-          open
-            ? "text-primary bg-accent"
-            : "text-muted-foreground hover:text-foreground hover:bg-accent"
-        }`}
+        active={open}
         title="Session info"
         aria-label="Session info"
         data-testid="info-popover-trigger"
       >
-        <Info className="w-[15px] h-[15px]" />
+        <Info className="size-4" />
         {runningProcessCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[12px] h-[12px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[7px] font-bold leading-none px-0.5">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[8px] font-bold leading-none px-0.5">
             {runningProcessCount}
           </span>
         )}
-      </Button>
+      </LiquidGlassButton>
 
       {open && (
         <div

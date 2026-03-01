@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   Plus,
   Image as ImageIcon,
-  Send,
+  ArrowUp,
   Square,
   Slash,
   Sparkles,
@@ -482,16 +482,17 @@ export function Composer({ sessionId }: { sessionId: string }) {
                 type="button"
                 onClick={handleSend}
                 disabled={!canSend}
+                variant={canSend ? "default" : "ghost"}
                 size="icon-lg"
                 className={cn(
-                  "rounded-full transition-colors shadow-[0_6px_20px_rgba(0,0,0,0.18)]",
+                  "rounded-full transition-all duration-200",
                   canSend
-                    ? ""
-                    : "bg-accent text-muted-foreground shadow-none"
+                    ? "shadow-[0_6px_20px_rgba(0,0,0,0.18)]"
+                    : "!opacity-100 bg-transparent text-muted-foreground/40"
                 )}
                 title="Send message"
               >
-                <Send className="size-3.5" />
+                <ArrowUp className="size-4" strokeWidth={2.5} />
               </Button>
             )}
           </div>
@@ -556,16 +557,17 @@ export function Composer({ sessionId }: { sessionId: string }) {
                 type="button"
                 onClick={handleSend}
                 disabled={!canSend}
+                variant={canSend ? "default" : "ghost"}
                 size="icon"
                 className={cn(
-                  "rounded-full transition-colors shadow-[0_6px_20px_rgba(0,0,0,0.18)]",
+                  "rounded-full transition-all duration-200",
                   canSend
-                    ? ""
-                    : "bg-accent text-muted-foreground shadow-none"
+                    ? "shadow-[0_6px_20px_rgba(0,0,0,0.18)]"
+                    : "!opacity-100 bg-transparent text-muted-foreground/40"
                 )}
                 title="Send message"
               >
-                <Send className="size-3.5" />
+                <ArrowUp className="size-4" strokeWidth={2.5} />
               </Button>
             )}
           </div>

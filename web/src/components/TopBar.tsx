@@ -1,9 +1,10 @@
 import { useMemo, useSyncExternalStore } from "react";
+import { PanelLeftIcon } from "lucide-react";
 import { useStore } from "../store.js";
 import { parseHash } from "../utils/routing.js";
 import { InfoPopover } from "./InfoPopover.js";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
+import { useSidebar } from "@/components/ui/sidebar";
+import { LiquidGlassButton } from "@/components/ui/liquid-glass-button";
 
 export function TopBar() {
   const hash = useSyncExternalStore(
@@ -20,6 +21,7 @@ export function TopBar() {
   const sessionStatus = useStore((s) => s.sessionStatus);
   const sessionNames = useStore((s) => s.sessionNames);
   const sdkSessions = useStore((s) => s.sdkSessions);
+  const { toggleSidebar } = useSidebar();
 
   const status = currentSessionId ? (sessionStatus.get(currentSessionId) ?? null) : null;
   const isConnected = currentSessionId ? (cliConnected.get(currentSessionId) ?? false) : false;
@@ -31,13 +33,16 @@ export function TopBar() {
   const showSessionInfo = !!(currentSessionId && isSessionView);
 
   return (
-    <header className="flex h-11 shrink-0 items-center gap-2 px-4 bg-background">
-      {/* sidebar-04 pattern: SidebarTrigger + vertical separator */}
-      <SidebarTrigger className="-ml-1" aria-label="Toggle sidebar" />
-      <Separator
-        orientation="vertical"
-        className="mr-2 data-[orientation=vertical]:h-4"
-      />
+    <header className="flex h-13 shrink-0 items-center gap-2 px-4 bg-background">
+      <LiquidGlassButton
+        onClick={toggleSidebar}
+        aria-label="Toggle sidebar"
+        data-sidebar="trigger"
+        data-slot="sidebar-trigger"
+        data-testid="sidebar-trigger"
+      >
+        <PanelLeftIcon className="size-4" />
+      </LiquidGlassButton>
 
       {/* Center: Session name + status dot */}
       {showSessionInfo && (

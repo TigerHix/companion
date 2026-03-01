@@ -5,6 +5,7 @@ import { api } from "../api.js";
 import { connectSession, connectAllSessions, disconnectSession } from "../ws.js";
 import { navigateToSession, navigateHome } from "../utils/routing.js";
 import { Button } from "@/components/ui/button";
+import { LiquidGlassButton } from "@/components/ui/liquid-glass-button";
 import {
   ResponsiveDialog,
   ResponsiveDialogContent,
@@ -23,7 +24,6 @@ import {
   SidebarMenuButton,
   SidebarMenuSub,
   SidebarMenuSubItem,
-  SidebarMenuAction,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
@@ -590,26 +590,22 @@ export function Sidebar() {
     <ShadcnSidebar variant="floating">
       {/* Header — logo + new session button (sidebar-04 SidebarHeader pattern) */}
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" className="cursor-default hover:bg-transparent active:bg-transparent">
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
-                <img src={logoSrc} alt="" className="size-6" />
-              </div>
-              <div className="flex flex-col gap-0.5 leading-none">
-                <span className="font-semibold text-sm tracking-tight">Moku</span>
-              </div>
-            </SidebarMenuButton>
-            <SidebarMenuAction
-              onClick={handleNewSession}
-              title="New Session"
-              aria-label="New Session"
-              className="text-foreground hover:text-foreground"
-            >
-              <Plus className="w-4 h-4" strokeWidth={2.5} />
-            </SidebarMenuAction>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <div className="flex items-center gap-2 px-1">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="flex aspect-square size-8 items-center justify-center rounded-lg shrink-0">
+              <img src={logoSrc} alt="" className="size-6" />
+            </div>
+            <span className="font-semibold text-sm tracking-tight text-foreground">Moku</span>
+          </div>
+          <LiquidGlassButton
+            onClick={handleNewSession}
+            title="New Session"
+            aria-label="New Session"
+            className="size-8"
+          >
+            <Plus className="size-4" strokeWidth={2.5} />
+          </LiquidGlassButton>
+        </div>
       </SidebarHeader>
 
       {/* Container archive confirmation */}

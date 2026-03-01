@@ -9,8 +9,8 @@ export function TerminalPage() {
   const [showTerminalPicker, setShowTerminalPicker] = useState(false);
 
   return (
-    <div className="h-full bg-background overflow-y-auto">
-      <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6 sm:py-10 pb-28 md:pb-10 h-full flex flex-col">
+    <>
+    <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6 sm:py-10 pb-28 md:pb-10 min-h-full flex flex-col">
         <div className="flex items-start justify-between gap-3 mb-6 shrink-0">
           <div>
             <h1 className="text-xl font-semibold text-foreground">Terminal</h1>
@@ -54,6 +54,6 @@ export function TerminalPage() {
           onClose={() => setShowTerminalPicker(false)}
         />
       )}
-    </div>
+    </>
   );
 }

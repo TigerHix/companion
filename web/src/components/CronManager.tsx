@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 
 interface Props {
   onClose?: () => void;
-  embedded?: boolean;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -107,7 +106,7 @@ const CRON_PRESETS: { label: string; value: string }[] = [
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function CronManager({ onClose, embedded = false }: Props) {
+export function CronManager({ onClose }: Props) {
   const [jobs, setJobs] = useState<CronJobInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -251,12 +250,9 @@ export function CronManager({ onClose, embedded = false }: Props) {
     }
   }
 
-  // ─── Embedded layout ───────────────────────────────────────────────
-
-  if (embedded) {
+  if (!onClose) {
     return (
-      <div className="h-full bg-background text-foreground font-sans antialiased overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-28 md:pb-6">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-28 md:pb-6">
           {/* Header */}
           <div className="flex items-start justify-between gap-3 mb-2">
             <div className="min-w-0">
@@ -385,7 +381,6 @@ export function CronManager({ onClose, embedded = false }: Props) {
           {error && !showCreate && (
             <div className="mt-4 px-3 py-2 rounded-lg bg-destructive/10 text-xs text-destructive">{error}</div>
           )}
-        </div>
       </div>
     );
   }

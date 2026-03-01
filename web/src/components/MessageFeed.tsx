@@ -791,7 +791,7 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
           )}
           <FeedEntries entries={visibleEntries} />
 
-          {/* Tool progress indicator */}
+          {/* moku: unless upstream fixes this, temporarily hide
           {toolProgress && toolProgress.size > 0 && !hasStreamingAssistant && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono pl-10">
               <span className="gen-dots-group">
@@ -808,6 +808,7 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
               ))}
             </div>
           )}
+          */}
 
           {/* Generation stats bar */}
           {sessionStatus === "running" && elapsed > 0 && (

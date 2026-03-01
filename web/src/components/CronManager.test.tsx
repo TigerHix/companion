@@ -50,7 +50,7 @@ describe("CronManager", () => {
   });
 
   it("renders the scheduled jobs list in embedded mode", async () => {
-    render(<CronManager embedded />);
+    render(<CronManager />);
 
     expect(await screen.findByText("Daily review")).toBeInTheDocument();
     expect(screen.getByText("Codex")).toBeInTheDocument();
@@ -58,7 +58,7 @@ describe("CronManager", () => {
   });
 
   it("toggles a job through the shared switch primitive", async () => {
-    render(<CronManager embedded />);
+    render(<CronManager />);
 
     fireEvent.click(await screen.findByTestId("cron-row-toggle-job-1"));
 
@@ -69,7 +69,7 @@ describe("CronManager", () => {
 
   it("passes axe accessibility checks", async () => {
     const { axe } = await import("vitest-axe");
-    const { container } = render(<CronManager embedded />);
+    const { container } = render(<CronManager />);
 
     await screen.findByText("Daily review");
     const results = await axe(container);

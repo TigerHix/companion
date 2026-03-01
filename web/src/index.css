@@ -1060,6 +1060,97 @@ select {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   LIQUID GLASS — Round glassmorphic icon buttons
+   Frosted droplet aesthetic with specular highlights and layered depth
+   ═══════════════════════════════════════════════════════════════════════════*/
+
+.btn-liquid-glass {
+  position: relative;
+  border-radius: 50%;
+  background: oklch(0.94 0.01 45 / 0.7);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid oklch(0.5 0.06 45 / 0.18);
+  box-shadow:
+    0 0.5px 2px oklch(0.3 0.06 45 / 0.08),
+    inset 0 1px 0 oklch(1 0 0 / 0.5),
+    inset 0 -0.5px 0 oklch(0 0 0 / 0.04);
+  color: var(--muted-foreground);
+  transition: all 220ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-liquid-glass:hover {
+  background: oklch(0.92 0.016 45 / 0.8);
+  border-color: oklch(from var(--primary) l calc(c * 0.4) h / 0.25);
+  box-shadow:
+    0 1px 3px oklch(from var(--primary) l c h / 0.08),
+    inset 0 1px 0 oklch(1 0 0 / 0.6),
+    inset 0 -0.5px 0 oklch(0 0 0 / 0.05);
+  color: var(--foreground);
+  transform: scale(1.04);
+}
+.btn-liquid-glass:active {
+  transform: scale(0.96);
+  box-shadow:
+    0 0.5px 1px oklch(0.3 0.06 45 / 0.06),
+    inset 0 0.5px 2px oklch(0 0 0 / 0.06),
+    inset 0 -0.5px 0 oklch(1 0 0 / 0.35);
+}
+.btn-liquid-glass:focus-visible {
+  outline: none;
+  border-color: oklch(from var(--primary) calc(l + 0.1) c h / 0.45);
+  box-shadow:
+    0 0 0 2px oklch(from var(--primary) calc(l + 0.18) calc(c * 0.6) h / 0.3),
+    inset 0 1px 0 oklch(1 0 0 / 0.5);
+}
+
+.btn-liquid-glass-active {
+  background: oklch(from var(--primary) calc(l + 0.24) calc(c * 0.25) h / 0.7) !important;
+  border-color: oklch(from var(--primary) l calc(c * 0.45) h / 0.3) !important;
+  color: var(--primary) !important;
+  box-shadow:
+    0 0.5px 2px oklch(from var(--primary) l c h / 0.1),
+    inset 0 1px 0 oklch(1 0 0 / 0.45),
+    inset 0 -0.5px 0 oklch(0 0 0 / 0.04) !important;
+}
+
+.dark .btn-liquid-glass {
+  background: oklch(0.22 0.008 45 / 0.45);
+  border-color: oklch(1 0 0 / 0.1);
+  box-shadow:
+    0 0.5px 2px oklch(0 0 0 / 0.2),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.07),
+    inset 0 -0.5px 0 oklch(0 0 0 / 0.1);
+}
+.dark .btn-liquid-glass:hover {
+  background: oklch(0.26 0.014 45 / 0.55);
+  border-color: oklch(from var(--primary) l calc(c * 0.4) h / 0.25);
+  box-shadow:
+    0 1px 3px oklch(from var(--primary) calc(l - 0.1) c h / 0.08),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.09),
+    inset 0 -0.5px 0 oklch(0 0 0 / 0.12);
+}
+.dark .btn-liquid-glass:active {
+  box-shadow:
+    0 0.5px 1px oklch(0 0 0 / 0.15),
+    inset 0 0.5px 2px oklch(0 0 0 / 0.15),
+    inset 0 -0.5px 0 oklch(1 0 0 / 0.04);
+}
+.dark .btn-liquid-glass:focus-visible {
+  border-color: oklch(from var(--primary) calc(l + 0.1) c h / 0.45);
+  box-shadow:
+    0 0 0 2px oklch(from var(--primary) calc(l + 0.1) c h / 0.3),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.07);
+}
+.dark .btn-liquid-glass-active {
+  background: oklch(from var(--primary) calc(l - 0.3) calc(c * 0.35) h / 0.45) !important;
+  border-color: oklch(from var(--primary) l calc(c * 0.45) h / 0.25) !important;
+  box-shadow:
+    0 0.5px 2px oklch(from var(--primary) calc(l - 0.1) c h / 0.1),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.05),
+    inset 0 -0.5px 0 oklch(0 0 0 / 0.12) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    GLASSMORPHISM — Navbar Dock & Mobile Tab Bar
    Adapted from nemu, using Moku's warm amber palette (hue ~45)
    ═══════════════════════════════════════════════════════════════════════════*/
@@ -1078,5 +1169,20 @@ select {
   box-shadow: var(--surface-panel-shadow);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MARKDOWN LINKS — Ensure readable contrast on primary-bg user bubbles
+   ═══════════════════════════════════════════════════════════════════════════*/
+
+.bg-primary .markdown-body a {
+  color: var(--primary-foreground);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: oklch(from var(--primary-foreground) l c h / 0.5);
+}
+.bg-primary .markdown-body a:hover {
+  text-decoration-color: var(--primary-foreground);
 }
 

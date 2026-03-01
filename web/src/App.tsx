@@ -164,24 +164,24 @@ export default function App() {
         <Navbar />
 
         {/* Main area */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0">
         <TopBar />
         <div className="flex-1 overflow-hidden relative">
           {isSettingsPage && (
-            <div className="absolute inset-0">
-              <Suspense fallback={<LazyFallback />}><SettingsPage embedded /></Suspense>
+            <div className="absolute inset-0 overflow-y-auto">
+              <Suspense fallback={<LazyFallback />}><SettingsPage /></Suspense>
             </div>
           )}
 
           {isTerminalPage && (
-            <div className="absolute inset-0">
+            <div className="absolute inset-0 overflow-y-auto">
               <Suspense fallback={<LazyFallback />}><TerminalPage /></Suspense>
             </div>
           )}
 
           {isEnvironmentsPage && (
-            <div className="absolute inset-0">
-              <Suspense fallback={<LazyFallback />}><EnvManager embedded /></Suspense>
+            <div className="absolute inset-0 overflow-y-auto">
+              <Suspense fallback={<LazyFallback />}><EnvManager /></Suspense>
             </div>
           )}
 
@@ -192,13 +192,13 @@ export default function App() {
           )}
 
           {isScheduledPage && (
-            <div className="absolute inset-0">
-              <Suspense fallback={<LazyFallback />}><CronManager embedded /></Suspense>
+            <div className="absolute inset-0 overflow-y-auto">
+              <Suspense fallback={<LazyFallback />}><CronManager /></Suspense>
             </div>
           )}
 
           {isAgentsPage && (
-            <div className="absolute inset-0">
+            <div className="absolute inset-0 overflow-y-auto">
               <Suspense fallback={<LazyFallback />}><AgentsPage route={route} /></Suspense>
             </div>
           )}

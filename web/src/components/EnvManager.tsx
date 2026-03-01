@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 
 interface Props {
   onClose?: () => void;
-  embedded?: boolean;
 }
 
 interface VarRow {
@@ -30,7 +29,7 @@ CMD ["sleep", "infinity"]
 
 const TAB_ORDER: Tab[] = ["variables", "docker", "ports", "init"];
 
-export function EnvManager({ onClose, embedded = false }: Props) {
+export function EnvManager({ onClose }: Props) {
   const [envs, setEnvs] = useState<MokuEnv[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
@@ -225,7 +224,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
     <div className="card-moku space-y-3 rounded-xl p-4">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-medium text-foreground">New Environment</span>
-        {!embedded && (
+        {!onClose && (
           <Button
             type="button"
             variant="ghost"
@@ -275,10 +274,9 @@ export function EnvManager({ onClose, embedded = false }: Props) {
     </div>
   );
 
-  if (embedded) {
+  if (!onClose) {
     return (
-      <div className="h-full overflow-x-hidden overflow-y-auto bg-background font-sans text-foreground antialiased">
-        <div className="mx-auto max-w-2xl px-4 py-6 pb-28 md:pb-6 sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-2xl px-4 py-6 pb-28 md:pb-6 sm:px-6 sm:py-10">
           <div className="mb-2 flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 className="text-lg font-semibold text-foreground">Environments</h1>
@@ -355,7 +353,6 @@ export function EnvManager({ onClose, embedded = false }: Props) {
           )}
 
           {error && !showCreate && <div className="mt-4"><ErrorBanner message={error} /></div>}
-        </div>
       </div>
     );
   }
