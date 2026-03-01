@@ -235,7 +235,7 @@ function ToolMessageGroup({ group }: { group: ToolMsgGroup }) {
                 variant="ghost"
                 size="sm"
                 onClick={() => setOpen(!open)}
-                className="h-auto w-full justify-start gap-2.5 rounded-none px-3 py-2 text-left hover:bg-accent/50"
+                className="h-9 w-full justify-start gap-3 rounded-none px-3 text-left hover:bg-accent/50"
               >
                 <ChevronRight className={cn("size-3 text-muted-foreground transition-transform shrink-0", open && "rotate-90")} />
                 <ToolIcon type={iconType} />
@@ -246,7 +246,7 @@ function ToolMessageGroup({ group }: { group: ToolMsgGroup }) {
               </Button>
               {open && (
                 <div className="px-3 pb-3 pt-0 border-t border-border mt-0">
-                  <pre className="mt-2 text-[11px] text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+                  <pre className="mt-2 text-xs text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
                     {JSON.stringify(item.input, null, 2)}
                   </pre>
                 </div>
@@ -270,7 +270,7 @@ function ToolMessageGroup({ group }: { group: ToolMsgGroup }) {
               variant="ghost"
               size="sm"
               onClick={() => setOpen(!open)}
-              className="h-auto w-full justify-start gap-2.5 rounded-none px-3 py-2 text-left hover:bg-accent/50"
+              className="h-9 w-full justify-start gap-3 rounded-none px-3 text-left hover:bg-accent/50"
             >
               <ChevronRight className={cn("size-3 text-muted-foreground transition-transform shrink-0", open && "rotate-90")} />
               <ToolIcon type={iconType} />
@@ -366,98 +366,85 @@ function SubagentContainer({ group }: { group: SubagentGroup }) {
 
   return (
     <div className="animate-[fadeSlideIn_0.2s_ease-out]">
-      <div className="ml-10 border-l-2 border-primary/20 pl-4">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setOpen(!open)}
-          className="mb-1 h-auto w-full justify-start gap-2 rounded-none px-0 py-1.5 text-left hover:bg-transparent"
-        >
-          <ChevronRight className={cn("size-3 text-muted-foreground transition-transform shrink-0", open && "rotate-90")} />
-          <Clock className="size-3.5 text-primary shrink-0" />
-          <span className="text-xs font-medium text-foreground truncate">{label}</span>
-          {agentType && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 h-auto shrink-0">
-              {agentType}
-            </Badge>
-          )}
-          {group.backend && (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 h-auto shrink-0">
-              {group.backend === "codex" ? "Codex" : "Claude"}
-            </Badge>
-          )}
-          {statusInfo && (
-            <Badge className={cn("text-[10px] px-1.5 py-0.5 h-auto shrink-0 border-0", statusInfo.className)}>
-              {statusInfo.label}
-            </Badge>
-          )}
-          {group.receiverCount !== undefined && (
-            <Badge variant="secondary" className="text-[10px] tabular-nums px-1.5 py-0.5 h-auto shrink-0">
-              {group.receiverCount} agent{group.receiverCount !== 1 ? "s" : ""}
-            </Badge>
-          )}
-          {!open && lastPreview && (
-            <span className="text-[11px] text-muted-foreground truncate ml-1 font-mono">
-              {lastPreview}
-            </span>
-          )}
-          <Badge variant="secondary" className="text-[10px] tabular-nums px-1.5 py-0.5 h-auto shrink-0 ml-auto">
-            {childCount}
-          </Badge>
-        </Button>
+      <div className="flex items-start gap-3">
+        <AssistantAvatar />
+        <div className="flex-1 min-w-0">
+          <div className="border border-border rounded-[10px] overflow-hidden card-moku">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setOpen(!open)}
+              className="h-9 w-full justify-start gap-3 rounded-none px-3 text-left hover:bg-accent/50"
+            >
+              <ChevronRight className={cn("size-3 text-muted-foreground transition-transform shrink-0", open && "rotate-90")} />
+              <Clock className="size-3.5 text-primary shrink-0" />
+              <span className="text-xs font-medium text-foreground truncate">{label}</span>
+              {agentType && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 h-auto shrink-0">
+                  {agentType}
+                </Badge>
+              )}
+              {statusInfo && (
+                <Badge className={cn("text-[10px] px-1.5 py-0.5 h-auto shrink-0 border-0", statusInfo.className)}>
+                  {statusInfo.label}
+                </Badge>
+              )}
+              {!open && lastPreview && (
+                <span className="text-xs text-muted-foreground truncate ml-1 font-mono">
+                  {lastPreview}
+                </span>
+              )}
+            </Button>
 
-        {open && (
-          <div className="space-y-3 pb-2">
-            {(statusInfo || group.senderThreadId || (group.receiverThreadIds && group.receiverThreadIds.length > 0)) && (
-              <div className="rounded-lg border border-cc-border bg-cc-card px-2.5 py-2 space-y-1.5">
-                <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
-                  {statusInfo && (
-                    <span className={`rounded-full px-1.5 py-0.5 ${statusInfo.className}`}>
-                      {group.receiverCount ?? childCount} {statusInfo.summaryLabel}
-                    </span>
-                  )}
-                  {group.senderThreadId && (
-                    <span className="rounded-full px-1.5 py-0.5 text-cc-muted bg-cc-hover font-mono-code">
-                      sender: {group.senderThreadId}
-                    </span>
-                  )}
-                  {group.receiverThreadIds && group.receiverThreadIds.length > 0 && (
-                    <span className="rounded-full px-1.5 py-0.5 text-cc-muted bg-cc-hover">
-                      receivers: {group.receiverThreadIds.length}
-                    </span>
-                  )}
-                </div>
-                {group.receiverThreadIds && group.receiverThreadIds.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {group.receiverThreadIds.map((threadId) => (
-                      <span
-                        key={threadId}
-                        className="text-[10px] rounded-full px-1.5 py-0.5 text-cc-muted bg-cc-hover font-mono-code"
-                      >
-                        {threadId}
-                      </span>
-                    ))}
+            {open && (
+              <div className="border-t border-border px-3 py-3 space-y-3">
+                {(statusInfo || group.senderThreadId || (group.receiverThreadIds && group.receiverThreadIds.length > 0)) && (
+                  <div className="rounded-lg border border-border bg-card px-2.5 py-2 space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                      {statusInfo && (
+                        <span className={`rounded-full px-1.5 py-0.5 ${statusInfo.className}`}>
+                          {group.receiverCount ?? childCount} {statusInfo.summaryLabel}
+                        </span>
+                      )}
+                      {group.senderThreadId && (
+                        <span className="rounded-full px-1.5 py-0.5 text-muted-foreground bg-accent font-mono">
+                          sender: {group.senderThreadId}
+                        </span>
+                      )}
+                      {group.receiverThreadIds && group.receiverThreadIds.length > 0 && (
+                        <span className="rounded-full px-1.5 py-0.5 text-muted-foreground bg-accent">
+                          receivers: {group.receiverThreadIds.length}
+                        </span>
+                      )}
+                    </div>
+                    {group.receiverThreadIds && group.receiverThreadIds.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {group.receiverThreadIds.map((threadId) => (
+                          <span
+                            key={threadId}
+                            className="text-[10px] rounded-full px-1.5 py-0.5 text-muted-foreground bg-accent font-mono"
+                          >
+                            {threadId}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
+                <FeedEntries entries={group.children} />
               </div>
             )}
-            <FeedEntries entries={group.children} />
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
 }
 
 function AssistantAvatar() {
-  return (
-    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-      <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-primary">
-        <circle cx="8" cy="8" r="3" />
-      </svg>
-    </div>
-  );
+  // Placeholder — avatar may be restored later
+  return null;
 }
 
 // ─── Main Feed ───────────────────────────────────────────────────────────────
@@ -743,7 +730,7 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-medium text-foreground">{resumeModeLabel} existing Claude thread</p>
-                  <p className="text-[11px] text-muted-foreground mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {resumeSourceSessionId} {sdkSession?.cwd ? `\u00b7 ${formatResumeSourcePath(sdkSession.cwd)}` : ""}
                   </p>
                 </div>
@@ -765,7 +752,7 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
 
           {canLoadResumeHistory && resumeHistoryLoaded && (
             <div className="flex justify-center">
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {resumeHistoryHasMore
                   ? (resumeHistoryLoading
                     ? "Loading older transcript..."
@@ -791,8 +778,12 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
 
           {/* Tool progress indicator */}
           {toolProgress && toolProgress.size > 0 && !hasStreamingAssistant && (
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono pl-10">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono pl-10">
+              <span className="gen-dots-group">
+                <span className="gen-dot" />
+                <span className="gen-dot" />
+                <span className="gen-dot" />
+              </span>
               {Array.from(toolProgress.values()).map((p, i) => (
                 <span key={i} className="flex items-center gap-1">
                   {i > 0 && <span className="text-muted-foreground/40">&middot;</span>}
@@ -805,18 +796,22 @@ export function MessageFeed({ sessionId }: { sessionId: string }) {
 
           {/* Generation stats bar */}
           {sessionStatus === "running" && elapsed > 0 && (
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono pl-10">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-              <span>Generating...</span>
-              <span className="text-muted-foreground/60">(</span>
-              <span>{formatElapsed(elapsed)}</span>
-              {(streamingOutputTokens ?? 0) > 0 && (
-                <>
-                  <span className="text-muted-foreground/40">&middot;</span>
-                  <span>&darr; {formatTokenCount(streamingOutputTokens!)}</span>
-                </>
-              )}
-              <span className="text-muted-foreground/60">)</span>
+            <div className="flex items-center animate-[fadeSlideIn_0.25s_ease-out]">
+              <div className="gen-bar text-sm font-sans">
+                <span className="gen-dots-group">
+                  <span className="gen-dot" />
+                  <span className="gen-dot" />
+                  <span className="gen-dot" />
+                </span>
+                <span className="text-foreground font-medium">Generating...</span>
+                <span className="text-muted-foreground/60">{formatElapsed(elapsed)}</span>
+                {(streamingOutputTokens ?? 0) > 0 && (
+                  <>
+                    <span className="text-muted-foreground/30">&middot;</span>
+                    <span className="text-muted-foreground/60">&darr; {formatTokenCount(streamingOutputTokens!)}</span>
+                  </>
+                )}
+              </div>
             </div>
           )}
 

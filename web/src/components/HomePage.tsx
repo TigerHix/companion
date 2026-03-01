@@ -1075,12 +1075,12 @@ export function HomePage() {
                     disabled={resumeCandidatesLoading}
                     variant="ghost"
                     size="xs"
-                    className="bg-accent text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-60"
+                    className="bg-accent text-xs text-muted-foreground hover:text-foreground disabled:opacity-60"
                   >
                     {resumeCandidatesLoading ? "Refreshing..." : "Refresh detected sessions"}
                   </Button>
                   {resumeCandidates.length > 0 && (
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       Showing {visibleResumeCandidates.length} of {filteredActiveResumeCandidates.length}{" "}
                       {normalizedResumeSearchQuery
                         ? "matching"
@@ -1096,7 +1096,7 @@ export function HomePage() {
                       }}
                       variant="ghost"
                       size="xs"
-                      className="bg-accent text-[11px] text-muted-foreground hover:text-foreground"
+                      className="bg-accent text-xs text-muted-foreground hover:text-foreground"
                     >
                       Include older ({hiddenOlderResumeCount})
                     </Button>
@@ -1110,7 +1110,7 @@ export function HomePage() {
                       }}
                       variant="ghost"
                       size="xs"
-                      className="bg-accent text-[11px] text-muted-foreground hover:text-foreground"
+                      className="bg-accent text-xs text-muted-foreground hover:text-foreground"
                     >
                       Recent only
                     </Button>
@@ -1138,16 +1138,16 @@ export function HomePage() {
                     />
                   </div>
                 </label>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">Fork</span> opens a new session that leaves the original untouched.
                   <span className="mx-1">•</span>
                   <span className="font-medium text-foreground">Continue</span> opens from the same linear thread.
                 </p>
                 {resumeCandidatesError && (
-                  <p className="text-[11px] text-destructive">{resumeCandidatesError}</p>
+                  <p className="text-xs text-destructive">{resumeCandidatesError}</p>
                 )}
                 {!resumeCandidatesLoading && !resumeCandidatesError && filteredActiveResumeCandidates.length === 0 && (
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {normalizedResumeSearchQuery
                       ? "No sessions match this search."
                       : "No Claude sessions detected yet."}
@@ -1182,16 +1182,16 @@ export function HomePage() {
                                 <span className="px-1 py-0.5 rounded bg-accent text-muted-foreground">{sourceLabel}</span>
                               </div>
                             </div>
-                            <div className="min-w-0 text-[11px] text-muted-foreground sm:font-mono truncate" title={candidate.cwd}>
+                            <div className="min-w-0 text-xs text-muted-foreground sm:font-mono truncate" title={candidate.cwd}>
                               <div className="truncate">{project}</div>
                               <div className="mt-0.5 text-[10px] text-muted-foreground/70 truncate" title={candidate.cwd}>
                                 {formatPathTail(candidate.cwd)}
                               </div>
                             </div>
-                            <div className="text-[11px] text-muted-foreground sm:font-mono truncate">
+                            <div className="text-xs text-muted-foreground sm:font-mono truncate">
                               {candidate.gitBranch || "—"}
                             </div>
-                            <div className="text-[11px] text-muted-foreground">
+                            <div className="text-xs text-muted-foreground">
                               {formatTimeAgo(candidate.createdAt)}
                             </div>
                             <div className="sm:text-right flex gap-1.5 sm:justify-end">
@@ -1205,7 +1205,7 @@ export function HomePage() {
                                 aria-label={`Fork and open ${title}`}
                                 variant="outline"
                                 size="xs"
-                                className={`text-[11px] ${
+                                className={`text-xs ${
                                   selected && forkSession
                                     ? "border-primary/40 bg-primary/10 text-primary"
                                     : "text-muted-foreground hover:text-foreground"
@@ -1224,7 +1224,7 @@ export function HomePage() {
                                 aria-label={`Continue and open ${title}`}
                                 variant="outline"
                                 size="xs"
-                                className={`text-[11px] ${
+                                className={`text-xs ${
                                   selected && !forkSession
                                     ? "border-primary/40 bg-primary/10 text-primary"
                                     : "text-muted-foreground hover:text-foreground"
@@ -1248,7 +1248,7 @@ export function HomePage() {
                             )}
                           variant="ghost"
                           size="xs"
-                          className="bg-accent text-[11px] text-muted-foreground hover:text-foreground"
+                          className="bg-accent text-xs text-muted-foreground hover:text-foreground"
                         >
                           Load more ({filteredActiveResumeCandidates.length - visibleResumeCandidateRows} remaining)
                         </Button>
@@ -1256,7 +1256,7 @@ export function HomePage() {
                     )}
                   </div>
                 )}
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Fork/Continue opens the session immediately, then you can type directly in chat.
                   Send from Home still starts a normal new session with your typed prompt.
                 </p>
@@ -1280,7 +1280,7 @@ export function HomePage() {
                   remote. Pull before starting?
                 </p>
                 {pullError && (
-                  <div className="mt-2 px-2 py-1.5 rounded-md bg-destructive/10 border border-destructive/20 text-[11px] text-destructive font-mono whitespace-pre-wrap">
+                  <div className="mt-2 px-2 py-1.5 rounded-md bg-destructive/10 border border-destructive/20 text-xs text-destructive font-mono whitespace-pre-wrap">
                     {pullError}
                   </div>
                 )}

@@ -57,7 +57,7 @@ function SectionHeader({
           </svg>
         )}
       </div>
-      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex-1">
+      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex-1">
         {title}
       </span>
     </Button>
@@ -84,7 +84,7 @@ function ConfigItemRow({
       variant="ghost"
       className="h-auto w-full justify-start gap-2 rounded-none px-4 py-1.5 pl-10 text-left hover:bg-accent/50"
     >
-      <span className="text-[12px] text-foreground truncate flex-1">
+      <span className="text-xs text-foreground truncate flex-1">
         {label}
         {count !== undefined && count > 0 && (
           <span className="ml-1 text-[10px] text-muted-foreground">({count})</span>
@@ -140,7 +140,7 @@ function JsonViewer({
             <div className="min-w-0">
               <DialogHeader className="gap-0">
                 <DialogTitle className="text-sm font-semibold text-foreground truncate">{path.split("/").pop()}</DialogTitle>
-                <DialogDescription className="mt-0 text-[11px] truncate">{path}</DialogDescription>
+                <DialogDescription className="mt-0 text-xs truncate">{path}</DialogDescription>
               </DialogHeader>
             </div>
           </div>
@@ -157,7 +157,7 @@ function JsonViewer({
           </Button>
         </div>
         <div className="flex-1 overflow-auto p-4">
-          <pre className="text-[13px] font-mono text-foreground leading-relaxed whitespace-pre-wrap break-words">
+          <pre className="text-sm font-mono text-foreground leading-relaxed whitespace-pre-wrap break-words">
             {formatted}
           </pre>
         </div>
@@ -230,7 +230,7 @@ function MarkdownFileEditor({
             <div className="min-w-0">
               <DialogHeader className="gap-0">
                 <DialogTitle className="text-sm font-semibold text-foreground truncate">{label}</DialogTitle>
-                <DialogDescription className="mt-0 text-[11px] truncate">{path}</DialogDescription>
+                <DialogDescription className="mt-0 text-xs truncate">{path}</DialogDescription>
               </DialogHeader>
             </div>
           </div>
@@ -255,7 +255,7 @@ function MarkdownFileEditor({
           <>
             {/* Save bar */}
             <div className="shrink-0 flex items-center justify-between px-4 py-2 bg-card border-b border-border">
-              <span className="text-[12px] text-muted-foreground font-mono truncate">{path.split("/").pop()}</span>
+              <span className="text-xs text-muted-foreground font-mono truncate">{path.split("/").pop()}</span>
               <div className="flex items-center gap-2">
                 {dirty && <span className="text-[10px] text-warning font-medium">Unsaved</span>}
                 <Button
@@ -263,7 +263,7 @@ function MarkdownFileEditor({
                   onClick={handleSave}
                   disabled={!dirty || saving}
                   size="sm"
-                  className="h-7 text-[11px]"
+                  className="h-7 text-xs"
                 >
                   {saving ? "Saving..." : "Save"}
                 </Button>
@@ -274,7 +274,7 @@ function MarkdownFileEditor({
               value={content}
               onChange={(e) => { setContent(e.target.value); setDirty(true); }}
               spellCheck={false}
-              className="min-h-0 flex-1 w-full rounded-none border-0 bg-background p-4 text-[13px] font-mono leading-relaxed shadow-none ring-0 focus-visible:ring-0"
+              className="min-h-0 flex-1 w-full rounded-none border-0 bg-background p-4 text-sm font-mono leading-relaxed shadow-none ring-0 focus-visible:ring-0"
               placeholder="File contents..."
             />
           </>
@@ -362,7 +362,7 @@ export function ClaudeConfigBrowser({ sessionId }: { sessionId: string }) {
   if (loading) {
     return (
       <div className="shrink-0 px-4 py-2.5">
-        <span className="text-[11px] text-muted-foreground">Loading config...</span>
+        <span className="text-xs text-muted-foreground">Loading config...</span>
       </div>
     );
   }
@@ -427,7 +427,7 @@ export function ClaudeConfigBrowser({ sessionId }: { sessionId: string }) {
             </>
           )}
           {projectItemCount === 0 && (
-            <p className="px-4 pl-10 py-1.5 text-[11px] text-muted-foreground">No .claude config found</p>
+            <p className="px-4 pl-10 py-1.5 text-xs text-muted-foreground">No .claude config found</p>
           )}
         </div>
       )}
@@ -497,7 +497,7 @@ export function ClaudeConfigBrowser({ sessionId }: { sessionId: string }) {
             </>
           )}
           {userItemCount === 0 && (
-            <p className="px-4 pl-10 py-1.5 text-[11px] text-muted-foreground">No user config found</p>
+            <p className="px-4 pl-10 py-1.5 text-xs text-muted-foreground">No user config found</p>
           )}
         </div>
       )}

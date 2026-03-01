@@ -326,7 +326,7 @@ export function FilesPanel({ sessionId }: FilesPanelProps) {
           disabled={loadingTree}
           variant="ghost"
           size="xs"
-          className="text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-50"
+          className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
           aria-label="Refresh file tree"
         >
           {loadingTree ? "..." : "Refresh"}
@@ -381,7 +381,7 @@ export function FilesPanel({ sessionId }: FilesPanelProps) {
             <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
           </svg>
         </Button>
-        <p className="text-[11px] text-muted-foreground truncate min-w-0">{relPath(cwd, selectedFilePath)}</p>
+        <p className="text-xs text-muted-foreground truncate min-w-0">{relPath(cwd, selectedFilePath)}</p>
       </div>
       {error && (
         <div className="m-3 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30 text-xs text-destructive">

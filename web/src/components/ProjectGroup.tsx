@@ -71,7 +71,7 @@ export function ProjectGroup({
         />
         {/* Folder icon */}
         <Folder className="w-3 h-3 text-muted-foreground/60 shrink-0" />
-        <span className="text-[12px] font-semibold text-foreground/80 truncate">
+        <span className="text-xs font-semibold text-foreground/80 truncate">
           {group.label}
         </span>
 

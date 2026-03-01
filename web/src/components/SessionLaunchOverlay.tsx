@@ -139,7 +139,7 @@ export function SessionLaunchOverlay({ steps, error, backend, onCancel }: Props)
       {error && (
         <div className="mt-5 w-full max-w-xs px-4">
           <div className="px-3 py-2.5 rounded-lg bg-destructive/5 border border-destructive/20">
-            <p className="text-[11px] text-destructive whitespace-pre-wrap font-mono leading-relaxed">
+            <p className="text-xs text-destructive whitespace-pre-wrap font-mono leading-relaxed">
               {error}
             </p>
           </div>

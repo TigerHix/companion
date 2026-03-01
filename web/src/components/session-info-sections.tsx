@@ -65,10 +65,10 @@ export function UsageLimitsSection({ sessionId }: { sessionId: string }) {
       {limits.five_hour && (
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wider">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">
               5h Limit
             </span>
-            <span className="text-[11px] text-muted-foreground tabular-nums">
+            <span className="text-xs text-muted-foreground tabular-nums">
               {limits.five_hour.utilization}%
               {limits.five_hour.resets_at && (
                 <span className="ml-1 text-muted-foreground">
@@ -92,10 +92,10 @@ export function UsageLimitsSection({ sessionId }: { sessionId: string }) {
       {limits.seven_day && (
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wider">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">
               7d Limit
             </span>
-            <span className="text-[11px] text-muted-foreground tabular-nums">
+            <span className="text-xs text-muted-foreground tabular-nums">
               {limits.seven_day.utilization}%
               {limits.seven_day.resets_at && (
                 <span className="ml-1 text-muted-foreground">
@@ -119,10 +119,10 @@ export function UsageLimitsSection({ sessionId }: { sessionId: string }) {
       {hasExtra && limits.extra_usage && (
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wider">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">
               Extra
             </span>
-            <span className="text-[11px] text-muted-foreground tabular-nums">
+            <span className="text-xs text-muted-foreground tabular-nums">
               ${limits.extra_usage.used_credits.toFixed(2)} / $
               {limits.extra_usage.monthly_limit}
             </span>
@@ -165,10 +165,10 @@ export function CodexRateLimitsSection({ sessionId }: { sessionId: string }) {
       {primary && (
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wider">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">
               {formatWindowDuration(primary.windowDurationMins)} Limit
             </span>
-            <span className="text-[11px] text-muted-foreground tabular-nums">
+            <span className="text-xs text-muted-foreground tabular-nums">
               {Math.round(primary.usedPercent)}%
               {primary.resetsAt > 0 && (
                 <span className="ml-1">
@@ -188,10 +188,10 @@ export function CodexRateLimitsSection({ sessionId }: { sessionId: string }) {
       {secondary && (
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground uppercase tracking-wider">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">
               {formatWindowDuration(secondary.windowDurationMins)} Limit
             </span>
-            <span className="text-[11px] text-muted-foreground tabular-nums">
+            <span className="text-xs text-muted-foreground tabular-nums">
               {Math.round(secondary.usedPercent)}%
               {secondary.resetsAt > 0 && (
                 <span className="ml-1">
@@ -222,34 +222,34 @@ export function CodexTokenDetailsSection({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="shrink-0 px-4 py-3 space-y-2">
-      <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Tokens</span>
+      <span className="text-xs text-muted-foreground uppercase tracking-wider">Tokens</span>
       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-muted-foreground">Input</span>
-          <span className="text-[11px] text-foreground tabular-nums font-medium">{formatTokenCount(details.inputTokens)}</span>
+          <span className="text-xs text-muted-foreground">Input</span>
+          <span className="text-xs text-foreground tabular-nums font-medium">{formatTokenCount(details.inputTokens)}</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-muted-foreground">Output</span>
-          <span className="text-[11px] text-foreground tabular-nums font-medium">{formatTokenCount(details.outputTokens)}</span>
+          <span className="text-xs text-muted-foreground">Output</span>
+          <span className="text-xs text-foreground tabular-nums font-medium">{formatTokenCount(details.outputTokens)}</span>
         </div>
         {details.cachedInputTokens > 0 && (
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">Cached</span>
-            <span className="text-[11px] text-foreground tabular-nums font-medium">{formatTokenCount(details.cachedInputTokens)}</span>
+            <span className="text-xs text-muted-foreground">Cached</span>
+            <span className="text-xs text-foreground tabular-nums font-medium">{formatTokenCount(details.cachedInputTokens)}</span>
           </div>
         )}
         {details.reasoningOutputTokens > 0 && (
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">Reasoning</span>
-            <span className="text-[11px] text-foreground tabular-nums font-medium">{formatTokenCount(details.reasoningOutputTokens)}</span>
+            <span className="text-xs text-muted-foreground">Reasoning</span>
+            <span className="text-xs text-foreground tabular-nums font-medium">{formatTokenCount(details.reasoningOutputTokens)}</span>
           </div>
         )}
       </div>
       {details.modelContextWindow > 0 && (
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">Context</span>
-            <span className="text-[11px] text-muted-foreground tabular-nums">{contextPct}%</span>
+            <span className="text-xs text-muted-foreground">Context</span>
+            <span className="text-xs text-muted-foreground tabular-nums">{contextPct}%</span>
           </div>
           <div className="w-full h-1.5 rounded-full bg-accent overflow-hidden">
             <div
@@ -286,7 +286,7 @@ export function GitHubPRDisplay({ pr }: { pr: GitHubPRInfo }) {
           href={pr.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[12px] font-semibold text-foreground hover:text-primary transition-colors"
+          className="text-xs font-semibold text-foreground hover:text-primary transition-colors"
         >
           PR #{pr.number}
         </a>
@@ -296,13 +296,13 @@ export function GitHubPRDisplay({ pr }: { pr: GitHubPRInfo }) {
       </div>
 
       {/* Row 2: Title */}
-      <p className="text-[11px] text-muted-foreground truncate" title={pr.title}>
+      <p className="text-xs text-muted-foreground truncate" title={pr.title}>
         {pr.title}
       </p>
 
       {/* Row 3: CI Checks */}
       {cs.total > 0 && (
-        <div className="flex items-center gap-2 text-[11px]">
+        <div className="flex items-center gap-2 text-xs">
           {cs.failure > 0 ? (
             <>
               <span className="flex items-center gap-1 text-destructive">
@@ -334,7 +334,7 @@ export function GitHubPRDisplay({ pr }: { pr: GitHubPRInfo }) {
       )}
 
       {/* Row 4: Review + unresolved comments */}
-      <div className="flex items-center gap-2 text-[11px]">
+      <div className="flex items-center gap-2 text-xs">
         {pr.reviewDecision === "APPROVED" && (
           <span className="flex items-center gap-1 text-success">
             <Check className="w-3 h-3" />
@@ -412,7 +412,7 @@ export function GitBranchSection({ sessionId }: { sessionId: string }) {
   return (
     <div className="shrink-0 px-4 py-3 space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-muted-foreground uppercase tracking-wider">
+        <span className="text-xs text-muted-foreground uppercase tracking-wider">
           Branch
         </span>
         {session?.is_containerized && (
@@ -424,7 +424,7 @@ export function GitBranchSection({ sessionId }: { sessionId: string }) {
       </p>
       {(branchAhead > 0 || branchBehind > 0 || lineAdds > 0 || lineRemoves > 0) && (
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 text-[11px]">
+          <div className="flex items-center gap-1.5 text-xs">
             {branchAhead > 0 && <span className="text-git-ahead">{branchAhead}&#8593;</span>}
             {branchBehind > 0 && <span className="text-git-behind">{branchBehind}&#8595;</span>}
             {lineAdds > 0 && <span className="text-git-added">+{lineAdds}</span>}
@@ -435,7 +435,7 @@ export function GitBranchSection({ sessionId }: { sessionId: string }) {
               type="button"
               variant="ghost"
               size="xs"
-              className="h-auto px-0 py-0 text-[11px] font-medium text-git-behind hover:opacity-80 hover:text-git-behind"
+              className="h-auto px-0 py-0 text-xs font-medium text-git-behind hover:opacity-80 hover:text-git-behind"
               onClick={() => {
                 api.gitPull(branchCwd).then((r) => {
                   useStore.getState().updateSession(sessionId, {
@@ -497,7 +497,7 @@ export function TaskRow({ task }: { task: TaskItem }) {
 
         {/* Subject — allow wrapping */}
         <span
-          className={`text-[13px] leading-snug flex-1 ${
+          className={`text-sm leading-snug flex-1 ${
             isCompleted ? "text-muted-foreground line-through" : "text-foreground"
           }`}
         >
@@ -507,14 +507,14 @@ export function TaskRow({ task }: { task: TaskItem }) {
 
       {/* Active form text (in_progress only) */}
       {isInProgress && task.activeForm && (
-        <p className="mt-1 ml-6 text-[11px] text-muted-foreground italic truncate">
+        <p className="mt-1 ml-6 text-xs text-muted-foreground italic truncate">
           {task.activeForm}
         </p>
       )}
 
       {/* Blocked by */}
       {task.blockedBy && task.blockedBy.length > 0 && (
-        <p className="mt-1 ml-6 text-[11px] text-muted-foreground flex items-center gap-1">
+        <p className="mt-1 ml-6 text-xs text-muted-foreground flex items-center gap-1">
           <Ban className="w-3 h-3 shrink-0" />
           <span>
             blocked by {task.blockedBy.map((b) => `#${b}`).join(", ")}
@@ -539,9 +539,9 @@ export function TasksSection({ sessionId }: { sessionId: string }) {
     <>
       {/* Task section header */}
       <div className="px-4 py-2.5 flex items-center justify-between">
-        <span className="text-[13px] font-semibold text-foreground">Tasks</span>
+        <span className="text-sm font-semibold text-foreground">Tasks</span>
         {tasks.length > 0 && (
-          <span className="text-[11px] text-muted-foreground tabular-nums">
+          <span className="text-xs text-muted-foreground tabular-nums">
             {completedCount}/{tasks.length}
           </span>
         )}

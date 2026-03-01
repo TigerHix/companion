@@ -127,7 +127,7 @@ export function InfoPopover({ sessionId }: InfoPopoverProps) {
                     useStore.getState().setActiveTab("processes");
                     setOpen(false);
                   }}
-                  className="flex items-center gap-2 text-[12px] text-primary hover:underline"
+                  className="flex items-center gap-2 text-xs text-primary hover:underline"
                   data-testid="info-popover-processes"
                 >
                   <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-bold">

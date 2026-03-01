@@ -314,7 +314,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
   const canSend = text.trim().length > 0 && isConnected;
 
   return (
-    <div className="relative z-10 shrink-0 px-3 sm:px-0 pt-0 sm:pt-3 pb-8 sm:pb-4 bg-transparent">
+    <div className="relative z-10 shrink-0 px-3 sm:px-0 pt-0 pb-10 sm:pb-6 bg-transparent">
       <div className="relative max-w-3xl mx-auto">
         {/* Image thumbnails */}
         {images.length > 0 && (
@@ -389,13 +389,13 @@ export function Composer({ sessionId }: { sessionId: string }) {
                       )}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <span className="text-[13px] font-medium text-foreground">/{cmd.name}</span>
-                      <span className="ml-2 text-[11px] text-muted-foreground">{cmd.type}</span>
+                      <span className="text-sm font-medium text-foreground">/{cmd.name}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">{cmd.type}</span>
                     </div>
                   </Button>
                 ))
               ) : (
-                <div className="px-3 py-2 text-[12px] text-muted-foreground">
+                <div className="px-3 py-2 text-xs text-muted-foreground">
                   No slash commands available yet.
                 </div>
               )}
@@ -411,7 +411,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
               variant={isPlan ? "secondary" : "outline"}
               size="sm"
               className={cn(
-                "h-8 gap-1.5 px-2 text-[12px] font-semibold select-none shrink-0",
+                "h-8 gap-1.5 px-2 text-xs font-semibold select-none shrink-0",
                 !isConnected
                   ? "text-muted-foreground border-transparent"
                   : isPlan
@@ -517,7 +517,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
               variant={isPlan ? "secondary" : "outline"}
               size="sm"
               className={cn(
-                "text-[12px] font-semibold select-none shrink-0",
+                "text-xs font-semibold select-none shrink-0",
                 !isConnected
                   ? "text-muted-foreground border-transparent"
                   : isPlan

@@ -139,7 +139,7 @@ export function SessionItem({
             onBlur={onConfirmRename}
             onClick={(e) => e.stopPropagation()}
             onDoubleClick={(e) => e.stopPropagation()}
-            className="text-[13px] font-medium flex-1 min-w-0 text-foreground bg-transparent border border-border rounded px-1.5 py-0.5 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+            className="text-sm font-medium flex-1 min-w-0 text-foreground bg-transparent border border-border rounded px-1.5 py-0.5 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
           />
         </div>
       ) : (
@@ -158,7 +158,7 @@ export function SessionItem({
           <StatusDot status={derivedStatus} />
           <div className="flex-1 min-w-0">
             <span
-              className={`text-[13px] font-medium truncate text-foreground leading-snug block ${
+              className={`text-sm font-medium truncate text-foreground leading-snug block ${
                 isRecentlyRenamed ? "animate-name-appear" : ""
               }`}
               onAnimationEnd={() => onClearRecentlyRenamed(s.id)}
@@ -246,7 +246,7 @@ export function SessionItem({
               onClick={() => handleMenuAction(() => onStartRename(s.id, label))}
               variant="ghost"
               size="sm"
-              className="w-full justify-start rounded-none px-3 py-1.5 text-[12px] text-foreground"
+              className="w-full justify-start rounded-none px-3 py-1.5 text-xs text-foreground"
             >
               Rename
             </Button>
@@ -258,7 +258,7 @@ export function SessionItem({
                 onClick={(e) => handleMenuAction(() => onUnarchive(e, s.id))}
                 variant="ghost"
                 size="sm"
-                className="w-full justify-start rounded-none px-3 py-1.5 text-[12px] text-foreground"
+                className="w-full justify-start rounded-none px-3 py-1.5 text-xs text-foreground"
               >
                 Restore
               </Button>
@@ -267,7 +267,7 @@ export function SessionItem({
                 onClick={(e) => handleMenuAction(() => onDelete(e, s.id))}
                 variant="ghost"
                 size="sm"
-                className="w-full justify-start rounded-none px-3 py-1.5 text-[12px] text-destructive hover:text-destructive"
+                className="w-full justify-start rounded-none px-3 py-1.5 text-xs text-destructive hover:text-destructive"
               >
                 Delete
               </Button>
@@ -278,7 +278,7 @@ export function SessionItem({
               onClick={(e) => handleMenuAction(() => onArchive(e, s.id))}
               variant="ghost"
               size="sm"
-              className="w-full justify-start rounded-none px-3 py-1.5 text-[12px] text-foreground"
+              className="w-full justify-start rounded-none px-3 py-1.5 text-xs text-foreground"
             >
               Archive
             </Button>

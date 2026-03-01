@@ -5,7 +5,7 @@ import { FolderPicker } from "./FolderPicker.js";
 import { timeAgo } from "../utils/time-ago.js";
 import type { Route } from "../utils/routing.js";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ResponsiveDialog, ResponsiveDialogContent, ResponsiveDialogDescription, ResponsiveDialogFooter, ResponsiveDialogHeader, ResponsiveDialogTitle } from "@/components/ui/responsive-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -511,20 +511,20 @@ export function AgentsPage({ route }: Props) {
       </div>
 
       {/* Run Input Modal */}
-      <Dialog
+      <ResponsiveDialog
         open={!!runInputAgent}
         onOpenChange={(open) => {
           if (!open) setRunInputAgent(null);
         }}
       >
         {runInputAgent && (
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Run {runInputAgent.name}</DialogTitle>
-              <DialogDescription>
+          <ResponsiveDialogContent className="sm:max-w-lg">
+            <ResponsiveDialogHeader>
+              <ResponsiveDialogTitle>Run {runInputAgent.name}</ResponsiveDialogTitle>
+              <ResponsiveDialogDescription>
                 This agent&apos;s prompt uses {"{{input}}"}; provide the input below.
-              </DialogDescription>
-            </DialogHeader>
+              </ResponsiveDialogDescription>
+            </ResponsiveDialogHeader>
             <Textarea
               value={runInput}
               onChange={(e) => setRunInput(e.target.value)}
@@ -532,17 +532,17 @@ export function AgentsPage({ route }: Props) {
               className="min-h-24 resize-none text-sm"
               autoFocus
             />
-            <DialogFooter>
+            <ResponsiveDialogFooter>
               <Button variant="outline" onClick={() => setRunInputAgent(null)}>
                 Cancel
               </Button>
               <Button onClick={() => handleRun(runInputAgent, runInput)}>
                 Run
               </Button>
-            </DialogFooter>
-          </DialogContent>
+            </ResponsiveDialogFooter>
+          </ResponsiveDialogContent>
         )}
-      </Dialog>
+      </ResponsiveDialog>
     </div>
   );
 }

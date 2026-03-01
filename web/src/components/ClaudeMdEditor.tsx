@@ -134,7 +134,7 @@ export function ClaudeMdEditor({ cwd, open, onClose }: ClaudeMdEditorProps) {
             <div>
               <DialogHeader className="gap-0">
                 <DialogTitle className="text-sm font-semibold text-foreground">CLAUDE.md</DialogTitle>
-                <DialogDescription className="mt-0 text-[11px]">
+                <DialogDescription className="mt-0 text-xs">
                   Project instructions for Claude Code
                 </DialogDescription>
               </DialogHeader>
@@ -180,7 +180,7 @@ export function ClaudeMdEditor({ cwd, open, onClose }: ClaudeMdEditorProps) {
                       onClick={() => handleSelect(i)}
                       variant="ghost"
                       size="sm"
-                      className={`flex items-center gap-2 w-full px-3 py-2 text-left text-[12px] transition-colors cursor-pointer ${
+                      className={`flex items-center gap-2 w-full px-3 py-2 text-left text-xs transition-colors cursor-pointer ${
                         !createMode && selectedIdx === i
                           ? "bg-accent text-foreground"
                           : "text-foreground/70 hover:bg-accent"
@@ -199,7 +199,7 @@ export function ClaudeMdEditor({ cwd, open, onClose }: ClaudeMdEditorProps) {
                     </Button>
                   ))}
                   {createMode && (
-                    <div className="flex items-center gap-2 w-full px-3 py-2 text-[12px] bg-accent text-foreground">
+                    <div className="flex items-center gap-2 w-full px-3 py-2 text-xs bg-accent text-foreground">
                       <svg
                         viewBox="0 0 16 16"
                         fill="currentColor"
@@ -226,7 +226,7 @@ export function ClaudeMdEditor({ cwd, open, onClose }: ClaudeMdEditorProps) {
                         onClick={() => handleCreate("root")}
                         variant="ghost"
                         size="sm"
-                        className="w-full justify-start px-2 py-1.5 text-[11px] text-foreground/70"
+                        className="w-full justify-start px-2 py-1.5 text-xs text-foreground/70"
                       >
                         <svg
                           viewBox="0 0 16 16"
@@ -244,7 +244,7 @@ export function ClaudeMdEditor({ cwd, open, onClose }: ClaudeMdEditorProps) {
                         onClick={() => handleCreate("dotclaude")}
                         variant="ghost"
                         size="sm"
-                        className="w-full justify-start px-2 py-1.5 text-[11px] text-foreground/70"
+                        className="w-full justify-start px-2 py-1.5 text-xs text-foreground/70"
                       >
                         <svg
                           viewBox="0 0 16 16"
@@ -307,7 +307,7 @@ export function ClaudeMdEditor({ cwd, open, onClose }: ClaudeMdEditorProps) {
                   <>
                     {/* File path bar */}
                     <div className="shrink-0 flex items-center justify-between px-4 py-2 bg-card border-b border-border">
-                      <span className="text-[12px] text-muted-foreground font-mono truncate">
+                      <span className="text-xs text-muted-foreground font-mono truncate">
                         {createMode
                           ? relPath(createMode)
                           : relPath(files[selectedIdx]?.path ?? "")}
@@ -323,7 +323,7 @@ export function ClaudeMdEditor({ cwd, open, onClose }: ClaudeMdEditorProps) {
                           onClick={handleSave}
                           disabled={!dirty || saving}
                           size="sm"
-                          className="h-7 text-[11px]"
+                          className="h-7 text-xs"
                         >
                           {saving ? "Saving..." : "Save"}
                         </Button>
@@ -338,7 +338,7 @@ export function ClaudeMdEditor({ cwd, open, onClose }: ClaudeMdEditorProps) {
                         setDirty(true);
                       }}
                       spellCheck={false}
-                      className="min-h-0 flex-1 w-full rounded-none border-0 bg-background p-4 text-[13px] font-mono leading-relaxed shadow-none ring-0 focus-visible:ring-0"
+                      className="min-h-0 flex-1 w-full rounded-none border-0 bg-background p-4 text-sm font-mono leading-relaxed shadow-none ring-0 focus-visible:ring-0"
                       placeholder="Write your project instructions here..."
                     />
                   </>

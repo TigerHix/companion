@@ -167,7 +167,7 @@ export function DiffPanel({ sessionId }: { sessionId: string }) {
           shrink-0 h-full min-h-0 flex flex-col bg-sidebar border-r border-border transition-all duration-200 overflow-hidden
         `}
       >
-        <div className="w-[220px] px-4 py-3 text-[11px] font-semibold text-foreground uppercase tracking-wider border-b border-border shrink-0 flex items-center justify-between">
+        <div className="w-[220px] px-4 py-3 text-xs font-semibold text-foreground uppercase tracking-wider border-b border-border shrink-0 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-warning" />
             <span>Changed ({relativeChangedFiles.length})</span>
@@ -197,7 +197,7 @@ export function DiffPanel({ sessionId }: { sessionId: string }) {
                 }
               }}
               variant="ghost"
-              className={`mx-1 h-auto w-full justify-start gap-2 px-2 py-2.5 text-[13px] whitespace-nowrap ${
+              className={`mx-1 h-auto w-full justify-start gap-2 px-2 py-2.5 text-sm whitespace-nowrap ${
                 abs === selectedFile ? "bg-accent text-foreground" : "text-foreground/70"
               }`}
               style={{ width: "calc(100% - 8px)" }}
@@ -228,10 +228,10 @@ export function DiffPanel({ sessionId }: { sessionId: string }) {
               </Button>
             )}
             <div className="flex-1 min-w-0">
-              <span className="text-foreground text-[13px] font-medium truncate block">
+              <span className="text-foreground text-sm font-medium truncate block">
                 {activeFile ? activeFile.rel : "Changed files"}
               </span>
-              <span className="text-muted-foreground truncate text-[11px] hidden sm:block">
+              <span className="text-muted-foreground truncate text-xs hidden sm:block">
                 Single-file rendered diff with sidebar switching to keep mobile scrolling fast
               </span>
             </div>
@@ -240,7 +240,7 @@ export function DiffPanel({ sessionId }: { sessionId: string }) {
               onClick={() => setDiffBase(diffBase === "last-commit" ? "default-branch" : "last-commit")}
               variant="ghost"
               size="xs"
-              className="hidden shrink-0 h-auto px-0 py-0 text-[11px] text-muted-foreground hover:text-foreground sm:inline-flex"
+              className="hidden shrink-0 h-auto px-0 py-0 text-xs text-muted-foreground hover:text-foreground sm:inline-flex"
               title={`Switch to ${diffBase === "last-commit" ? "default branch" : "last commit"} comparison`}
             >
               {diffBase === "default-branch" ? "vs default branch" : "vs last commit"}
@@ -255,13 +255,13 @@ export function DiffPanel({ sessionId }: { sessionId: string }) {
                 <div className="flex items-start gap-3">
                   <FileStatusIcon status={activeFile.status} />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13px] font-medium text-foreground">{activeFile.rel}</div>
-                    <div className="truncate text-[11px] text-muted-foreground">{activeFile.abs}</div>
+                    <div className="truncate text-sm font-medium text-foreground">{activeFile.rel}</div>
+                    <div className="truncate text-xs text-muted-foreground">{activeFile.abs}</div>
                   </div>
                 </div>
                 <div className="mt-3 rounded-lg border border-border/70 bg-background px-3 py-2">
                   {diffErrorsByPath[activeFile.abs] ? (
-                    <p className="text-[12px] text-warning">{diffErrorsByPath[activeFile.abs]}</p>
+                    <p className="text-xs text-warning">{diffErrorsByPath[activeFile.abs]}</p>
                   ) : diffsByPath[activeFile.abs] !== undefined ? (
                     <DiffViewer
                       unifiedDiff={diffsByPath[activeFile.abs]}
@@ -269,7 +269,7 @@ export function DiffPanel({ sessionId }: { sessionId: string }) {
                       mode="full"
                     />
                   ) : (
-                    <p className="text-[12px] text-muted-foreground">Loading diff...</p>
+                    <p className="text-xs text-muted-foreground">Loading diff...</p>
                   )}
                 </div>
               </div>

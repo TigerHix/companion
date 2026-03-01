@@ -253,7 +253,7 @@ function ProcessRow({
               onClick={() => setExpanded(!expanded)}
               variant="ghost"
               size="xs"
-              className="flex-1 min-w-0 justify-start px-0 text-left text-[12px] font-medium text-foreground hover:underline hover:bg-transparent"
+              className="flex-1 min-w-0 justify-start px-0 text-left text-xs font-medium text-foreground hover:underline hover:bg-transparent"
               title={process.description || process.command}
             >
               {process.description || truncateCommand(process.command)}
@@ -273,7 +273,7 @@ function ProcessRow({
                 {process.command}
               </pre>
               {process.summary && (
-                <div className="text-[11px] text-muted-foreground italic">
+                <div className="text-xs text-muted-foreground italic">
                   {process.summary}
                 </div>
               )}
@@ -341,7 +341,7 @@ function SystemProcessRow({
               onClick={() => setExpanded(!expanded)}
               variant="ghost"
               size="xs"
-              className="flex-1 min-w-0 justify-start px-0 text-left text-[12px] font-medium text-foreground hover:underline hover:bg-transparent"
+              className="flex-1 min-w-0 justify-start px-0 text-left text-xs font-medium text-foreground hover:underline hover:bg-transparent"
               title={proc.fullCommand}
             >
               {title}
@@ -407,7 +407,7 @@ function SystemProcessRow({
 function SectionHeader({ title, count, action }: { title: string; count?: number; action?: React.ReactNode }) {
   return (
     <div className="shrink-0 px-4 py-2 flex items-center justify-between bg-background">
-      <span className="text-[11px] text-muted-foreground uppercase tracking-wider">
+      <span className="text-xs text-muted-foreground uppercase tracking-wider">
         {title}{count !== undefined && count > 0 ? ` (${count})` : ""}
       </span>
       {action}
@@ -465,7 +465,7 @@ function LoadingStepRow({
   state: "pending" | "active" | "done";
 }) {
   return (
-    <div className="flex items-center gap-2 text-[11px]">
+    <div className="flex items-center gap-2 text-xs">
       <span
         className={`inline-flex items-center justify-center w-4 h-4 rounded-full border ${
           state === "done"
@@ -879,7 +879,7 @@ export function ProcessPanel({ sessionId }: { sessionId: string }) {
                     disabled={isSystemScanLoading}
                     variant="ghost"
                     size="xs"
-                    className="text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-50 inline-flex items-center gap-1.5"
+                    className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50 inline-flex items-center gap-1.5"
                     aria-label="Refresh system processes"
                   >
                     {systemScanPhase === "refreshing" && <Spinner size="sm" className="text-current" />}
@@ -909,7 +909,7 @@ export function ProcessPanel({ sessionId }: { sessionId: string }) {
                           <span className="text-[9px] rounded px-1 py-0.5 bg-accent/60 text-muted-foreground uppercase tracking-wide">
                             Folder
                           </span>
-                          <span className="text-[12px] text-foreground font-medium">
+                          <span className="text-xs text-foreground font-medium">
                             {group.label}
                           </span>
                           <span className="text-[9px] rounded px-1.5 py-0.5 bg-accent/60 text-foreground/80">

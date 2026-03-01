@@ -133,7 +133,7 @@ export function SessionTerminalDock({
                   onClick={() => setActiveQuickTerminalTabId(tab.id)}
                   variant="ghost"
                   size="xs"
-                  className={`px-1.5 py-1 text-[11px] font-medium ${
+                  className={`px-1.5 py-1 text-xs font-medium ${
                     activeQuickTerminalTabId === tab.id
                       ? "text-foreground hover:bg-transparent"
                       : "text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -163,7 +163,7 @@ export function SessionTerminalDock({
               onClick={() => defaultNewTerminalOpts && openQuickTerminal(defaultNewTerminalOpts)}
               variant="ghost"
               size="xs"
-              className="text-[11px] text-muted-foreground hover:text-foreground"
+              className="text-xs text-muted-foreground hover:text-foreground"
               title={sdkSession?.containerId ? "Open terminal in session container" : "Open terminal on host machine"}
             >
               + Terminal
@@ -174,7 +174,7 @@ export function SessionTerminalDock({
             onClick={closeDock}
             variant="ghost"
             size="xs"
-            className="ml-1 text-[11px] text-muted-foreground hover:text-foreground"
+            className="ml-1 text-xs text-muted-foreground hover:text-foreground"
           >
             {closeLabel}
           </Button>

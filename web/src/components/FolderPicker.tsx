@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { api, type DirEntry } from "../api.js";
 import { getRecentDirs, addRecentDir } from "../utils/recent-dirs.js";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ResponsiveDialog, ResponsiveDialogContent, ResponsiveDialogHeader, ResponsiveDialogTitle } from "@/components/ui/responsive-dialog";
 import { Button } from "@/components/ui/button";
 
 interface FolderPickerProps {
@@ -42,29 +42,11 @@ export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerPro
   }
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent
-        showCloseButton={false}
-        className="top-auto left-0 bottom-0 w-full max-w-none translate-x-0 translate-y-0 rounded-t-[14px] rounded-b-none p-0 sm:top-1/2 sm:left-1/2 sm:bottom-auto sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[14px]"
-      >
-      <div
-        className="w-full max-w-lg h-[min(480px,90dvh)] mx-0 sm:mx-4 flex flex-col bg-background border border-border rounded-t-[14px] sm:rounded-[14px] shadow-2xl overflow-hidden"
-      >
-        {/* Header */}
-        <DialogHeader className="flex-row items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5 sm:py-4 shrink-0">
-          <DialogTitle className="text-sm font-semibold text-foreground">Select Folder</DialogTitle>
-          <Button
-            type="button"
-            onClick={onClose}
-            variant="ghost"
-            size="icon-xs"
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
-              <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
-            </svg>
-          </Button>
-        </DialogHeader>
+    <ResponsiveDialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <ResponsiveDialogContent showCloseButton={false} className="sm:max-w-lg max-h-[80dvh] overflow-hidden flex flex-col p-0">
+        <ResponsiveDialogHeader className="px-6 pt-6 shrink-0">
+          <ResponsiveDialogTitle>Select Folder</ResponsiveDialogTitle>
+        </ResponsiveDialogHeader>
 
         {/* Recent directories */}
         {recentDirs.length > 0 && (
@@ -129,7 +111,7 @@ export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerPro
                   </svg>
                 </Button>
               )}
-              <span className="text-[11px] text-muted-foreground font-mono truncate flex-1">{browsePath}</span>
+              <span className="text-xs text-muted-foreground font-mono truncate flex-1">{browsePath}</span>
               <Button
                 type="button"
                 onClick={() => { setShowDirInput(true); setDirInput(browsePath); }}
@@ -208,8 +190,7 @@ export function FolderPicker({ initialPath, onSelect, onClose }: FolderPickerPro
             </div>
           </div>
         )}
-      </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

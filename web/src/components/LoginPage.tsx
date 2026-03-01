@@ -94,7 +94,7 @@ export function LoginPage() {
                 onClick={() => setShowToken(!showToken)}
                 variant="ghost"
                 size="xs"
-                className="absolute right-2 top-1/2 h-auto -translate-y-1/2 px-1.5 py-0.5 text-[11px] text-muted-foreground"
+                className="absolute right-2 top-1/2 h-auto -translate-y-1/2 px-1.5 py-0.5 text-xs text-muted-foreground"
                 tabIndex={-1}
               >
                 {showToken ? "Hide" : "Show"}
@@ -115,7 +115,7 @@ export function LoginPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-[11px] text-muted-foreground text-center leading-relaxed">
+        <p className="mt-6 text-xs text-muted-foreground text-center leading-relaxed">
           Scan the QR code in Settings with your phone camera to authenticate,
           or find your token in the server console.
         </p>

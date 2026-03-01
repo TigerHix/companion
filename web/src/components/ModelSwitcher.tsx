@@ -85,7 +85,7 @@ export function ModelSwitcher({ sessionId }: ModelSwitcherProps) {
         onClick={() => setOpen((prev) => !prev)}
         variant="ghost"
         size="sm"
-        className={`h-8 px-2 text-[12px] font-medium ${
+        className={`h-8 px-2 text-xs font-medium ${
           open
             ? "text-foreground bg-accent"
             : "text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -95,7 +95,7 @@ export function ModelSwitcher({ sessionId }: ModelSwitcherProps) {
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        {currentOption.icon && <span className="text-[13px] leading-none">{currentOption.icon}</span>}
+        {currentOption.icon && <span className="text-sm leading-none">{currentOption.icon}</span>}
         <span>{currentOption.label}</span>
         <svg viewBox="0 0 12 12" fill="currentColor" className="w-2.5 h-2.5 opacity-50">
           <path d="M6 8L1.5 3.5h9L6 8z" />
@@ -114,7 +114,7 @@ export function ModelSwitcher({ sessionId }: ModelSwitcherProps) {
               type="button"
               onClick={() => handleSelect(model.value)}
               variant="ghost"
-              className={`w-full min-h-[44px] justify-start gap-2 rounded-none px-3 text-[13px] ${
+              className={`w-full min-h-[44px] justify-start gap-2 rounded-none px-3 text-sm ${
                 model.value === currentModel
                   ? "text-foreground bg-accent font-medium"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -122,7 +122,7 @@ export function ModelSwitcher({ sessionId }: ModelSwitcherProps) {
               role="option"
               aria-selected={model.value === currentModel}
             >
-              {model.icon && <span className="text-[14px] leading-none w-5 text-center">{model.icon}</span>}
+              {model.icon && <span className="text-sm leading-none w-5 text-center">{model.icon}</span>}
               <span className="flex-1 text-left">{model.label}</span>
               {model.value === currentModel && (
                 <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-primary shrink-0">

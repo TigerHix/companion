@@ -29,7 +29,7 @@ export function AiValidationBadge({ entry }: AiValidationBadgeProps) {
   }
 
   return (
-    <div className={`flex items-center gap-2 px-3 py-1.5 text-[11px] ${
+    <div className={`flex items-center gap-2 px-3 py-1.5 text-xs ${
       isAllow ? "text-success" : "text-destructive"
     }`}>
       <Shield className="w-3.5 h-3.5 shrink-0 opacity-70" />

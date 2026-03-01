@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { api, type MokuEnv, type ImagePullState } from "../api.js";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ResponsiveDialog, ResponsiveDialogContent, ResponsiveDialogHeader, ResponsiveDialogTitle } from "@/components/ui/responsive-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -297,7 +297,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
       {error && <ErrorBanner message={error} />}
 
       <div className="flex items-center justify-between gap-3 pt-1">
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Stored in <code className="rounded bg-accent px-1 py-0.5 text-[10px]">~/.moku/envs/</code>
         </p>
         <Button
@@ -319,7 +319,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
           <div className="mb-2 flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 className="text-lg font-semibold text-foreground">Environments</h1>
-              <p className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground">
+              <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
                 Reusable environment profiles with optional Docker isolation.
               </p>
             </div>
@@ -351,7 +351,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
             </div>
           )}
 
-          <div className="mb-3 flex items-center gap-2 text-[12px] text-muted-foreground">
+          <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
             <span>{envs.length} environment{envs.length !== 1 ? "s" : ""}</span>
           </div>
 
@@ -390,56 +390,44 @@ export function EnvManager({ onClose, embedded = false }: Props) {
   }
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose?.(); }}>
-      <DialogContent
-        showCloseButton={false}
-        className="top-auto left-0 bottom-0 w-full max-w-none translate-x-0 translate-y-0 gap-0 rounded-t-[14px] rounded-b-none p-0 sm:top-1/2 sm:left-1/2 sm:bottom-auto sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[14px]"
-      >
-        <div className="flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[14px] border border-border bg-background sm:max-h-[80dvh] sm:rounded-[14px]">
-          <DialogHeader className="shrink-0 flex-row items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5 sm:py-4">
-            <div className="flex items-center gap-2">
-              <DialogTitle className="text-sm font-semibold text-foreground">Manage Environments</DialogTitle>
-              {dockerBadge}
-            </div>
-            {onClose && (
-              <Button type="button" variant="ghost" size="icon-sm" aria-label="Close" onClick={onClose}>
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="size-3.5">
-                  <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
-                </svg>
-              </Button>
-            )}
-          </DialogHeader>
-
-          <div className="flex-1 space-y-4 overflow-y-auto px-3 py-3 pb-safe sm:px-5 sm:py-4">
-            {error && <ErrorBanner message={error} />}
-
-            {loading ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">Loading environments...</div>
-            ) : envs.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">No environments yet.</div>
-            ) : (
-              <div className="space-y-3">
-                {envs.map((env) => (
-                  <div key={env.slug}>
-                    {editingSlug === env.slug ? (
-                      renderEditor(env, true)
-                    ) : (
-                      <ModalEnvRow
-                        env={env}
-                        onEdit={() => startEdit(env)}
-                        onDelete={() => void handleDelete(env.slug)}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {createForm}
+    <ResponsiveDialog open onOpenChange={(open) => { if (!open) onClose?.(); }}>
+      <ResponsiveDialogContent showCloseButton={false} className="sm:max-w-lg max-h-[80dvh] overflow-hidden flex flex-col p-0">
+        <ResponsiveDialogHeader className="px-6 pt-6 shrink-0">
+          <div className="flex items-center gap-2">
+            <ResponsiveDialogTitle>Manage Environments</ResponsiveDialogTitle>
+            {dockerBadge}
           </div>
+        </ResponsiveDialogHeader>
+
+        <div className="flex-1 space-y-4 overflow-y-auto px-6 pb-6 pb-safe">
+          {error && <ErrorBanner message={error} />}
+
+          {loading ? (
+            <div className="py-6 text-center text-sm text-muted-foreground">Loading environments...</div>
+          ) : envs.length === 0 ? (
+            <div className="py-6 text-center text-sm text-muted-foreground">No environments yet.</div>
+          ) : (
+            <div className="space-y-3">
+              {envs.map((env) => (
+                <div key={env.slug}>
+                  {editingSlug === env.slug ? (
+                    renderEditor(env, true)
+                  ) : (
+                    <ModalEnvRow
+                      env={env}
+                      onEdit={() => startEdit(env)}
+                      onDelete={() => void handleDelete(env.slug)}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {createForm}
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 
   function renderEditor(env: MokuEnv, compact: boolean) {
@@ -455,19 +443,19 @@ export function EnvManager({ onClose, embedded = false }: Props) {
 
         <div className="space-y-3">
           <div>
-            <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">Variables</div>
+            <div className="mb-1.5 text-xs font-medium text-muted-foreground">Variables</div>
             <VarEditor rows={editVars} onChange={setEditVars} />
           </div>
           <div>
-            <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">Docker</div>
+            <div className="mb-1.5 text-xs font-medium text-muted-foreground">Docker</div>
             {renderDockerTab(editDockerfile, setEditDockerfile, editBaseImage, setEditBaseImage, env.slug, env)}
           </div>
           <div>
-            <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">Ports</div>
+            <div className="mb-1.5 text-xs font-medium text-muted-foreground">Ports</div>
             {renderPortsTab(editPorts, setEditPorts)}
           </div>
           <div>
-            <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">Init Script</div>
+            <div className="mb-1.5 text-xs font-medium text-muted-foreground">Init Script</div>
             {renderInitScriptTab(editInitScript, setEditInitScript)}
           </div>
         </div>
@@ -494,7 +482,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
             variant={activeTab === tab ? "secondary" : "ghost"}
             size="xs"
             className={cn(
-              "min-h-11 rounded-md px-3 py-2.5 text-[11px] font-medium capitalize",
+              "min-h-11 rounded-md px-3 py-2.5 text-xs font-medium capitalize",
               activeTab === tab && "text-primary",
             )}
             onClick={() => setTab(tab)}
@@ -522,7 +510,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
       <div className="space-y-3">
         <div>
           <div className="mb-1 flex items-center justify-between gap-2">
-            <label className="text-[11px] text-muted-foreground">Base Image</label>
+            <label className="text-xs text-muted-foreground">Base Image</label>
             {effectiveImage && (
               <div className="flex flex-wrap items-center justify-end gap-1.5">
                 {imageState?.status === "ready" && <StatusChip tone="success">Ready</StatusChip>}
@@ -572,7 +560,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
 
         <div>
           <div className="mb-1 flex items-center justify-between gap-2">
-            <label className="text-[11px] text-muted-foreground">Dockerfile (optional override)</label>
+            <label className="text-xs text-muted-foreground">Dockerfile (optional override)</label>
             {!dockerfile && (
               <Button type="button" variant="link" size="xs" className="h-auto px-0 py-0" onClick={() => setDockerfile(DEFAULT_DOCKERFILE)}>
                 Use template
@@ -585,7 +573,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
             onChange={(e) => setDockerfile(e.target.value)}
             placeholder="# Custom Dockerfile content..."
             rows={10}
-            className="min-h-[120px] resize-y px-3 py-2.5 font-mono text-[11px]"
+            className="min-h-[120px] resize-y px-3 py-2.5 font-mono text-xs"
           />
         </div>
 
@@ -638,7 +626,7 @@ export function EnvManager({ onClose, embedded = false }: Props) {
   function renderPortsTab(ports: number[], setPorts: (ports: number[]) => void) {
     return (
       <div className="space-y-2">
-        <label className="block text-[11px] text-muted-foreground">Ports to expose in the container</label>
+        <label className="block text-xs text-muted-foreground">Ports to expose in the container</label>
         {ports.map((port, index) => (
           <div key={`${port}-${index}`} className="flex items-center gap-1.5">
             <Input
@@ -678,13 +666,13 @@ export function EnvManager({ onClose, embedded = false }: Props) {
     return (
       <div className="space-y-3">
         <div>
-          <label className="mb-1 block text-[11px] text-muted-foreground">Init Script</label>
+          <label className="mb-1 block text-xs text-muted-foreground">Init Script</label>
           <Textarea
             value={initScript}
             onChange={(e) => setInitScript(e.target.value)}
             placeholder={"# Runs inside the container before Claude starts\n# Example:\nbun install\npip install -r requirements.txt"}
             rows={10}
-            className="min-h-[120px] resize-y px-3 py-2.5 font-mono text-[11px]"
+            className="min-h-[120px] resize-y px-3 py-2.5 font-mono text-xs"
           />
         </div>
         <p className="text-[10px] text-muted-foreground">

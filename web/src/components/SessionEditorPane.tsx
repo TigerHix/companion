@@ -605,7 +605,7 @@ export function SessionEditorPane({ sessionId }: SessionEditorPaneProps) {
             </svg>
           </Button>
           <div className="min-w-0">
-            <p className="text-[11px] text-muted-foreground truncate">{relPath(cwd, selectedPath)}</p>
+            <p className="text-xs text-muted-foreground truncate">{relPath(cwd, selectedPath)}</p>
             {dirty && <p className="text-[10px] text-warning">Unsaved changes</p>}
             {saved && <p className="text-[10px] text-success">Saved</p>}
           </div>

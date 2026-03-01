@@ -14,7 +14,7 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
     return (
       <div className="flex items-center gap-3 py-1 min-w-0 overflow-hidden">
         <Separator className="flex-1 shrink-[2]" />
-        <span className="text-[11px] text-muted-foreground italic font-mono shrink min-w-0 truncate px-1">
+        <span className="text-xs text-muted-foreground italic font-mono shrink min-w-0 truncate px-1">
           {message.content}
         </span>
         <Separator className="flex-1 shrink-[2]" />
@@ -38,7 +38,7 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
               ))}
             </div>
           )}
-          <div className="text-[13px] sm:text-[14px] leading-relaxed break-words">
+          <div className="text-base sm:text-sm leading-relaxed break-words">
             <MarkdownContent text={message.content} />
           </div>
         </div>
@@ -140,18 +140,13 @@ function AssistantMessage({ message }: { message: ChatMessage }) {
 }
 
 function AssistantAvatar() {
-  return (
-    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-      <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 text-primary">
-        <circle cx="8" cy="8" r="3" />
-      </svg>
-    </div>
-  );
+  // Placeholder — avatar may be restored later
+  return null;
 }
 
 function MarkdownContent({ text, showCursor = false }: { text: string; showCursor?: boolean }) {
   return (
-    <div className="markdown-body text-[14px] sm:text-[15px] text-foreground leading-relaxed overflow-hidden">
+    <div className="markdown-body text-base sm:text-sm text-foreground leading-relaxed overflow-hidden">
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -209,7 +204,7 @@ function MarkdownContent({ text, showCursor = false }: { text: string; showCurso
                       {lang}
                     </div>
                   )}
-                  <pre className="px-2 sm:px-3 py-2 sm:py-2.5 bg-code-bg text-code-fg text-[12px] sm:text-[13px] font-mono leading-relaxed overflow-x-auto">
+                  <pre className="px-2 sm:px-3 py-2 sm:py-2.5 bg-code-bg text-code-fg text-xs font-mono leading-relaxed overflow-x-auto">
                     <code>{children}</code>
                   </pre>
                 </div>
@@ -217,7 +212,7 @@ function MarkdownContent({ text, showCursor = false }: { text: string; showCurso
             }
 
             return (
-              <code className="px-1.5 py-0.5 rounded-md bg-foreground/[0.06] text-[13px] font-mono text-foreground/80">
+              <code className="px-1.5 py-0.5 rounded-md bg-foreground/[0.06] text-xs font-mono text-foreground/80">
                 {children}
               </code>
             );
@@ -250,7 +245,7 @@ function MarkdownContent({ text, showCursor = false }: { text: string; showCurso
       {showCursor && (
         <span
           data-testid="assistant-stream-cursor"
-          className="inline-block w-0.5 h-4 bg-primary ml-0.5 align-middle animate-[pulse-dot_0.8s_ease-in-out_infinite]"
+          className="stream-cursor"
         />
       )}
     </div>
@@ -353,7 +348,7 @@ function ToolGroupBlock({ name, items }: { name: string; items: ToolGroupItem[] 
         variant="ghost"
         size="sm"
         onClick={() => setOpen(!open)}
-        className="h-auto w-full justify-start gap-2.5 rounded-none px-3 py-2 text-left hover:bg-accent/50"
+        className="h-9 w-full justify-start gap-3 rounded-none px-3 text-left hover:bg-accent/50"
       >
         <ChevronRight
           className={cn(
@@ -391,13 +386,13 @@ function ThinkingBlock({ text }: { text: string }) {
   const [open, setOpen] = useState(Boolean(normalized));
 
   return (
-    <div className="border border-border rounded-xl overflow-hidden bg-card/70 backdrop-blur-[2px]">
+    <div className="border border-border rounded-[10px] overflow-hidden card-moku">
       <Button
         type="button"
         variant="ghost"
         size="sm"
         onClick={() => setOpen(!open)}
-        className="h-auto w-full justify-start gap-2 rounded-none px-3 py-2.5 text-xs text-muted-foreground hover:bg-accent/30"
+        className="h-9 w-full justify-start gap-3 rounded-none px-3 text-xs text-muted-foreground hover:bg-accent/50"
       >
         <ChevronRight
           className={cn(
@@ -417,7 +412,7 @@ function ThinkingBlock({ text }: { text: string }) {
       {open && (
         <div className="px-3 pb-3 pt-0">
           <div className="border border-border/70 rounded-lg px-3 py-2 bg-background/60 max-h-60 overflow-y-auto">
-            <div className="markdown-body text-[13px] text-muted-foreground leading-relaxed">
+            <div className="markdown-body text-xs sm:text-sm text-muted-foreground leading-relaxed">
               <Markdown
                 remarkPlugins={[remarkGfm]}
                 components={{
@@ -426,7 +421,7 @@ function ThinkingBlock({ text }: { text: string }) {
                   ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-0.5">{children}</ol>,
                   li: ({ children }) => <li>{children}</li>,
                   code: ({ children }) => (
-                    <code className="px-1.5 py-0.5 rounded-md bg-foreground/[0.06] text-foreground/80 font-mono text-[12px]">
+                    <code className="px-1.5 py-0.5 rounded-md bg-foreground/[0.06] text-foreground/80 font-mono text-xs">
                       {children}
                     </code>
                   ),

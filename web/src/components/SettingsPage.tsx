@@ -610,7 +610,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                   </div>
                 </div>
                 {!configured && (
-                  <p className="text-[11px] text-warning">Configure an Anthropic API key above to enable AI validation.</p>
+                  <p className="text-xs text-warning">Configure an Anthropic API key above to enable AI validation.</p>
                 )}
 
                 {aiValidationEnabled && configured && (
@@ -618,7 +618,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                     <div className={settingRowClass}>
                       <div>
                         <span className="text-sm">Auto-approve safe tools</span>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">Automatically allow read-only tools and benign commands</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Automatically allow read-only tools and benign commands</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`text-xs font-medium ${aiValidationAutoApprove ? "text-success" : "text-muted-foreground"}`}>
@@ -635,7 +635,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                     <div className={settingRowClass}>
                       <div>
                         <span className="text-sm">Auto-deny dangerous tools</span>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">Automatically block destructive commands like rm -rf</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Automatically block destructive commands like rm -rf</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`text-xs font-medium ${aiValidationAutoDeny ? "text-success" : "text-muted-foreground"}`}>

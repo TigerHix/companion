@@ -155,7 +155,7 @@ export function TerminalAccessoryBar({ onWrite, onPaste }: TerminalAccessoryBarP
           type="button"
           variant="ghost"
           size="xs"
-          className="shrink-0 h-7 min-w-[32px] px-2 bg-accent text-foreground text-[11px] font-semibold font-mono"
+          className="shrink-0 h-7 min-w-[32px] px-2 bg-accent text-foreground text-xs font-semibold font-mono"
           onClick={() => handleKey(key.data)}
         >
           {key.label}
@@ -168,7 +168,7 @@ export function TerminalAccessoryBar({ onWrite, onPaste }: TerminalAccessoryBarP
           type="button"
           variant="ghost"
           size="xs"
-          className="shrink-0 h-7 min-w-[36px] px-2 bg-accent text-foreground text-[11px] font-semibold font-mono"
+          className="shrink-0 h-7 min-w-[36px] px-2 bg-accent text-foreground text-xs font-semibold font-mono"
           onClick={onPaste}
           title="Paste from clipboard"
         >

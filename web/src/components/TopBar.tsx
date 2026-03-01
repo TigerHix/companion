@@ -51,7 +51,7 @@ export function TopBar() {
                   ? "bg-warning"
                   : "bg-success"
           }`} />
-          <span className="text-[12px] font-medium text-foreground truncate max-w-[200px]" title={sessionName || undefined}>
+          <span className="text-sm font-medium text-foreground truncate max-w-[200px]" title={sessionName || undefined}>
             {sessionName}
           </span>
         </div>

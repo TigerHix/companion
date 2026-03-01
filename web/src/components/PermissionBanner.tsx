@@ -98,7 +98,7 @@ export function PermissionBanner({
                 {isAskUser ? "Question" : "Permission Request"}
               </span>
               {!isAskUser && (
-                <span className="text-[11px] text-muted-foreground font-mono">{permission.tool_name}</span>
+                <span className="text-xs text-muted-foreground font-mono">{permission.tool_name}</span>
               )}
             </div>
 
@@ -115,7 +115,7 @@ export function PermissionBanner({
             {/* AI validation recommendation (shown for "uncertain" verdicts that fall through to manual) */}
             {permission.ai_validation && !isAskUser && (
               <div className={cn(
-                "mt-2 flex items-center gap-1.5 text-[11px] px-2 py-1.5 rounded-md",
+                "mt-2 flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-md",
                 permission.ai_validation.verdict === "safe"
                   ? "bg-success/10 text-success"
                   : permission.ai_validation.verdict === "dangerous"
@@ -361,7 +361,7 @@ function AskUserQuestionDisplay({
                         </span>
                         <div>
                           <span className="text-xs font-medium text-foreground">{label}</span>
-                          {desc && <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{desc}</p>}
+                          {desc && <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{desc}</p>}
                         </div>
                       </div>
                     </Button>
@@ -499,9 +499,9 @@ function ExitPlanModeDisplay({ input }: { input: Record<string, unknown> }) {
             <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-primary/15 text-primary shrink-0">
               <ListTree className="size-3" />
             </span>
-            <span className="text-[11px] text-primary font-semibold tracking-wide uppercase">Plan</span>
+            <span className="text-xs text-primary font-semibold tracking-wide uppercase">Plan</span>
           </div>
-          <div className="px-3 py-3 max-h-72 overflow-y-auto markdown-body text-[13px] text-foreground leading-relaxed">
+          <div className="px-3 py-3 max-h-72 overflow-y-auto markdown-body text-sm text-foreground leading-relaxed">
             <Markdown
               remarkPlugins={[remarkGfm]}
               components={{
@@ -523,14 +523,14 @@ function ExitPlanModeDisplay({ input }: { input: Record<string, unknown> }) {
 
                   if (isBlock) {
                     return (
-                      <pre className="my-2 px-2.5 py-2 rounded-lg bg-code-bg text-code-fg text-[12px] font-mono leading-relaxed overflow-x-auto border border-border">
+                      <pre className="my-2 px-2.5 py-2 rounded-lg bg-code-bg text-code-fg text-xs font-mono leading-relaxed overflow-x-auto border border-border">
                         <code>{children}</code>
                       </pre>
                     );
                   }
 
                   return (
-                    <code className="px-1.5 py-0.5 rounded-md bg-foreground/[0.06] text-code-fg font-mono text-[12px]">
+                    <code className="px-1.5 py-0.5 rounded-md bg-foreground/[0.06] text-code-fg font-mono text-xs">
                       {children}
                     </code>
                   );
@@ -551,7 +551,7 @@ function ExitPlanModeDisplay({ input }: { input: Record<string, unknown> }) {
           <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Requested permissions</div>
           <div className="space-y-1">
             {allowedPrompts.map((p: Record<string, unknown>, i: number) => (
-              <div key={i} className="flex items-center gap-2 text-[11px] font-mono bg-code-bg/30 rounded-lg px-2.5 py-1.5">
+              <div key={i} className="flex items-center gap-2 text-xs font-mono bg-code-bg/30 rounded-lg px-2.5 py-1.5">
                 <span className="text-muted-foreground shrink-0">{String(p.tool || "")}</span>
                 <span className="text-foreground">{String(p.prompt || "")}</span>
               </div>
@@ -590,7 +590,7 @@ function GenericDisplay({
             ? value.length > 200 ? value.slice(0, 200) + "..." : value
             : JSON.stringify(value);
           return (
-            <div key={key} className="flex gap-2 text-[11px] font-mono">
+            <div key={key} className="flex gap-2 text-xs font-mono">
               <span className="text-muted-foreground shrink-0">{key}:</span>
               <span className="text-foreground break-all">{displayValue}</span>
             </div>

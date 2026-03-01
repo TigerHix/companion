@@ -86,7 +86,7 @@ export function ToolBlock({
         onClick={() => setOpen(!open)}
         variant="ghost"
         size="sm"
-        className="h-auto w-full justify-start gap-2.5 rounded-none px-3 py-2 text-left hover:bg-accent/50"
+        className="h-9 w-full justify-start gap-3 rounded-none px-3 text-left hover:bg-accent/50"
       >
         <ChevronRight
           className={cn(
@@ -144,7 +144,7 @@ function ToolDetail({ name, input }: { name: string; input: Record<string, unkno
       return <SendMessageDetail input={input} />;
     default:
       return (
-        <pre className="text-[11px] text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+        <pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
           {JSON.stringify(input, null, 2)}
         </pre>
       );
@@ -157,9 +157,9 @@ function BashDetail({ input }: { input: Record<string, unknown> }) {
   return (
     <div className="space-y-1.5">
       {!!input.description && (
-        <div className="text-[11px] text-muted-foreground italic">{String(input.description)}</div>
+        <div className="text-xs text-muted-foreground italic">{String(input.description)}</div>
       )}
-      <pre className="px-3 py-2 rounded-lg bg-code-bg text-code-fg text-[12px] font-mono leading-relaxed overflow-x-auto">
+      <pre className="px-3 py-2 rounded-lg bg-code-bg text-code-fg text-xs font-mono leading-relaxed overflow-x-auto">
         <span className="text-muted-foreground select-none">$ </span>
         {String(input.command || "")}
       </pre>
@@ -197,7 +197,7 @@ function EditToolDetail({ input }: { input: Record<string, unknown> }) {
         <div className="space-y-1.5">
           {!!filePath && <div className="text-xs text-muted-foreground font-mono">{filePath}</div>}
           {changes.map((change, i) => (
-            <div key={`${change.path}-${i}`} className="flex items-center gap-2 text-[11px] text-foreground">
+            <div key={`${change.path}-${i}`} className="flex items-center gap-2 text-xs text-foreground">
               <Badge variant="secondary" className="text-[10px] text-primary bg-primary/10 min-w-[54px] justify-center">
                 {change.kind}
               </Badge>
@@ -206,7 +206,7 @@ function EditToolDetail({ input }: { input: Record<string, unknown> }) {
           ))}
         </div>
       ) : (
-        <pre className="text-[11px] text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+        <pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
           {JSON.stringify(input, null, 2)}
         </pre>
       )}
@@ -255,7 +255,7 @@ function GlobDetail({ input }: { input: Record<string, unknown> }) {
 function GrepDetail({ input }: { input: Record<string, unknown> }) {
   return (
     <div className="space-y-1">
-      <pre className="px-2 py-1.5 rounded bg-code-bg text-code-fg text-[12px] font-mono overflow-x-auto">
+      <pre className="px-2 py-1.5 rounded bg-code-bg text-code-fg text-xs font-mono overflow-x-auto">
         {String(input.pattern || "")}
       </pre>
       <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
@@ -293,7 +293,7 @@ function WebFetchDetail({ input }: { input: Record<string, unknown> }) {
         <div className="text-xs font-mono text-primary truncate">{String(input.url)}</div>
       )}
       {!!input.prompt && (
-        <div className="text-[11px] text-muted-foreground italic line-clamp-2">{String(input.prompt)}</div>
+        <div className="text-xs text-muted-foreground italic line-clamp-2">{String(input.prompt)}</div>
       )}
     </div>
   );
@@ -311,7 +311,7 @@ function TaskDetail({ input }: { input: Record<string, unknown> }) {
         </Badge>
       )}
       {!!input.prompt && (
-        <pre className="text-[11px] text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto">
+        <pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto">
           {String(input.prompt)}
         </pre>
       )}
@@ -323,7 +323,7 @@ function TodoWriteDetail({ input }: { input: Record<string, unknown> }) {
   const todos = input.todos as Array<{ content?: string; status?: string; activeForm?: string }> | undefined;
   if (!Array.isArray(todos)) {
     return (
-      <pre className="text-[11px] text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
+      <pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
         {JSON.stringify(input, null, 2)}
       </pre>
     );
@@ -351,7 +351,7 @@ function TodoWriteDetail({ input }: { input: Record<string, unknown> }) {
               )}
             </span>
             <span className={cn(
-              "text-[11px] leading-snug",
+              "text-xs leading-snug",
               status === "completed" ? "text-muted-foreground line-through" : "text-foreground"
             )}>
               {todo.content || "Task"}
@@ -377,7 +377,7 @@ function NotebookEditDetail({ input }: { input: Record<string, unknown> }) {
         {input.cell_number != null && <span>cell: {String(input.cell_number)}</span>}
       </div>
       {!!input.new_source && (
-        <pre className="px-2 py-1.5 rounded bg-code-bg text-code-fg text-[11px] font-mono leading-relaxed max-h-40 overflow-y-auto">
+        <pre className="px-2 py-1.5 rounded bg-code-bg text-code-fg text-xs font-mono leading-relaxed max-h-40 overflow-y-auto">
           {String(input.new_source)}
         </pre>
       )}
@@ -389,7 +389,7 @@ function SendMessageDetail({ input }: { input: Record<string, unknown> }) {
   return (
     <div className="space-y-1">
       {!!input.recipient && (
-        <div className="text-[11px] text-muted-foreground">
+        <div className="text-xs text-muted-foreground">
           to: <span className="font-medium text-foreground">{String(input.recipient)}</span>
         </div>
       )}

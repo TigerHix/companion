@@ -10,7 +10,7 @@ function Kbd({
       className={cn(
         "bg-muted text-muted-foreground border-border",
         "inline-flex h-5 items-center justify-center rounded-[4px] border px-1.5",
-        "text-[11px] font-medium font-mono leading-none select-none",
+        "text-xs font-medium font-mono leading-none select-none",
         className
       )}
       {...props}

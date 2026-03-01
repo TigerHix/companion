@@ -5,7 +5,7 @@ import { FolderPicker } from "./FolderPicker.js";
 import { timeAgo } from "../utils/time-ago.js";
 import { useClickOutside } from "../utils/use-click-outside.js";
 import { BackendBadge } from "@/components/ui/backend-badge";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ResponsiveDialog, ResponsiveDialogContent, ResponsiveDialogHeader, ResponsiveDialogTitle, ResponsiveDialogDescription } from "@/components/ui/responsive-dialog";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 
@@ -261,7 +261,7 @@ export function CronManager({ onClose, embedded = false }: Props) {
           <div className="flex items-start justify-between gap-3 mb-2">
             <div className="min-w-0">
               <h1 className="text-lg font-semibold text-foreground">Scheduled Tasks</h1>
-              <p className="mt-0.5 text-[13px] text-muted-foreground leading-relaxed">
+              <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
                 Run autonomous Claude Code or Codex sessions on a schedule.
               </p>
             </div>
@@ -319,7 +319,7 @@ export function CronManager({ onClose, embedded = false }: Props) {
           )}
 
           {/* Stats */}
-          <div className="flex items-center gap-2 mb-3 text-[12px] text-muted-foreground">
+          <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
             <span>{jobs.length} task{jobs.length !== 1 ? "s" : ""}</span>
             {jobs.filter((j) => j.enabled).length > 0 && (
               <>
@@ -446,7 +446,7 @@ export function CronManager({ onClose, embedded = false }: Props) {
           {editingId !== job.id && (
             <div className="px-3 py-2.5 space-y-1.5">
               <div className="text-xs text-muted-foreground truncate" title={job.prompt}>{job.prompt}</div>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 <span>{humanizeSchedule(job.schedule, job.recurring)}</span>
                 {job.nextRunAt != null && job.enabled && <span>Next: {timeUntil(job.nextRunAt)}</span>}
                 {job.lastRunAt != null && (
@@ -508,49 +508,22 @@ export function CronManager({ onClose, embedded = false }: Props) {
     </div>
   );
 
-  const panel = (
-    <div
-      className="w-full max-w-2xl max-h-[90dvh] sm:max-h-[80dvh] mx-0 sm:mx-4 flex flex-col bg-background rounded-t-[14px] sm:rounded-[14px] shadow-2xl overflow-hidden"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">Scheduled Tasks</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Run autonomous Claude Code or Codex sessions on a schedule
-          </p>
-        </div>
-        {onClose && (
-          <Button
-            type="button"
-            onClick={onClose}
-            variant="ghost"
-            size="icon-sm"
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
-              <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
-            </svg>
-          </Button>
-        )}
-      </div>
-      <div className="flex-1 overflow-y-auto px-3 sm:px-5 py-3 sm:py-4 pb-safe space-y-4">
-        {errorBanner}
-        {jobsList}
-        {createSection}
-      </div>
-    </div>
-  );
-
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose?.(); }}>
-      <DialogContent
-        showCloseButton={false}
-        className="top-auto left-0 bottom-0 w-full max-w-none translate-x-0 translate-y-0 rounded-t-[14px] rounded-b-none p-0 sm:top-1/2 sm:left-1/2 sm:bottom-auto sm:w-full sm:max-w-2xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[14px]"
-      >
-        {panel}
-      </DialogContent>
-    </Dialog>
+    <ResponsiveDialog open onOpenChange={(open) => { if (!open) onClose?.(); }}>
+      <ResponsiveDialogContent showCloseButton={false} className="sm:max-w-2xl max-h-[80dvh] overflow-hidden flex flex-col p-0">
+        <ResponsiveDialogHeader className="px-6 pt-6">
+          <ResponsiveDialogTitle>Scheduled Tasks</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
+            Run autonomous Claude Code or Codex sessions on a schedule
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
+        <div className="flex-1 overflow-y-auto px-6 pb-6 pb-safe space-y-4">
+          {errorBanner}
+          {jobsList}
+          {createSection}
+        </div>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
 
@@ -593,7 +566,7 @@ function CronJobRow({ job, isRunning, onStartEdit, onDelete, onToggle, onRunNow 
           )}
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1 leading-relaxed">{job.prompt}</p>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-[11px] text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-xs text-muted-foreground">
           <span>{humanizeSchedule(job.schedule, job.recurring)}</span>
           {job.nextRunAt != null && job.enabled && (
             <>

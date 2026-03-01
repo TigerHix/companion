@@ -6,13 +6,13 @@ import { connectSession, connectAllSessions, disconnectSession } from "../ws.js"
 import { navigateToSession, navigateHome } from "../utils/routing.js";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import {
   Sidebar as ShadcnSidebar,
   SidebarContent,
@@ -166,7 +166,7 @@ function SessionSubItem({
             onBlur={onConfirmRename}
             onClick={(e) => e.stopPropagation()}
             onDoubleClick={(e) => e.stopPropagation()}
-            className="text-[13px] font-medium flex-1 min-w-0 text-foreground bg-transparent border border-border rounded px-1.5 py-0.5 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+            className="text-sm font-medium flex-1 min-w-0 text-foreground bg-transparent border border-border rounded px-1.5 py-0.5 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
           />
         </div>
       </SidebarMenuSubItem>
@@ -189,7 +189,7 @@ function SessionSubItem({
         <StatusDot status={derivedStatus} />
         <div className="flex-1 min-w-0">
           <span
-            className={`text-[13px] font-medium truncate text-foreground leading-snug block ${
+            className={`text-sm font-medium truncate text-foreground leading-snug block ${
               isRecentlyRenamed ? "animate-name-appear" : ""
             }`}
             onAnimationEnd={() => onClearRecentlyRenamed(s.id)}
@@ -274,7 +274,7 @@ function SessionSubItem({
               onClick={() => handleMenuAction(() => onStartRename(s.id, label))}
               variant="ghost"
               size="sm"
-              className="w-full justify-start rounded-none px-3 py-1.5 text-[12px] text-foreground"
+              className="w-full justify-start rounded-none px-3 py-1.5 text-xs text-foreground"
             >
               Rename
             </Button>
@@ -286,7 +286,7 @@ function SessionSubItem({
                 onClick={(e) => handleMenuAction(() => onUnarchive(e, s.id))}
                 variant="ghost"
                 size="sm"
-                className="w-full justify-start rounded-none px-3 py-1.5 text-[12px] text-foreground"
+                className="w-full justify-start rounded-none px-3 py-1.5 text-xs text-foreground"
               >
                 Restore
               </Button>
@@ -295,7 +295,7 @@ function SessionSubItem({
                 onClick={(e) => handleMenuAction(() => onDelete(e, s.id))}
                 variant="ghost"
                 size="sm"
-                className="w-full justify-start rounded-none px-3 py-1.5 text-[12px] text-destructive hover:text-destructive"
+                className="w-full justify-start rounded-none px-3 py-1.5 text-xs text-destructive hover:text-destructive"
               >
                 Delete
               </Button>
@@ -306,7 +306,7 @@ function SessionSubItem({
               onClick={(e) => handleMenuAction(() => onArchive(e, s.id))}
               variant="ghost"
               size="sm"
-              className="w-full justify-start rounded-none px-3 py-1.5 text-[12px] text-foreground"
+              className="w-full justify-start rounded-none px-3 py-1.5 text-xs text-foreground"
             >
               Archive
             </Button>
@@ -597,7 +597,7 @@ export function Sidebar() {
                 <img src={logoSrc} alt="" className="size-6" />
               </div>
               <div className="flex flex-col gap-0.5 leading-none">
-                <span className="font-semibold text-[13px] tracking-tight">Moku</span>
+                <span className="font-semibold text-sm tracking-tight">Moku</span>
               </div>
             </SidebarMenuButton>
             <SidebarMenuAction
@@ -618,7 +618,7 @@ export function Sidebar() {
           <div className="flex items-start gap-2">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] text-foreground leading-snug">
+              <p className="text-xs text-foreground leading-snug">
                 Archiving will <strong>remove the container</strong> and any uncommitted changes.
               </p>
               <div className="flex gap-2 mt-2">
@@ -659,7 +659,7 @@ export function Sidebar() {
                   <SidebarMenuItem key={group.key}>
                     <SidebarMenuButton
                       onClick={() => toggleProjectCollapse(group.key)}
-                      className="font-semibold text-[12px] text-foreground/80 gap-1.5"
+                      className="font-semibold text-xs text-foreground/80 gap-1.5"
                     >
                       <ChevronRight
                         className={`w-2.5 h-2.5 text-muted-foreground transition-transform ${collapsedProjects.has(group.key) ? "" : "rotate-90"}`}
@@ -719,7 +719,7 @@ export function Sidebar() {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       onClick={() => setShowCronSessions(!showCronSessions)}
-                      className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                      className="text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
                     >
                       <ChevronRight className={`w-3 h-3 transition-transform ${showCronSessions ? "rotate-90" : ""}`} />
                       <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-60">
@@ -756,7 +756,7 @@ export function Sidebar() {
                     <SidebarMenuItem>
                       <SidebarMenuButton
                         onClick={() => setShowAgentSessions(!showAgentSessions)}
-                        className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                        className="text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
                       >
                         <ChevronRight className={`w-3 h-3 transition-transform ${showAgentSessions ? "rotate-90" : ""}`} />
                         <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-60">
@@ -795,7 +795,7 @@ export function Sidebar() {
                       <div className="flex items-center">
                         <SidebarMenuButton
                           onClick={() => setShowArchived(!showArchived)}
-                          className="flex-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                          className="flex-1 text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
                         >
                           <ChevronRight className={`w-3 h-3 transition-transform ${showArchived ? "rotate-90" : ""}`} />
                           Archived ({archivedSessions.length})
@@ -838,7 +838,7 @@ export function Sidebar() {
       </SidebarContent>
 
       {/* Delete confirmation modal */}
-      <Dialog
+      <ResponsiveDialog
         open={!!(confirmDeleteId || confirmDeleteAll)}
         onOpenChange={(open) => {
           if (!open) {
@@ -850,26 +850,26 @@ export function Sidebar() {
           }
         }}
       >
-        <DialogContent showCloseButton={false} className="max-w-[280px] p-5">
-          <div className="mb-3 flex justify-center">
+        <ResponsiveDialogContent showCloseButton={false} className="sm:max-w-[320px]">
+          <div className="flex justify-center">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10 text-destructive">
               <Trash2 className="h-5 w-5" />
             </div>
           </div>
-          <DialogHeader className="items-center text-center">
-            <DialogTitle className="text-[13px] font-semibold text-foreground">
+          <ResponsiveDialogHeader className="items-center text-center">
+            <ResponsiveDialogTitle>
               {confirmDeleteAll ? "Delete all archived?" : "Delete session?"}
-            </DialogTitle>
-            <DialogDescription className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
+            </ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               {confirmDeleteAll
                 ? `This will permanently delete ${archivedSessions.length} archived session${archivedSessions.length === 1 ? "" : "s"}. This cannot be undone.`
                 : "This will permanently delete this session and its history. This cannot be undone."}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="mt-4 flex-row gap-2.5 sm:flex-row">
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
+          <ResponsiveDialogFooter>
             <Button
               onClick={confirmDeleteAll ? cancelDeleteAll : cancelDelete}
-              variant="secondary"
+              variant="outline"
               className="flex-1"
             >
               Cancel
@@ -881,9 +881,9 @@ export function Sidebar() {
             >
               {confirmDeleteAll ? "Delete all" : "Delete"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </ShadcnSidebar>
   );
 }
