@@ -350,7 +350,6 @@ export interface AppSettings {
   aiValidationEnabled: boolean;
   aiValidationAutoApprove: boolean;
   aiValidationAutoDeny: boolean;
-  stateId?: string;
 }
 
 export interface GitHubPRInfo {

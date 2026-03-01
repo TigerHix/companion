@@ -192,7 +192,8 @@ describe("SessionEditorPane", () => {
       ],
     });
 
-    // Click the refresh button (appears twice: desktop + mobile)
+    // Click an enabled refresh button (appears twice: desktop + mobile).
+    // In CI, one variant can be non-interactive depending on layout timing.
     const refreshBtns = screen.getAllByLabelText("Refresh file tree");
     const enabledRefreshBtn = refreshBtns.find((btn) => !btn.hasAttribute("disabled")) ?? refreshBtns[0];
     fireEvent.click(enabledRefreshBtn);

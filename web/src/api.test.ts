@@ -295,6 +295,18 @@ describe("settings", () => {
     expect(JSON.parse(opts.body)).toEqual({ anthropicApiKey: "anthropic-key" });
   });
 
+  it("verifies an Anthropic API key", async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ valid: true }));
+
+    const result = await api.verifyAnthropicKey("sk-ant-test-key");
+
+    const [url, opts] = mockFetch.mock.calls[0];
+    expect(url).toBe("/api/settings/anthropic/verify");
+    expect(opts.method).toBe("POST");
+    expect(JSON.parse(opts.body)).toEqual({ apiKey: "sk-ant-test-key" });
+    expect(result).toEqual({ valid: true });
+  });
+
 });
 
 // ===========================================================================

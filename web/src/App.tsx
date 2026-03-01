@@ -20,6 +20,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 const Playground = lazy(() => import("./components/Playground.js").then((m) => ({ default: m.Playground })));
 const SettingsPage = lazy(() => import("./components/SettingsPage.js").then((m) => ({ default: m.SettingsPage })));
 const EnvManager = lazy(() => import("./components/EnvManager.js").then((m) => ({ default: m.EnvManager })));
+const DockerBuilderPage = lazy(() => import("./components/DockerBuilderPage.js").then((m) => ({ default: m.DockerBuilderPage })));
 const CronManager = lazy(() => import("./components/CronManager.js").then((m) => ({ default: m.CronManager })));
 const AgentsPage = lazy(() => import("./components/AgentsPage.js").then((m) => ({ default: m.AgentsPage })));
 const TerminalPage = lazy(() => import("./components/TerminalPage.js").then((m) => ({ default: m.TerminalPage })));
@@ -59,6 +60,7 @@ export default function App() {
   const isSettingsPage = route.page === "settings";
   const isTerminalPage = route.page === "terminal";
   const isEnvironmentsPage = route.page === "environments";
+  const isDockerBuilderPage = route.page === "docker-builder";
   const isScheduledPage = route.page === "scheduled";
   const isAgentsPage = route.page === "agents" || route.page === "agent-detail";
   const isSessionView = route.page === "session" || route.page === "home";
@@ -180,6 +182,12 @@ export default function App() {
           {isEnvironmentsPage && (
             <div className="absolute inset-0">
               <Suspense fallback={<LazyFallback />}><EnvManager embedded /></Suspense>
+            </div>
+          )}
+
+          {isDockerBuilderPage && (
+            <div className="absolute inset-0">
+              <Suspense fallback={<LazyFallback />}><DockerBuilderPage /></Suspense>
             </div>
           )}
 

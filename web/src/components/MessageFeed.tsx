@@ -171,10 +171,12 @@ function groupMessages(messages: ChatMessage[]): FeedEntry[] {
       if (b.type === "tool_use" && b.name === "Task") {
         const { input, id } = b;
         const receiverThreadIds = Array.isArray(input?.receiver_thread_ids)
-          ? (input.receiver_thread_ids as unknown[]).filter((v): v is string => typeof v === "string")
-          : [];
-        const receiverCount = receiverThreadIds.length;
-        const senderThreadId = typeof input?.sender_thread_id === "string" ? input.sender_thread_id : undefined;
+          ? (input.receiver_thread_ids as unknown[]).filter((v): v is string => typeof v === "string" && v.length > 0)
+          : undefined;
+        const receiverCount = receiverThreadIds && receiverThreadIds.length > 0 ? receiverThreadIds.length : undefined;
+        const senderThreadId = typeof input?.sender_thread_id === "string" && input.sender_thread_id.length > 0
+          ? input.sender_thread_id
+          : undefined;
         const codexStatus = typeof input?.codex_status === "string" ? input.codex_status : undefined;
         const hasCodexMetadata = !!(codexStatus || senderThreadId || receiverCount);
         taskInfo.set(id, {
@@ -182,9 +184,9 @@ function groupMessages(messages: ChatMessage[]): FeedEntry[] {
           agentType: String(input?.subagent_type || ""),
           backend: hasCodexMetadata ? "codex" : "claude",
           status: codexStatus,
-          receiverCount: receiverCount || undefined,
+          receiverCount,
           senderThreadId,
-          receiverThreadIds: receiverThreadIds.length > 0 ? receiverThreadIds : undefined,
+          receiverThreadIds,
         });
       }
     }
@@ -345,6 +347,11 @@ function SubagentContainer({ group }: { group: SubagentGroup }) {
   const agentType = group.agentType;
   const childCount = group.children.length;
   const statusInfo = normalizeSubagentStatus(group.status);
+  const backend = group.backend || "claude";
+  const receiverCount = group.receiverCount;
+  const senderThreadId = group.senderThreadId;
+  const receiverThreadIds = group.receiverThreadIds || [];
+  const statusSummaryCount = receiverCount !== undefined ? receiverCount : childCount;
 
   // Get the last visible entry for a compact preview
   const lastEntry = group.children[group.children.length - 1];
@@ -385,9 +392,17 @@ function SubagentContainer({ group }: { group: SubagentGroup }) {
                   {agentType}
                 </Badge>
               )}
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 h-auto shrink-0">
+                {backend === "codex" ? "Codex" : "Claude"}
+              </Badge>
               {statusInfo && (
                 <Badge className={cn("text-[10px] px-1.5 py-0.5 h-auto shrink-0 border-0", statusInfo.className)}>
                   {statusInfo.label}
+                </Badge>
+              )}
+              {receiverCount !== undefined && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 h-auto shrink-0">
+                  {receiverCount} agent{receiverCount === 1 ? "" : "s"}
                 </Badge>
               )}
               {!open && lastPreview && (
@@ -399,28 +414,28 @@ function SubagentContainer({ group }: { group: SubagentGroup }) {
 
             {open && (
               <div className="border-t border-border px-3 py-3 space-y-3">
-                {(statusInfo || group.senderThreadId || (group.receiverThreadIds && group.receiverThreadIds.length > 0)) && (
+                {(statusInfo || senderThreadId || receiverThreadIds.length > 0) && (
                   <div className="rounded-lg border border-border bg-card px-2.5 py-2 space-y-1.5">
                     <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
                       {statusInfo && (
                         <span className={`rounded-full px-1.5 py-0.5 ${statusInfo.className}`}>
-                          {group.receiverCount ?? childCount} {statusInfo.summaryLabel}
+                          {statusSummaryCount} {statusInfo.summaryLabel}
                         </span>
                       )}
-                      {group.senderThreadId && (
+                      {senderThreadId && (
                         <span className="rounded-full px-1.5 py-0.5 text-muted-foreground bg-accent font-mono">
-                          sender: {group.senderThreadId}
+                          sender: {senderThreadId}
                         </span>
                       )}
-                      {group.receiverThreadIds && group.receiverThreadIds.length > 0 && (
+                      {receiverThreadIds.length > 0 && (
                         <span className="rounded-full px-1.5 py-0.5 text-muted-foreground bg-accent">
-                          receivers: {group.receiverThreadIds.length}
+                          receivers: {receiverThreadIds.length}
                         </span>
                       )}
                     </div>
-                    {group.receiverThreadIds && group.receiverThreadIds.length > 0 && (
+                    {receiverThreadIds.length > 0 && (
                       <div className="flex flex-wrap gap-1">
-                        {group.receiverThreadIds.map((threadId) => (
+                        {receiverThreadIds.map((threadId) => (
                           <span
                             key={threadId}
                             className="text-[10px] rounded-full px-1.5 py-0.5 text-muted-foreground bg-accent font-mono"

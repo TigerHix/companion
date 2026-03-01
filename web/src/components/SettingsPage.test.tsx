@@ -47,6 +47,7 @@ const mockApi = {
   getAuthToken: vi.fn(),
   regenerateAuthToken: vi.fn(),
   getAuthQr: vi.fn(),
+  verifyAnthropicKey: vi.fn(),
 };
 
 vi.mock("../api.js", () => ({
@@ -56,6 +57,7 @@ vi.mock("../api.js", () => ({
     getAuthToken: (...args: unknown[]) => mockApi.getAuthToken(...args),
     regenerateAuthToken: (...args: unknown[]) => mockApi.regenerateAuthToken(...args),
     getAuthQr: (...args: unknown[]) => mockApi.getAuthQr(...args),
+    verifyAnthropicKey: (...args: unknown[]) => mockApi.verifyAnthropicKey(...args),
   },
 }));
 
@@ -89,6 +91,7 @@ beforeEach(() => {
       { label: "Tailscale", url: "http://100.118.112.23:3456", qrDataUrl: "data:image/png;base64,TS_QR" },
     ],
   });
+  mockApi.verifyAnthropicKey.mockResolvedValue({ valid: true });
 });
 
 describe("SettingsPage", () => {
@@ -157,7 +160,7 @@ describe("SettingsPage", () => {
     expect(await screen.findByText("Settings saved.")).toBeInTheDocument();
   });
 
-  it("sends empty model when blank (server applies default)", async () => {
+  it("falls back model to claude-sonnet-4.6 when blank", async () => {
     render(<SettingsPage />);
     await screen.findByLabelText("Anthropic Model");
     fireEvent.change(screen.getByLabelText("Anthropic Model"), {
@@ -168,7 +171,7 @@ describe("SettingsPage", () => {
 
     await waitFor(() => {
       expect(mockApi.updateSettings).toHaveBeenCalledWith({
-        anthropicModel: "",
+        anthropicModel: "claude-sonnet-4.6",
         editorTabEnabled: false,
       });
     });
@@ -228,6 +231,40 @@ describe("SettingsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(await screen.findByText("save failed")).toBeInTheDocument();
+  });
+
+  it("verifies an Anthropic API key and shows success state", async () => {
+    render(<SettingsPage />);
+    await screen.findByText("Anthropic key configured");
+
+    fireEvent.focus(screen.getByLabelText("Anthropic API Key"));
+    fireEvent.change(screen.getByLabelText("Anthropic API Key"), {
+      target: { value: "sk-ant-test-key" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+
+    await waitFor(() => {
+      expect(mockApi.verifyAnthropicKey).toHaveBeenCalledWith("sk-ant-test-key");
+    });
+    expect(await screen.findByText("API key is valid.")).toBeInTheDocument();
+  });
+
+  it("shows verify failure feedback when verification fails", async () => {
+    mockApi.verifyAnthropicKey.mockResolvedValueOnce({ valid: false, error: "API returned 401" });
+
+    render(<SettingsPage />);
+    await screen.findByText("Anthropic key configured");
+
+    fireEvent.focus(screen.getByLabelText("Anthropic API Key"));
+    fireEvent.change(screen.getByLabelText("Anthropic API Key"), {
+      target: { value: "sk-ant-bad-key" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+
+    await waitFor(() => {
+      expect(mockApi.verifyAnthropicKey).toHaveBeenCalledWith("sk-ant-bad-key");
+    });
+    expect(await screen.findByText("Invalid API key: API returned 401")).toBeInTheDocument();
   });
 
   it("navigates back when Back button is clicked", async () => {

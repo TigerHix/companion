@@ -7,12 +7,11 @@ import {
   Check,
   X,
   ListTree,
-  Cog,
 } from "lucide-react";
 import { useStore } from "../store.js";
 import { sendToSession } from "../ws.js";
 import type { PermissionRequest } from "../types.js";
-import type { PermissionUpdate } from "../../server/session-types.js";
+import type { PermissionUpdate, AiValidationInfo } from "../../server/session-types.js";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -114,18 +113,7 @@ export function PermissionBanner({
 
             {/* AI validation recommendation (shown for "uncertain" verdicts that fall through to manual) */}
             {permission.ai_validation && !isAskUser && (
-              <div className={cn(
-                "mt-2 flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-md",
-                permission.ai_validation.verdict === "safe"
-                  ? "bg-success/10 text-success"
-                  : permission.ai_validation.verdict === "dangerous"
-                    ? "bg-destructive/10 text-destructive"
-                    : "bg-warning/10 text-warning"
-              )}>
-                <Cog className="size-3 shrink-0" />
-                <span className="font-medium">AI analysis:</span>
-                <span>{permission.ai_validation.reason}</span>
-              </div>
+              <AiValidationBadge validation={permission.ai_validation} />
             )}
 
             {/* Actions - only for non-AskUserQuestion tools */}
@@ -171,6 +159,38 @@ export function PermissionBanner({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function isServiceFailure(reason: string): boolean {
+  const failurePatterns = [
+    /^Invalid Anthropic/i,
+    /^Anthropic .*(rate limit|overloaded|unavailable|error|lacks permission)/i,
+    /^AI service/i,
+    /^AI evaluation timed out/i,
+    /^Model not found/i,
+    /^No Anthropic API key/i,
+  ];
+  return failurePatterns.some((pattern) => pattern.test(reason));
+}
+
+function AiValidationBadge({ validation }: { validation: AiValidationInfo }) {
+  const isFailure = validation.verdict === "uncertain" && isServiceFailure(validation.reason);
+  const label = isFailure ? "AI analysis unavailable — manual review:" : "AI analysis:";
+
+  return (
+    <div className={cn(
+      "mt-2 flex items-center gap-1.5 text-xs px-2 py-1.5 rounded-md",
+      validation.verdict === "safe"
+        ? "bg-success/10 text-success"
+        : validation.verdict === "dangerous"
+          ? "bg-destructive/10 text-destructive"
+          : "bg-warning/10 text-warning",
+    )}>
+      <AlertCircle className="size-3 shrink-0" />
+      <span className="font-medium">{label}</span>
+      <span>{validation.reason}</span>
     </div>
   );
 }

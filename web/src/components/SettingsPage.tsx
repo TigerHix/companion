@@ -24,7 +24,7 @@ type CategoryId = (typeof CATEGORIES)[number]["id"];
 
 export function SettingsPage({ embedded = false }: SettingsPageProps) {
   const [anthropicApiKey, setAnthropicApiKey] = useState("");
-  const [anthropicModel, setAnthropicModel] = useState("");
+  const [anthropicModel, setAnthropicModel] = useState("claude-sonnet-4.6");
   const [editorTabEnabled, setEditorTabEnabled] = useState(false);
   const [configured, setConfigured] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -46,6 +46,8 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
   const [aiValidationAutoDeny, setAiValidationAutoDeny] = useState(true);
   const [activeSection, setActiveSection] = useState<CategoryId>("general");
   const [apiKeyFocused, setApiKeyFocused] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<{ valid: boolean; error?: string } | null>(null);
 
   // Auth section state
   const [authToken, setAuthToken] = useState<string | null>(null);
@@ -107,7 +109,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
       .getSettings()
       .then((s) => {
         setConfigured(s.anthropicApiKeyConfigured);
-        setAnthropicModel(s.anthropicModel || "");
+        setAnthropicModel(s.anthropicModel || "claude-sonnet-4.6");
         setEditorTabEnabled(s.editorTabEnabled);
         setStoreEditorTabEnabled(s.editorTabEnabled);
         if (typeof s.aiValidationEnabled === "boolean") setAiValidationEnabled(s.aiValidationEnabled);
@@ -129,7 +131,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
     try {
       const nextKey = anthropicApiKey.trim();
       const payload: { anthropicApiKey?: string; anthropicModel: string; editorTabEnabled: boolean } = {
-        anthropicModel: anthropicModel.trim(),
+        anthropicModel: anthropicModel.trim() || "claude-sonnet-4.6",
         editorTabEnabled,
       };
       if (nextKey) {
@@ -521,7 +523,10 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                     id="anthropic-key"
                     type="password"
                     value={configured && !apiKeyFocused && !anthropicApiKey ? "••••••••••••••••" : anthropicApiKey}
-                    onChange={(e) => setAnthropicApiKey(e.target.value)}
+                    onChange={(e) => {
+                      setAnthropicApiKey(e.target.value);
+                      setVerifyResult(null);
+                    }}
                     onFocus={() => setApiKeyFocused(true)}
                     onBlur={() => setApiKeyFocused(false)}
                     placeholder={configured ? "Enter a new key to replace" : "sk-ant-..."}
@@ -541,7 +546,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                     type="text"
                     value={anthropicModel}
                     onChange={(e) => setAnthropicModel(e.target.value)}
-                    placeholder="claude-sonnet-4-20250514"
+                    placeholder="claude-sonnet-4.6"
                     className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-background rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-shadow"
                   />
                 </div>
@@ -562,19 +567,54 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                   <span className="text-xs text-muted-foreground">
                     {loading ? "Loading..." : configured ? "Anthropic key configured" : "Anthropic key not configured"}
                   </span>
-                  <Button
-                    type="submit"
-                    disabled={saving || loading}
-                    size="sm"
-                    className={`px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
-                      saving || loading
-                        ? "bg-accent text-muted-foreground cursor-not-allowed"
-                        : "bg-primary hover:bg-primary/90 text-white cursor-pointer"
-                    }`}
-                  >
-                    {saving ? "Saving..." : "Save"}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={verifying || !anthropicApiKey.trim()}
+                      size="sm"
+                      onClick={async () => {
+                        setVerifying(true);
+                        setVerifyResult(null);
+                        try {
+                          const result = await api.verifyAnthropicKey(anthropicApiKey.trim());
+                          setVerifyResult(result);
+                          setTimeout(() => setVerifyResult(null), 5000);
+                        } catch (err: unknown) {
+                          setVerifyResult({ valid: false, error: err instanceof Error ? err.message : String(err) });
+                          setTimeout(() => setVerifyResult(null), 5000);
+                        } finally {
+                          setVerifying(false);
+                        }
+                      }}
+                      className="px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium"
+                    >
+                      {verifying ? "Verifying..." : "Verify"}
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={saving || loading}
+                      size="sm"
+                      className={`px-3 py-2 min-h-[44px] rounded-lg text-sm font-medium transition-colors ${
+                        saving || loading
+                          ? "bg-accent text-muted-foreground cursor-not-allowed"
+                          : "bg-primary hover:bg-primary/90 text-white cursor-pointer"
+                      }`}
+                    >
+                      {saving ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
                 </div>
+
+                {verifyResult && (
+                  <div className={`px-3 py-2 rounded-lg text-xs ${
+                    verifyResult.valid
+                      ? "bg-success/10 border border-success/20 text-success"
+                      : "bg-destructive/10 border border-destructive/20 text-destructive"
+                  }`}>
+                    {verifyResult.valid ? "API key is valid." : `Invalid API key${verifyResult.error ? `: ${verifyResult.error}` : "."}`}
+                  </div>
+                )}
               </form>
             </section>
 

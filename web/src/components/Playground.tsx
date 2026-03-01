@@ -1804,7 +1804,7 @@ function PlaygroundSubagentGroup({
         )}
         {backend && (
           <span className="text-[10px] text-muted-foreground bg-accent rounded-full px-1.5 py-0.5 shrink-0">
-            {backend}
+            {backend === "codex" ? "Codex" : "Claude"}
           </span>
         )}
         {normalizedStatus && (
@@ -1812,30 +1812,46 @@ function PlaygroundSubagentGroup({
             {normalizedStatus.label}
           </span>
         )}
+        {receiverCount !== undefined && (
+          <span className="text-[10px] text-muted-foreground bg-accent rounded-full px-1.5 py-0.5 shrink-0">
+            {receiverCount} agent{receiverCount === 1 ? "" : "s"}
+          </span>
+        )}
         <span className="text-[10px] text-muted-foreground bg-accent rounded-full px-1.5 py-0.5 tabular-nums shrink-0 ml-auto">
-          {statusSummaryCount}
+          {items.length}
         </span>
       </Button>
       {open && (
         <div className="space-y-3 pb-2">
           {(normalizedStatus || senderThreadId || receiverThreadIds.length > 0) && (
-            <div className="rounded-lg border border-border bg-accent/30 px-3 py-2 text-xs text-muted-foreground space-y-1">
-              {normalizedStatus && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground/60">Status:</span>
-                  <span className={`font-medium rounded-full px-1.5 py-0.5 ${normalizedStatus.className}`}>{normalizedStatus.label}</span>
-                </div>
-              )}
-              {senderThreadId && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground/60">Sender:</span>
-                  <span className="font-mono text-[10px]">{senderThreadId}</span>
-                </div>
-              )}
+            <div className="rounded-lg border border-border bg-accent/30 px-3 py-2 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                {normalizedStatus && (
+                  <span className={`rounded-full px-1.5 py-0.5 ${normalizedStatus.className}`}>
+                    {statusSummaryCount} {normalizedStatus.summary}
+                  </span>
+                )}
+                {senderThreadId && (
+                  <span className="rounded-full px-1.5 py-0.5 text-muted-foreground bg-accent font-mono">
+                    sender: {senderThreadId}
+                  </span>
+                )}
+                {receiverThreadIds.length > 0 && (
+                  <span className="rounded-full px-1.5 py-0.5 text-muted-foreground bg-accent">
+                    receivers: {receiverThreadIds.length}
+                  </span>
+                )}
+              </div>
               {receiverThreadIds.length > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground/60">Receivers:</span>
-                  <span className="font-mono text-[10px]">{receiverThreadIds.join(", ")}</span>
+                <div className="flex flex-wrap gap-1">
+                  {receiverThreadIds.map((threadId) => (
+                    <span
+                      key={threadId}
+                      className="text-[10px] rounded-full px-1.5 py-0.5 text-muted-foreground bg-accent font-mono"
+                    >
+                      {threadId}
+                    </span>
+                  ))}
                 </div>
               )}
             </div>

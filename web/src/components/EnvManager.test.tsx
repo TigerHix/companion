@@ -13,7 +13,7 @@
  * - Create flow: form display, tab switching, variable editor, create/cancel
  * - Edit flow: open, modify, save, cancel
  * - Delete flow
- * - Docker tab: base image selection, pull states, dockerfile template, build
+ * - Docker tab: base image selection, pull states, dockerfile template, Docker Builder handoff
  * - Ports tab: add/remove ports
  * - Init script tab
  * - Error handling on API failures
@@ -950,82 +950,27 @@ describe("EnvManager VarEditor", () => {
   });
 });
 
-// ─── Build Flow ────────────────────────────────────────────────
+// ─── Docker Builder Handoff ────────────────────────────────────
 
-describe("EnvManager build flow", () => {
-  it("triggers build and polls for status", async () => {
-    // Setup: env with a dockerfile so the Build button appears
+describe("EnvManager Docker Builder handoff", () => {
+  it("links to Docker Builder from the embedded header", async () => {
+    render(<EnvManager embedded />);
+
+    const link = await screen.findByText("Open Docker Builder");
+    expect(link.closest("a")).toHaveAttribute("href", "#/docker-builder");
+  });
+
+  it("links to Docker Builder from the docker tab and does not show a build button", async () => {
     mockListEnvs.mockResolvedValue([
       makeEnv({ dockerfile: "FROM node:20\nRUN npm install" }),
     ]);
-    mockGetEnvBuildStatus.mockResolvedValue({ buildStatus: "success" });
 
     render(<EnvManager embedded />);
     fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
 
-    // The "Build Image" button should be visible since dockerfile is set
-    const buildButton = await screen.findByText("Build Image");
-
-    fireEvent.click(buildButton);
-
-    await waitFor(() => {
-      expect(mockBuildEnvImage).toHaveBeenCalledWith("production");
-    });
-
-    // Should show build log
-    expect(screen.getByText(/Starting build/)).toBeInTheDocument();
-  });
-
-  it("shows build error on failure", async () => {
-    mockListEnvs.mockResolvedValue([
-      makeEnv({ dockerfile: "FROM node:20" }),
-    ]);
-    mockBuildEnvImage.mockRejectedValue(new Error("Docker daemon not running"));
-
-    render(<EnvManager embedded />);
-    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
-
-    const buildButton = await screen.findByText("Build Image");
-
-    fireEvent.click(buildButton);
-
-    await screen.findByText(/Docker daemon not running/);
-  });
-
-  it("shows build success status badge on env", async () => {
-    mockListEnvs.mockResolvedValue([
-      makeEnv({
-        dockerfile: "FROM node:20",
-        buildStatus: "success",
-        lastBuiltAt: Date.now() - 86400000, // yesterday
-        imageTag: "env-production:latest",
-      }),
-    ]);
-
-    render(<EnvManager embedded />);
-    await screen.findByText("Production");
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/Built/)).toBeInTheDocument();
-    });
-  });
-
-  it("shows build error status badge on env", async () => {
-    mockListEnvs.mockResolvedValue([
-      makeEnv({
-        dockerfile: "FROM node:20",
-        buildStatus: "error",
-      }),
-    ]);
-
-    render(<EnvManager embedded />);
-    await screen.findByText("Production");
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
-
-    await waitFor(() => {
-      expect(screen.getByText("Build failed")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("Docker Builder")).toBeInTheDocument();
+    expect(screen.getByText("Docker Builder").closest("a")).toHaveAttribute("href", "#/docker-builder");
+    expect(screen.queryByText("Build Image")).toBeNull();
   });
 });
 

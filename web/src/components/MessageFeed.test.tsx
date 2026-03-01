@@ -557,11 +557,9 @@ describe("MessageFeed - subagent grouping", () => {
 
     render(<MessageFeed sessionId={sid} />);
 
-    // Status badge is still rendered
     expect(screen.getByText("completed")).toBeTruthy();
-    // Backend and receiver count badges were removed from the subagent card
-    expect(screen.queryByText("Codex")).toBeNull();
-    expect(screen.queryByText("2 agents")).toBeNull();
+    expect(screen.getByText("Codex")).toBeTruthy();
+    expect(screen.getByText("2 agents")).toBeTruthy();
   });
 
   it("does not render a receiver badge when receiver list is empty", () => {
@@ -629,10 +627,9 @@ describe("MessageFeed - subagent grouping", () => {
 
     render(<MessageFeed sessionId={sid} />);
 
-    // Backend badge was removed from the subagent card
-    expect(screen.queryByText("Codex")).toBeNull();
-    // Status badge is still rendered
+    expect(screen.getByText("Codex")).toBeTruthy();
     expect(screen.getByText("running")).toBeTruthy();
+    expect(screen.getByText("2 agents")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: /spawn_agent/i }));
 
