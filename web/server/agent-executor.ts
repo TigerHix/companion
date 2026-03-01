@@ -143,7 +143,7 @@ export class AgentExecutor {
       // Resolve working directory
       let cwd = agent.cwd;
       if (cwd === "temp" || !cwd) {
-        cwd = mkdtempSync(join(tmpdir(), `moku-agent-${agent.id}-`));
+        cwd = mkdtempSync(join(tmpdir(), `companion-agent-${agent.id}-`));
       }
 
       // Launch the session via CliLauncher

@@ -35,7 +35,7 @@ afterEach(() => {
 });
 
 function agentsDir(): string {
-  return join(tempDir, ".moku", "agents");
+  return join(tempDir, ".companion", "agents");
 }
 
 /**

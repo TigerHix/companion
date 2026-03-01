@@ -2,7 +2,7 @@
  * Codex App-Server Adapter
  *
  * Translates between the Codex app-server JSON-RPC protocol (stdin/stdout)
- * and Moku's BrowserIncomingMessage/BrowserOutgoingMessage types.
+ * and The Companion's BrowserIncomingMessage/BrowserOutgoingMessage types.
  *
  * This allows the browser to be completely unaware of which backend is running —
  * it sees the same message types regardless of whether Claude Code or Codex is
@@ -228,12 +228,12 @@ export class StdioTransport implements ICodexTransport {
       console.error("[codex-adapter] stdout reader error:", err);
     } finally {
       this.connected = false;
+      // Clear all pending RPC timers and reject promises so callers don't
+      // hang indefinitely when the Codex process crashes or exits.
       for (const [id, timer] of this.pendingTimers) {
         clearTimeout(timer);
       }
       this.pendingTimers.clear();
-      // Reject all pending promises so callers don't hang indefinitely
-      // when the Codex process crashes or exits unexpectedly.
       for (const [id, { reject }] of this.pending) {
         reject(new Error("Transport closed"));
       }
@@ -272,9 +272,9 @@ export class StdioTransport implements ICodexTransport {
         this.requestHandler?.(msg.method, msg.id as number, (msg as JsonRpcRequest).params || {});
       } else {
         // This is a response to one of our requests
-        const pending = this.pending.get(msg.id as number);
+        const msgId = msg.id as number;
+        const pending = this.pending.get(msgId);
         if (pending) {
-          const msgId = msg.id as number;
           this.pending.delete(msgId);
           const timer = this.pendingTimers.get(msgId);
           if (timer) {
@@ -295,7 +295,8 @@ export class StdioTransport implements ICodexTransport {
     }
   }
 
-  /** Send a request and wait for the matching response. */
+  /** Send a request and wait for the matching response.
+   *  Rejects with a timeout error if no response arrives within the deadline. */
   async call(method: string, params: Record<string, unknown> = {}, timeoutMs?: number): Promise<unknown> {
     const id = this.nextId++;
     const effectiveTimeout = timeoutMs ?? RPC_METHOD_TIMEOUTS[method] ?? DEFAULT_RPC_TIMEOUT_MS;
@@ -730,8 +731,8 @@ export class CodexAdapter {
       // Step 1: Send initialize request
       const result = await this.transport.call("initialize", {
         clientInfo: {
-          name: "moku",
-          title: "Moku",
+          name: "thecompanion",
+          title: "The Companion",
           version: "1.0.0",
         },
         capabilities: {

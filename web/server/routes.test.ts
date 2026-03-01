@@ -18,6 +18,14 @@ vi.mock("./env-manager.js", () => ({
   deleteEnv: vi.fn(),
 }));
 
+vi.mock("./prompt-manager.js", () => ({
+  listPrompts: vi.fn(() => []),
+  getPrompt: vi.fn(() => null),
+  createPrompt: vi.fn(),
+  updatePrompt: vi.fn(),
+  deletePrompt: vi.fn(() => false),
+}));
+
 vi.mock("node:child_process", () => ({
   execSync: vi.fn(() => ""),
   execFileSync: vi.fn(() => ""),
@@ -63,21 +71,76 @@ vi.mock("./settings-manager.js", () => ({
   getSettings: vi.fn(() => ({
     anthropicApiKey: "",
     anthropicModel: "claude-sonnet-4.6",
+    linearApiKey: "",
+    linearAutoTransition: false,
+    linearAutoTransitionStateId: "",
+    linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
     editorTabEnabled: false,
     aiValidationEnabled: false,
     aiValidationAutoApprove: true,
     aiValidationAutoDeny: true,
+    updateChannel: "stable",
     updatedAt: 0,
   })),
   updateSettings: vi.fn((patch) => ({
     anthropicApiKey: patch.anthropicApiKey ?? "",
     anthropicModel: patch.anthropicModel ?? "claude-sonnet-4.6",
+    linearApiKey: patch.linearApiKey ?? "",
+    linearAutoTransition: patch.linearAutoTransition ?? false,
+    linearAutoTransitionStateId: patch.linearAutoTransitionStateId ?? "",
+    linearAutoTransitionStateName: patch.linearAutoTransitionStateName ?? "",
+    linearArchiveTransition: patch.linearArchiveTransition ?? false,
+    linearArchiveTransitionStateId: patch.linearArchiveTransitionStateId ?? "",
+    linearArchiveTransitionStateName: patch.linearArchiveTransitionStateName ?? "",
     editorTabEnabled: patch.editorTabEnabled ?? false,
     aiValidationEnabled: patch.aiValidationEnabled ?? false,
     aiValidationAutoApprove: patch.aiValidationAutoApprove ?? true,
     aiValidationAutoDeny: patch.aiValidationAutoDeny ?? true,
+    updateChannel: patch.updateChannel ?? "stable",
     updatedAt: Date.now(),
   })),
+}));
+
+const mockGetLinearIssue = vi.hoisted(() => vi.fn(() => undefined as any));
+vi.mock("./session-linear-issues.js", () => ({
+  getLinearIssue: mockGetLinearIssue,
+  setLinearIssue: vi.fn(),
+  removeLinearIssue: vi.fn(),
+  getAllLinearIssues: vi.fn(() => ({})),
+  _resetForTest: vi.fn(),
+}));
+
+const mockTransitionLinearIssue = vi.hoisted(() => vi.fn(async () => ({ ok: true, issue: { id: "i1", identifier: "ENG-1", stateName: "Backlog", stateType: "backlog" } } as { ok: boolean; error?: string; issue?: { id: string; identifier: string; stateName: string; stateType: string } })));
+const mockFetchLinearTeamStates = vi.hoisted(() => vi.fn(async () => [
+  { id: "team-1", key: "ENG", name: "Engineering", states: [
+    { id: "state-backlog", name: "Backlog", type: "backlog" },
+    { id: "state-inprogress", name: "In Progress", type: "started" },
+    { id: "state-done", name: "Done", type: "completed" },
+  ] },
+]));
+vi.mock("./routes/linear-routes.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./routes/linear-routes.js")>();
+  return {
+    ...actual,
+    transitionLinearIssue: mockTransitionLinearIssue,
+    fetchLinearTeamStates: mockFetchLinearTeamStates,
+  };
+});
+
+vi.mock("./linear-project-manager.js", () => ({
+  listMappings: vi.fn(() => []),
+  getMapping: vi.fn(() => null),
+  upsertMapping: vi.fn((repoRoot: string, data: { projectId: string; projectName: string }) => ({
+    repoRoot,
+    ...data,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  })),
+  removeMapping: vi.fn(() => false),
+  _resetForTest: vi.fn(),
 }));
 
 const mockDiscoverClaudeSessions = vi.hoisted(() => vi.fn(
@@ -110,9 +173,27 @@ vi.mock("./claude-session-history.js", () => ({
 }));
 
 const mockGetUsageLimits = vi.hoisted(() => vi.fn());
+const mockUpdateCheckerState = vi.hoisted(() => ({
+  currentVersion: "0.22.1",
+  latestVersion: null as string | null,
+  lastChecked: 0,
+  isServiceMode: false,
+  checking: false,
+  updateInProgress: false,
+}));
+const mockCheckForUpdate = vi.hoisted(() => vi.fn(async () => {}));
+const mockIsUpdateAvailable = vi.hoisted(() => vi.fn(() => false));
+const mockSetUpdateInProgress = vi.hoisted(() => vi.fn());
 
 vi.mock("./usage-limits.js", () => ({
   getUsageLimits: mockGetUsageLimits,
+}));
+
+vi.mock("./update-checker.js", () => ({
+  getUpdateState: vi.fn(() => ({ ...mockUpdateCheckerState })),
+  checkForUpdate: mockCheckForUpdate,
+  isUpdateAvailable: mockIsUpdateAvailable,
+  setUpdateInProgress: mockSetUpdateInProgress,
 }));
 
 // Mock image-pull-manager — default: images are always ready
@@ -153,9 +234,11 @@ import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { createRoutes } from "./routes.js";
 import * as envManager from "./env-manager.js";
+import * as promptManager from "./prompt-manager.js";
 import * as gitUtils from "./git-utils.js";
 import * as sessionNames from "./session-names.js";
 import * as settingsManager from "./settings-manager.js";
+import * as linearProjectManager from "./linear-project-manager.js";
 import { containerManager } from "./container-manager.js";
 
 // ─── Mock factories ──────────────────────────────────────────────────────────
@@ -216,6 +299,12 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockDiscoverClaudeSessions.mockReturnValue([]);
   mockGetClaudeSessionHistoryPage.mockReturnValue(null);
+  mockUpdateCheckerState.currentVersion = "0.22.1";
+  mockUpdateCheckerState.latestVersion = null;
+  mockUpdateCheckerState.lastChecked = 0;
+  mockUpdateCheckerState.isServiceMode = false;
+  mockUpdateCheckerState.checking = false;
+  mockUpdateCheckerState.updateInProgress = false;
   launcher = createMockLauncher();
   bridge = createMockBridge();
   sessionStore = createMockStore();
@@ -463,7 +552,7 @@ describe("POST /api/sessions/create", () => {
       isWorktree: false,
     });
     vi.mocked(gitUtils.ensureWorktree).mockReturnValue({
-      worktreePath: "/home/.moku/worktrees/my-repo/feat-branch",
+      worktreePath: "/home/.companion/worktrees/my-repo/feat-branch",
       branch: "feat-branch",
       actualBranch: "feat-branch",
       isNew: true,
@@ -476,16 +565,22 @@ describe("POST /api/sessions/create", () => {
     });
 
     expect(res.status).toBe(200);
+    // gitFetch should be called before ensureWorktree to refresh remote refs
+    expect(gitUtils.gitFetch).toHaveBeenCalledWith("/repo");
     // ensureWorktree should be called with forceNew: true
     expect(gitUtils.ensureWorktree).toHaveBeenCalledWith("/repo", "feat-branch", {
       baseBranch: "main",
       createBranch: undefined,
       forceNew: true,
     });
+    // gitFetch must be called before ensureWorktree
+    const fetchOrder = vi.mocked(gitUtils.gitFetch).mock.invocationCallOrder[0];
+    const worktreeOrder = vi.mocked(gitUtils.ensureWorktree).mock.invocationCallOrder[0];
+    expect(fetchOrder).toBeLessThan(worktreeOrder);
     // launcher should receive the worktree path as cwd
     expect(launcher.launch).toHaveBeenCalled();
     const launchOpts = launcher.launch.mock.calls[0][0];
-    expect(launchOpts.cwd).toBe("/home/.moku/worktrees/my-repo/feat-branch");
+    expect(launchOpts.cwd).toBe("/home/.companion/worktrees/my-repo/feat-branch");
     // Worktree mapping should be tracked
     expect(tracker.addMapping).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -493,21 +588,21 @@ describe("POST /api/sessions/create", () => {
         repoRoot: "/repo",
         branch: "feat-branch",
         actualBranch: "feat-branch",
-        worktreePath: "/home/.moku/worktrees/my-repo/feat-branch",
+        worktreePath: "/home/.companion/worktrees/my-repo/feat-branch",
       }),
     );
   });
 
   it("returns 503 when env has Docker image but container startup fails", async () => {
     vi.mocked(envManager.getEnv).mockReturnValue({
-      name: "Moku",
+      name: "Companion",
       slug: "companion",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "moku:latest",
+      baseImage: "the-companion:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
     vi.spyOn(containerManager, "imageExists").mockReturnValueOnce(true);
     vi.spyOn(containerManager, "createContainer").mockImplementationOnce(() => {
       throw new Error("docker daemon timeout");
@@ -533,11 +628,11 @@ describe("POST /api/sessions/create", () => {
       name: "Codex Docker",
       slug: "codex-docker",
       variables: {},
-      baseImage: "moku:latest",
+      baseImage: "the-companion:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
 
     const res = await app.request("/api/sessions/create", {
       method: "POST",
@@ -557,16 +652,16 @@ describe("POST /api/sessions/create", () => {
       name: "Codex Docker",
       slug: "codex-docker",
       variables: { OPENAI_API_KEY: "sk-test" },
-      baseImage: "moku:latest",
+      baseImage: "the-companion:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
     vi.spyOn(containerManager, "imageExists").mockReturnValueOnce(true);
     const createSpy = vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-codex",
-      name: "moku-codex",
-      image: "moku:latest",
+      name: "companion-codex",
+      image: "the-companion:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -594,19 +689,19 @@ describe("POST /api/sessions/create", () => {
 
   it("always exposes VS Code editor port on new containers", async () => {
     vi.mocked(envManager.getEnv).mockReturnValue({
-      name: "Moku",
+      name: "Companion",
       slug: "companion",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "moku:latest",
+      baseImage: "the-companion:latest",
       createdAt: 1000,
       updatedAt: 1000,
       ports: [3000],
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
     const createSpy = vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-vscode",
-      name: "moku-vscode",
-      image: "moku:latest",
+      name: "companion-vscode",
+      image: "the-companion:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -630,25 +725,25 @@ describe("POST /api/sessions/create", () => {
     // imagePullManager reports the image is not ready initially,
     // but waitForReady resolves to true (background pull succeeds).
     vi.mocked(envManager.getEnv).mockReturnValue({
-      name: "Moku",
+      name: "Companion",
       slug: "companion",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "moku:latest",
+      baseImage: "the-companion:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
     mockImagePullIsReady.mockReturnValue(false);
     mockImagePullGetState.mockReturnValue({
-      image: "moku:latest",
+      image: "the-companion:latest",
       status: "idle" as const,
       progress: [],
     });
     mockImagePullWaitForReady.mockResolvedValue(true);
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-1",
-      name: "moku-temp",
-      image: "moku:latest",
+      name: "companion-temp",
+      image: "the-companion:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -663,7 +758,7 @@ describe("POST /api/sessions/create", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(mockImagePullEnsureImage).toHaveBeenCalledWith("moku:latest");
+    expect(mockImagePullEnsureImage).toHaveBeenCalledWith("the-companion:latest");
     expect(mockImagePullWaitForReady).toHaveBeenCalled();
     expect(launcher.launch).toHaveBeenCalled();
   });
@@ -674,17 +769,17 @@ describe("POST /api/sessions/create", () => {
       name: "WithInit",
       slug: "with-init",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "moku:latest",
+      baseImage: "the-companion:latest",
       initScript: "bun install && pip install -r requirements.txt",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
     vi.spyOn(containerManager, "imageExists").mockReturnValueOnce(true);
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-init",
-      name: "moku-init",
-      image: "moku:latest",
+      name: "companion-init",
+      image: "the-companion:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -716,17 +811,17 @@ describe("POST /api/sessions/create", () => {
       name: "FailInit",
       slug: "fail-init",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "moku:latest",
+      baseImage: "the-companion:latest",
       initScript: "exit 1",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
     vi.spyOn(containerManager, "imageExists").mockReturnValueOnce(true);
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-fail",
-      name: "moku-fail",
-      image: "moku:latest",
+      name: "companion-fail",
+      image: "the-companion:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -764,15 +859,15 @@ describe("POST /api/sessions/create", () => {
       name: "Docker",
       slug: "docker",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "moku:latest",
+      baseImage: "the-companion:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-git",
-      name: "moku-git",
-      image: "moku:latest",
+      name: "companion-git",
+      image: "the-companion:latest",
       portMappings: [],
       hostCwd: "/repo",
       containerCwd: "/workspace",
@@ -810,15 +905,15 @@ describe("POST /api/sessions/create", () => {
       name: "Docker",
       slug: "docker",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "moku:latest",
+      baseImage: "the-companion:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-nobranch",
-      name: "moku-nobranch",
-      image: "moku:latest",
+      name: "companion-nobranch",
+      image: "the-companion:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -850,15 +945,15 @@ describe("POST /api/sessions/create", () => {
       name: "Docker",
       slug: "docker",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "moku:latest",
+      baseImage: "the-companion:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-failcheckout",
-      name: "moku-failcheckout",
-      image: "moku:latest",
+      name: "companion-failcheckout",
+      image: "the-companion:latest",
       portMappings: [],
       hostCwd: "/repo",
       containerCwd: "/workspace",
@@ -1143,8 +1238,8 @@ describe("POST /api/sessions/:id/editor/start", () => {
     });
     vi.spyOn(containerManager, "getContainer").mockReturnValue({
       containerId: "cid-1",
-      name: "moku-s1",
-      image: "moku:latest",
+      name: "companion-s1",
+      image: "the-companion:latest",
       portMappings: [{ containerPort: 13337, hostPort: 49152 }],
       hostCwd: "/repo",
       containerCwd: "/workspace",
@@ -1213,7 +1308,7 @@ describe("POST /api/sessions/:id/relaunch", () => {
   it("returns 503 with error when container is missing", async () => {
     launcher.relaunch.mockResolvedValue({
       ok: false,
-      error: 'Container "moku-gone" was removed externally. Please create a new session.',
+      error: 'Container "companion-gone" was removed externally. Please create a new session.',
     });
 
     const res = await app.request("/api/sessions/s1/relaunch", { method: "POST" });
@@ -1383,6 +1478,220 @@ describe("POST /api/sessions/:id/archive", () => {
   });
 });
 
+describe("POST /api/sessions/:id/archive — Linear transition", () => {
+  const linkedIssue = {
+    id: "issue-1",
+    identifier: "ENG-42",
+    title: "Test issue",
+    description: "",
+    url: "https://linear.app/eng/issue/ENG-42",
+    branchName: "eng-42",
+    priorityLabel: "High",
+    stateName: "In Progress",
+    stateType: "started",
+    teamName: "Engineering",
+    teamKey: "ENG",
+    teamId: "team-1",
+  };
+
+  it("archives without transition when no linked issue", async () => {
+    mockGetLinearIssue.mockReturnValue(undefined);
+    const res = await app.request("/api/sessions/s1/archive", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linearTransition: "backlog" }),
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.ok).toBe(true);
+    expect(json.linearTransition).toBeUndefined();
+    expect(mockTransitionLinearIssue).not.toHaveBeenCalled();
+  });
+
+  it("archives without transition when linearTransition is none", async () => {
+    mockGetLinearIssue.mockReturnValue(linkedIssue);
+    const res = await app.request("/api/sessions/s1/archive", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linearTransition: "none" }),
+    });
+    expect(res.status).toBe(200);
+    expect(mockTransitionLinearIssue).not.toHaveBeenCalled();
+  });
+
+  it("transitions to backlog when linearTransition is backlog", async () => {
+    mockGetLinearIssue.mockReturnValue(linkedIssue);
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "lin_test_key",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+      linearArchiveTransition: false,
+      linearArchiveTransitionStateId: "",
+      linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+    const res = await app.request("/api/sessions/s1/archive", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linearTransition: "backlog" }),
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.ok).toBe(true);
+    // Should have resolved backlog state from team states
+    expect(mockFetchLinearTeamStates).toHaveBeenCalledWith("lin_test_key");
+    expect(mockTransitionLinearIssue).toHaveBeenCalledWith("issue-1", "state-backlog", "lin_test_key");
+    expect(json.linearTransition).toBeDefined();
+    expect(json.linearTransition.ok).toBe(true);
+    // Session should still be archived
+    expect(launcher.setArchived).toHaveBeenCalledWith("s1", true);
+  });
+
+  it("transitions to configured state when linearTransition is configured", async () => {
+    mockGetLinearIssue.mockReturnValue(linkedIssue);
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "lin_test_key",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+      linearArchiveTransition: true,
+      linearArchiveTransitionStateId: "state-custom",
+      linearArchiveTransitionStateName: "Review",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+    const res = await app.request("/api/sessions/s1/archive", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linearTransition: "configured" }),
+    });
+    expect(res.status).toBe(200);
+    expect(mockTransitionLinearIssue).toHaveBeenCalledWith("issue-1", "state-custom", "lin_test_key");
+  });
+
+  it("archives successfully even when transition fails", async () => {
+    mockGetLinearIssue.mockReturnValue(linkedIssue);
+    mockTransitionLinearIssue.mockResolvedValue({ ok: false, error: "Linear API error" });
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "lin_test_key",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+      linearArchiveTransition: false,
+      linearArchiveTransitionStateId: "",
+      linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+    const res = await app.request("/api/sessions/s1/archive", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linearTransition: "backlog" }),
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.ok).toBe(true);
+    expect(json.linearTransition.ok).toBe(false);
+    // Session is still archived
+    expect(launcher.setArchived).toHaveBeenCalledWith("s1", true);
+  });
+});
+
+describe("GET /api/sessions/:id/archive-info", () => {
+  it("returns no linked issue when session has none", async () => {
+    mockGetLinearIssue.mockReturnValue(undefined);
+    const res = await app.request("/api/sessions/s1/archive-info", { method: "GET" });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ hasLinkedIssue: false, issueNotDone: false });
+  });
+
+  it("returns issueNotDone false for completed issues", async () => {
+    mockGetLinearIssue.mockReturnValue({
+      id: "issue-1",
+      identifier: "ENG-42",
+      title: "Done issue",
+      description: "",
+      url: "",
+      branchName: "",
+      priorityLabel: "",
+      stateName: "Done",
+      stateType: "completed",
+      teamName: "Engineering",
+      teamKey: "ENG",
+      teamId: "team-1",
+    });
+    const res = await app.request("/api/sessions/s1/archive-info", { method: "GET" });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.hasLinkedIssue).toBe(true);
+    expect(json.issueNotDone).toBe(false);
+  });
+
+  it("returns transition options for non-done issues", async () => {
+    mockGetLinearIssue.mockReturnValue({
+      id: "issue-1",
+      identifier: "ENG-42",
+      title: "In progress issue",
+      description: "",
+      url: "",
+      branchName: "",
+      priorityLabel: "",
+      stateName: "In Progress",
+      stateType: "started",
+      teamName: "Engineering",
+      teamKey: "ENG",
+      teamId: "team-1",
+    });
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "lin_test_key",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+      linearArchiveTransition: true,
+      linearArchiveTransitionStateId: "state-custom",
+      linearArchiveTransitionStateName: "Review",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+    const res = await app.request("/api/sessions/s1/archive-info", { method: "GET" });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.hasLinkedIssue).toBe(true);
+    expect(json.issueNotDone).toBe(true);
+    expect(json.hasBacklogState).toBe(true);
+    expect(json.archiveTransitionConfigured).toBe(true);
+    expect(json.archiveTransitionStateName).toBe("Review");
+    expect(json.issue.identifier).toBe("ENG-42");
+  });
+});
+
 describe("POST /api/sessions/:id/unarchive", () => {
   it("unarchives the session", async () => {
     const res = await app.request("/api/sessions/s1/unarchive", { method: "POST" });
@@ -1511,20 +1820,176 @@ describe("DELETE /api/envs/:slug", () => {
   });
 });
 
+describe("Saved prompts API", () => {
+  it("lists prompts with cwd filter", async () => {
+    // Confirms route passes cwd/scope filter through to prompt manager.
+    const prompts = [
+      {
+        id: "p1",
+        name: "Review",
+        content: "Review this PR",
+        scope: "global" as const,
+        createdAt: 1,
+        updatedAt: 2,
+      },
+    ];
+    vi.mocked(promptManager.listPrompts).mockReturnValue(prompts);
+
+    const res = await app.request("/api/prompts?cwd=%2Frepo", { method: "GET" });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual(prompts);
+    expect(promptManager.listPrompts).toHaveBeenCalledWith({ cwd: "/repo", scope: undefined });
+  });
+
+  it("creates a prompt with legacy cwd", async () => {
+    // Confirms payload mapping for prompt creation including project cwd.
+    const created = {
+      id: "p1",
+      name: "Review",
+      content: "Review this PR",
+      scope: "project" as const,
+      projectPath: "/repo",
+      projectPaths: ["/repo"],
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    vi.mocked(promptManager.createPrompt).mockReturnValue(created);
+
+    const res = await app.request("/api/prompts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Review",
+        content: "Review this PR",
+        scope: "project",
+        cwd: "/repo",
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(promptManager.createPrompt).toHaveBeenCalledWith(
+      "Review",
+      "Review this PR",
+      "project",
+      "/repo",
+      undefined,
+    );
+  });
+
+  it("creates a prompt with projectPaths", async () => {
+    // Confirms projectPaths array is forwarded to prompt manager.
+    const created = {
+      id: "p2",
+      name: "Multi",
+      content: "Multi-project prompt",
+      scope: "project" as const,
+      projectPath: "/repo-a",
+      projectPaths: ["/repo-a", "/repo-b"],
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    vi.mocked(promptManager.createPrompt).mockReturnValue(created);
+
+    const res = await app.request("/api/prompts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Multi",
+        content: "Multi-project prompt",
+        scope: "project",
+        projectPaths: ["/repo-a", "/repo-b"],
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(promptManager.createPrompt).toHaveBeenCalledWith(
+      "Multi",
+      "Multi-project prompt",
+      "project",
+      undefined,
+      ["/repo-a", "/repo-b"],
+    );
+  });
+
+  it("updates a prompt", async () => {
+    // Confirms update fields are forwarded verbatim.
+    vi.mocked(promptManager.updatePrompt).mockReturnValue({
+      id: "p1",
+      name: "Updated",
+      content: "Updated content",
+      scope: "global",
+      createdAt: 1,
+      updatedAt: 2,
+    });
+
+    const res = await app.request("/api/prompts/p1", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Updated", content: "Updated content" }),
+    });
+    expect(res.status).toBe(200);
+    expect(promptManager.updatePrompt).toHaveBeenCalledWith("p1", {
+      name: "Updated",
+      content: "Updated content",
+      scope: undefined,
+      projectPaths: undefined,
+    });
+  });
+
+  it("updates a prompt scope and projectPaths", async () => {
+    // Confirms scope and projectPaths updates are forwarded.
+    vi.mocked(promptManager.updatePrompt).mockReturnValue({
+      id: "p1",
+      name: "Updated",
+      content: "Updated content",
+      scope: "project",
+      projectPath: "/repo",
+      projectPaths: ["/repo"],
+      createdAt: 1,
+      updatedAt: 2,
+    });
+
+    const res = await app.request("/api/prompts/p1", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scope: "project", projectPaths: ["/repo"] }),
+    });
+    expect(res.status).toBe(200);
+    expect(promptManager.updatePrompt).toHaveBeenCalledWith("p1", {
+      name: undefined,
+      content: undefined,
+      scope: "project",
+      projectPaths: ["/repo"],
+    });
+  });
+
+  it("deletes a prompt", async () => {
+    // Confirms delete endpoint calls manager and returns ok shape.
+    vi.mocked(promptManager.deletePrompt).mockReturnValue(true);
+
+    const res = await app.request("/api/prompts/p1", { method: "DELETE" });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ ok: true });
+    expect(promptManager.deletePrompt).toHaveBeenCalledWith("p1");
+  });
+});
+
 // ─── Image Pull Manager API ──────────────────────────────────────────────────
 
 describe("GET /api/images/:tag/status", () => {
   it("returns the pull state for an image", async () => {
     mockImagePullGetState.mockReturnValueOnce({
-      image: "moku:latest",
+      image: "the-companion:latest",
       status: "ready",
       progress: [],
     });
 
-    const res = await app.request("/api/images/moku%3Alatest/status");
+    const res = await app.request("/api/images/the-companion%3Alatest/status");
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.image).toBe("moku:latest");
+    expect(json.image).toBe("the-companion:latest");
     expect(json.status).toBe("ready");
   });
 });
@@ -1533,25 +1998,25 @@ describe("POST /api/images/:tag/pull", () => {
   it("triggers a pull and returns the current state", async () => {
     vi.spyOn(containerManager, "checkDocker").mockReturnValue(true);
     mockImagePullGetState.mockReturnValueOnce({
-      image: "moku:latest",
+      image: "the-companion:latest",
       status: "pulling",
       progress: [],
       startedAt: Date.now(),
     });
 
-    const res = await app.request("/api/images/moku%3Alatest/pull", {
+    const res = await app.request("/api/images/the-companion%3Alatest/pull", {
       method: "POST",
     });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.ok).toBe(true);
-    expect(mockImagePullPull).toHaveBeenCalledWith("moku:latest");
+    expect(mockImagePullPull).toHaveBeenCalledWith("the-companion:latest");
   });
 
   it("returns 503 when Docker is not available", async () => {
     vi.spyOn(containerManager, "checkDocker").mockReturnValue(false);
 
-    const res = await app.request("/api/images/moku%3Alatest/pull", {
+    const res = await app.request("/api/images/the-companion%3Alatest/pull", {
       method: "POST",
     });
     expect(res.status).toBe(503);
@@ -1567,10 +2032,18 @@ describe("GET /api/settings", () => {
     vi.mocked(settingsManager.getSettings).mockReturnValue({
       anthropicApiKey: "or-secret",
       anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
+      updateChannel: "stable",
       updatedAt: 123,
     });
 
@@ -1581,10 +2054,16 @@ describe("GET /api/settings", () => {
     expect(json).toEqual({
       anthropicApiKeyConfigured: true,
       anthropicModel: "claude-sonnet-4.6",
+      linearApiKeyConfigured: false,
+      linearAutoTransition: false,
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
+      updateChannel: "stable",
     });
   });
 
@@ -1592,10 +2071,18 @@ describe("GET /api/settings", () => {
     vi.mocked(settingsManager.getSettings).mockReturnValue({
       anthropicApiKey: "",
       anthropicModel: "openai/gpt-4o-mini",
+      linearApiKey: "lin_api_123",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
+      updateChannel: "stable",
       updatedAt: 123,
     });
 
@@ -1606,10 +2093,16 @@ describe("GET /api/settings", () => {
     expect(json).toEqual({
       anthropicApiKeyConfigured: false,
       anthropicModel: "openai/gpt-4o-mini",
+      linearApiKeyConfigured: true,
+      linearAutoTransition: false,
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
+      updateChannel: "stable",
     });
   });
 });
@@ -1619,10 +2112,18 @@ describe("PUT /api/settings", () => {
     vi.mocked(settingsManager.updateSettings).mockReturnValue({
       anthropicApiKey: "new-key",
       anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
+      updateChannel: "stable",
       updatedAt: 456,
     });
 
@@ -1636,19 +2137,33 @@ describe("PUT /api/settings", () => {
     expect(settingsManager.updateSettings).toHaveBeenCalledWith({
       anthropicApiKey: "new-key",
       anthropicModel: undefined,
+      linearApiKey: undefined,
+      linearAutoTransition: undefined,
+      linearAutoTransitionStateId: undefined,
+      linearAutoTransitionStateName: undefined,
+      linearArchiveTransition: undefined,
+      linearArchiveTransitionStateId: undefined,
+      linearArchiveTransitionStateName: undefined,
       editorTabEnabled: undefined,
       aiValidationEnabled: undefined,
       aiValidationAutoApprove: undefined,
       aiValidationAutoDeny: undefined,
+      updateChannel: undefined,
     });
     const json = await res.json();
     expect(json).toEqual({
       anthropicApiKeyConfigured: true,
       anthropicModel: "claude-sonnet-4.6",
+      linearApiKeyConfigured: false,
+      linearAutoTransition: false,
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
+      updateChannel: "stable",
     });
   });
 
@@ -1656,23 +2171,35 @@ describe("PUT /api/settings", () => {
     vi.mocked(settingsManager.updateSettings).mockReturnValue({
       anthropicApiKey: "trimmed-key",
       anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "lin_api_trimmed",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
+      updateChannel: "stable",
       updatedAt: 789,
     });
 
     const res = await app.request("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ anthropicApiKey: "  trimmed-key  ", anthropicModel: "   " }),
+      body: JSON.stringify({ anthropicApiKey: "  trimmed-key  ", anthropicModel: "   ", linearApiKey: "  lin_api_trimmed  " }),
     });
 
     expect(res.status).toBe(200);
     expect(settingsManager.updateSettings).toHaveBeenCalledWith({
       anthropicApiKey: "trimmed-key",
       anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "lin_api_trimmed",
+      linearAutoTransition: undefined,
+      linearAutoTransitionStateId: undefined,
+      linearAutoTransitionStateName: undefined,
       editorTabEnabled: undefined,
     });
   });
@@ -1681,10 +2208,18 @@ describe("PUT /api/settings", () => {
     vi.mocked(settingsManager.updateSettings).mockReturnValue({
       anthropicApiKey: "existing-key",
       anthropicModel: "openai/gpt-4o-mini",
+      linearApiKey: "lin_api_existing",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
+      updateChannel: "stable",
       updatedAt: 999,
     });
 
@@ -1698,8 +2233,24 @@ describe("PUT /api/settings", () => {
     expect(settingsManager.updateSettings).toHaveBeenCalledWith({
       anthropicApiKey: undefined,
       anthropicModel: "openai/gpt-4o-mini",
+      linearApiKey: undefined,
+      linearAutoTransition: undefined,
+      linearAutoTransitionStateId: undefined,
+      linearAutoTransitionStateName: undefined,
       editorTabEnabled: undefined,
     });
+  });
+
+  it("returns 400 for non-string linear key", async () => {
+    const res = await app.request("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linearApiKey: 123 }),
+    });
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json).toEqual({ error: "linearApiKey must be a string" });
   });
 
   it("returns 400 for non-string model", async () => {
@@ -1738,6 +2289,19 @@ describe("PUT /api/settings", () => {
     expect(json).toEqual({ error: "editorTabEnabled must be a boolean" });
   });
 
+  // Rejects invalid updateChannel values that aren't "stable" or "prerelease"
+  it("returns 400 for invalid updateChannel value", async () => {
+    const res = await app.request("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ updateChannel: "nightly" }),
+    });
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json).toEqual({ error: "updateChannel must be 'stable' or 'prerelease'" });
+  });
+
   it("returns 400 when no settings fields are provided", async () => {
     const res = await app.request("/api/settings", {
       method: "PUT",
@@ -1751,58 +2315,9 @@ describe("PUT /api/settings", () => {
   });
 });
 
-// ─── Anthropic API Key Verification ──────────────────────────────────────────
-
 describe("POST /api/settings/anthropic/verify", () => {
-  it("returns valid: true when Anthropic API responds ok", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-    } as Response);
-
-    const res = await app.request("/api/settings/anthropic/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ apiKey: "sk-ant-test-key" }),
-    });
-
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json).toEqual({ valid: true });
-
-    expect(fetchSpy).toHaveBeenCalledWith(
-      "https://api.anthropic.com/v1/models",
-      expect.objectContaining({
-        headers: {
-          "x-api-key": "sk-ant-test-key",
-          "anthropic-version": "2023-06-01",
-        },
-      }),
-    );
-
-    fetchSpy.mockRestore();
-  });
-
-  it("returns valid: false when Anthropic API responds with error", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 401,
-    } as Response);
-
-    const res = await app.request("/api/settings/anthropic/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ apiKey: "bad-key" }),
-    });
-
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json).toEqual({ valid: false, error: "API returned 401" });
-
-    fetchSpy.mockRestore();
-  });
-
-  it("returns 400 when API key is missing", async () => {
+  it("returns 400 when no apiKey provided", async () => {
+    // Verifies the endpoint rejects requests that omit the apiKey field
     const res = await app.request("/api/settings/anthropic/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1814,39 +2329,961 @@ describe("POST /api/settings/anthropic/verify", () => {
     expect(json).toEqual({ valid: false, error: "API key is required" });
   });
 
-  it("returns 400 when API key is empty string", async () => {
+  it("returns valid:true when fetch succeeds", async () => {
+    // Verifies successful Anthropic API key validation when the upstream API responds ok
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
     const res = await app.request("/api/settings/anthropic/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ apiKey: "   " }),
+      body: JSON.stringify({ apiKey: "sk-ant-valid-key" }),
     });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json).toEqual({ valid: false, error: "API key is required" });
+    expect(json).toEqual({ valid: true });
+
+    // Verify the correct Anthropic API endpoint and headers were used
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.anthropic.com/v1/models",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "x-api-key": "sk-ant-valid-key",
+          "anthropic-version": "2023-06-01",
+        }),
+      }),
+    );
+
+    vi.unstubAllGlobals();
   });
 
-  it("returns valid: false when fetch throws a network error", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
-      new Error("Network error"),
-    );
+  it("returns valid:false with error when fetch returns non-ok", async () => {
+    // Verifies the endpoint correctly reports invalid keys when the Anthropic API rejects them
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+    });
+    vi.stubGlobal("fetch", fetchMock);
 
     const res = await app.request("/api/settings/anthropic/verify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ apiKey: "sk-ant-test-key" }),
+      body: JSON.stringify({ apiKey: "sk-ant-invalid-key" }),
+    });
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ valid: false, error: "API returned 401" });
+
+    vi.unstubAllGlobals();
+  });
+
+  it("returns valid:false when fetch throws", async () => {
+    // Verifies graceful error handling when the network request itself fails
+    const fetchMock = vi.fn().mockRejectedValue(new Error("Network error"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await app.request("/api/settings/anthropic/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: "sk-ant-some-key" }),
     });
 
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json).toEqual({ valid: false, error: "Request failed" });
 
-    fetchSpy.mockRestore();
+    vi.unstubAllGlobals();
   });
 });
 
-// ─── Git ─────────────────────────────────────────────────────────────────────
+describe("GET /api/linear/issues", () => {
+  it("returns empty list when query is blank", async () => {
+    const res = await app.request("/api/linear/issues?query=   ", { method: "GET" });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ issues: [] });
+  });
 
+  it("returns 400 when linear key is not configured", async () => {
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+
+    const res = await app.request("/api/linear/issues?query=auth", { method: "GET" });
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json).toEqual({ error: "Linear API key is not configured" });
+  });
+
+  it("proxies Linear issue search results with branchName", async () => {
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "lin_api_123",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      statusText: "OK",
+      json: async () => ({
+        data: {
+          searchIssues: {
+            nodes: [{
+              id: "issue-id",
+              identifier: "ENG-123",
+              title: "Fix auth flow",
+              description: "401 on refresh token",
+              url: "https://linear.app/acme/issue/ENG-123/fix-auth-flow",
+              branchName: "eng-123-fix-auth-flow",
+              priorityLabel: "High",
+              state: { name: "In Progress", type: "started" },
+              team: { id: "team-eng-1", key: "ENG", name: "Engineering" },
+            }],
+          },
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await app.request("/api/linear/issues?query=auth&limit=5", { method: "GET" });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({
+      issues: [{
+        id: "issue-id",
+        identifier: "ENG-123",
+        title: "Fix auth flow",
+        description: "401 on refresh token",
+        url: "https://linear.app/acme/issue/ENG-123/fix-auth-flow",
+        branchName: "eng-123-fix-auth-flow",
+        priorityLabel: "High",
+        stateName: "In Progress",
+        stateType: "started",
+        teamName: "Engineering",
+        teamKey: "ENG",
+        teamId: "team-eng-1",
+      }],
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.linear.app/graphql",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ Authorization: "lin_api_123" }),
+      }),
+    );
+    const [, requestInit] = vi.mocked(fetchMock).mock.calls[0];
+    const requestBody = JSON.parse(String(requestInit?.body ?? "{}"));
+    // Verify branchName is requested in the GraphQL query
+    expect(requestBody.query).toContain("branchName");
+    expect(requestBody.query).toContain("searchIssues(term: $term, first: $first)");
+    expect(requestBody.variables).toEqual({ term: "auth", first: 5 });
+    vi.unstubAllGlobals();
+  });
+
+  it("returns only active issues and orders backlog-like before in-progress", async () => {
+    // The home page issue picker should hide done/cancelled work and show backlog-like
+    // items before currently started ones.
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "lin_api_123",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      statusText: "OK",
+      json: async () => ({
+        data: {
+          searchIssues: {
+            nodes: [
+              {
+                id: "done-1",
+                identifier: "ENG-10",
+                title: "Already done",
+                description: "",
+                url: "https://linear.app/acme/issue/ENG-10",
+                branchName: null,
+                priorityLabel: null,
+                state: { name: "Done", type: "completed" },
+                team: { id: "team-1", key: "ENG", name: "Engineering" },
+              },
+              {
+                id: "started-1",
+                identifier: "ENG-11",
+                title: "Implement feature",
+                description: "",
+                url: "https://linear.app/acme/issue/ENG-11",
+                branchName: null,
+                priorityLabel: null,
+                state: { name: "In Progress", type: "started" },
+                team: { id: "team-1", key: "ENG", name: "Engineering" },
+              },
+              {
+                id: "backlog-1",
+                identifier: "ENG-12",
+                title: "Investigate bug",
+                description: "",
+                url: "https://linear.app/acme/issue/ENG-12",
+                branchName: null,
+                priorityLabel: null,
+                state: { name: "Backlog", type: "unstarted" },
+                team: { id: "team-1", key: "ENG", name: "Engineering" },
+              },
+              {
+                id: "cancelled-1",
+                identifier: "ENG-13",
+                title: "Won't do",
+                description: "",
+                url: "https://linear.app/acme/issue/ENG-13",
+                branchName: null,
+                priorityLabel: null,
+                state: { name: "Cancelled", type: "cancelled" },
+                team: { id: "team-1", key: "ENG", name: "Engineering" },
+              },
+            ],
+          },
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await app.request("/api/linear/issues?query=eng", { method: "GET" });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.issues.map((i: { identifier: string }) => i.identifier)).toEqual(["ENG-12", "ENG-11"]);
+    vi.unstubAllGlobals();
+  });
+
+  it("returns empty branchName when Linear does not provide one", async () => {
+    // Verifies fallback: when branchName is null/missing from Linear API,
+    // the response maps it to an empty string so the frontend can generate a slug
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "lin_api_123",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      statusText: "OK",
+      json: async () => ({
+        data: {
+          searchIssues: {
+            nodes: [{
+              id: "issue-id-2",
+              identifier: "ENG-456",
+              title: "Add dark mode",
+              description: null,
+              url: "https://linear.app/acme/issue/ENG-456/add-dark-mode",
+              branchName: null,
+              priorityLabel: null,
+              state: null,
+              team: null,
+            }],
+          },
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await app.request("/api/linear/issues?query=dark", { method: "GET" });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.issues[0].branchName).toBe("");
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("GET /api/linear/connection", () => {
+  it("returns 400 when linear key is not configured", async () => {
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+
+    const res = await app.request("/api/linear/connection", { method: "GET" });
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json).toEqual({ error: "Linear API key is not configured" });
+  });
+
+  it("returns viewer/team info when connection works", async () => {
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "lin_api_123",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      statusText: "OK",
+      json: async () => ({
+        data: {
+          viewer: { id: "u1", name: "Ada", email: "ada@example.com" },
+          teams: { nodes: [{ id: "t1", key: "ENG", name: "Engineering" }] },
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await app.request("/api/linear/connection", { method: "GET" });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({
+      connected: true,
+      viewerId: "u1",
+      viewerName: "Ada",
+      viewerEmail: "ada@example.com",
+      teamName: "Engineering",
+      teamKey: "ENG",
+    });
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("POST /api/linear/issues/:id/transition", () => {
+  // Skips when auto-transition is disabled in settings
+  it("skips when auto-transition is disabled", async () => {
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "lin_api_123",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "state-123",
+      linearAutoTransitionStateName: "In Progress",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+
+    const res = await app.request("/api/linear/issues/issue-123/transition", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ ok: true, skipped: true, reason: "auto_transition_disabled" });
+  });
+
+  // Skips when no target state is configured
+  it("skips when no target state is configured", async () => {
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "lin_api_123",
+      linearAutoTransition: true,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+
+    const res = await app.request("/api/linear/issues/issue-123/transition", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ ok: true, skipped: true, reason: "no_target_state_configured" });
+  });
+
+  it("returns 400 when linear key is not configured", async () => {
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "",
+      linearAutoTransition: true,
+      linearAutoTransitionStateId: "state-123",
+      linearAutoTransitionStateName: "In Progress",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+
+    const res = await app.request("/api/linear/issues/issue-123/transition", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json).toEqual({ error: "Linear API key is not configured" });
+  });
+
+  // Happy path: uses configured stateId to update the issue directly
+  it("transitions issue to configured state", async () => {
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "lin_api_123",
+      linearAutoTransition: true,
+      linearAutoTransitionStateId: "state-doing",
+      linearAutoTransitionStateName: "Doing",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      statusText: "OK",
+      json: async () => ({
+        data: {
+          issueUpdate: {
+            success: true,
+            issue: {
+              id: "issue-123",
+              identifier: "ENG-456",
+              state: { name: "Doing", type: "started" },
+            },
+          },
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await app.request("/api/linear/issues/issue-123/transition", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({
+      ok: true,
+      skipped: false,
+      issue: {
+        id: "issue-123",
+        identifier: "ENG-456",
+        stateName: "Doing",
+        stateType: "started",
+      },
+    });
+
+    // Verify only one GraphQL call (no states query needed)
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body ?? "{}"));
+    expect(body.query).toContain("issueUpdate");
+    expect(body.variables).toEqual({ issueId: "issue-123", stateId: "state-doing" });
+
+    vi.unstubAllGlobals();
+  });
+
+  // Error case: Linear API returns an error when updating issue state
+  it("returns 502 when issue update fails", async () => {
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "lin_api_123",
+      linearAutoTransition: true,
+      linearAutoTransitionStateId: "state-doing",
+      linearAutoTransitionStateName: "Doing",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      statusText: "Bad Request",
+      json: async () => ({
+        errors: [{ message: "Issue not found" }],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await app.request("/api/linear/issues/issue-123/transition", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(502);
+    const json = await res.json();
+    expect(json).toEqual({ error: "Issue not found" });
+
+    vi.unstubAllGlobals();
+  });
+});
+
+// ─── Linear projects ─────────────────────────────────────────────────────────
+
+describe("GET /api/linear/projects", () => {
+  it("returns 400 when linear key is not configured", async () => {
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+
+    const res = await app.request("/api/linear/projects", { method: "GET" });
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json).toEqual({ error: "Linear API key is not configured" });
+  });
+
+  it("returns project list from Linear API", async () => {
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "lin_api_123",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      statusText: "OK",
+      json: async () => ({
+        data: {
+          projects: {
+            nodes: [
+              { id: "p1", name: "My Feature", state: "started" },
+              { id: "p2", name: "Backend Rework", state: "planned" },
+            ],
+          },
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await app.request("/api/linear/projects", { method: "GET" });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({
+      projects: [
+        { id: "p1", name: "My Feature", state: "started" },
+        { id: "p2", name: "Backend Rework", state: "planned" },
+      ],
+    });
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("GET /api/linear/project-issues", () => {
+  it("returns 400 when projectId is missing", async () => {
+    const res = await app.request("/api/linear/project-issues", { method: "GET" });
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json).toEqual({ error: "projectId is required" });
+  });
+
+  it("returns 400 when linear key is not configured", async () => {
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+
+    const res = await app.request("/api/linear/project-issues?projectId=p1", { method: "GET" });
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json).toEqual({ error: "Linear API key is not configured" });
+  });
+
+  it("returns recent non-done issues for a project", async () => {
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "lin_api_123",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      statusText: "OK",
+      json: async () => ({
+        data: {
+          issues: {
+            nodes: [{
+              id: "issue-1",
+              identifier: "ENG-42",
+              title: "Implement dark mode",
+              description: "Add theme support",
+              url: "https://linear.app/acme/issue/ENG-42",
+              priorityLabel: "Medium",
+              state: { name: "In Progress", type: "started" },
+              team: { key: "ENG", name: "Engineering" },
+              assignee: { name: "Ada" },
+              updatedAt: "2026-02-19T10:00:00Z",
+            }],
+          },
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await app.request("/api/linear/project-issues?projectId=p1&limit=5", { method: "GET" });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({
+      issues: [{
+        id: "issue-1",
+        identifier: "ENG-42",
+        title: "Implement dark mode",
+        description: "Add theme support",
+        url: "https://linear.app/acme/issue/ENG-42",
+        priorityLabel: "Medium",
+        stateName: "In Progress",
+        stateType: "started",
+        teamName: "Engineering",
+        teamKey: "ENG",
+        assigneeName: "Ada",
+        updatedAt: "2026-02-19T10:00:00Z",
+      }],
+    });
+
+    // Verify the GraphQL query uses projectId variable and correct limit
+    const [, requestInit] = vi.mocked(fetchMock).mock.calls[0];
+    const requestBody = JSON.parse(String(requestInit?.body ?? "{}"));
+    expect(requestBody.variables).toEqual({ projectId: "p1", first: 5 });
+    vi.unstubAllGlobals();
+  });
+
+  it("orders project issues backlog-like first, then in-progress", async () => {
+    // UI issue lists should present queued/backlog work first, followed by started work.
+    vi.mocked(settingsManager.getSettings).mockReturnValue({
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "lin_api_123",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
+      editorTabEnabled: false,
+      aiValidationEnabled: false,
+      aiValidationAutoApprove: true,
+      aiValidationAutoDeny: true,
+      updateChannel: "stable",
+      updatedAt: 0,
+    });
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      statusText: "OK",
+      json: async () => ({
+        data: {
+          issues: {
+            nodes: [
+              {
+                id: "started-1",
+                identifier: "ENG-100",
+                title: "Ship API",
+                description: "",
+                url: "https://linear.app/acme/issue/ENG-100",
+                priorityLabel: null,
+                state: { name: "In Progress", type: "started" },
+                team: { key: "ENG", name: "Engineering" },
+                assignee: null,
+                updatedAt: "2026-02-19T10:00:00Z",
+              },
+              {
+                id: "backlog-1",
+                identifier: "ENG-101",
+                title: "Scope feature",
+                description: "",
+                url: "https://linear.app/acme/issue/ENG-101",
+                priorityLabel: null,
+                state: { name: "Backlog", type: "unstarted" },
+                team: { key: "ENG", name: "Engineering" },
+                assignee: null,
+                updatedAt: "2026-02-19T09:00:00Z",
+              },
+            ],
+          },
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await app.request("/api/linear/project-issues?projectId=p1", { method: "GET" });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.issues.map((i: { identifier: string }) => i.identifier)).toEqual(["ENG-101", "ENG-100"]);
+    vi.unstubAllGlobals();
+  });
+});
+
+// ─── Linear project mappings ─────────────────────────────────────────────────
+
+describe("GET /api/linear/project-mappings", () => {
+  it("returns mapping for a specific repoRoot", async () => {
+    const mockMapping = {
+      repoRoot: "/home/user/project",
+      projectId: "p1",
+      projectName: "My Feature",
+      createdAt: 1000,
+      updatedAt: 1000,
+    };
+    vi.mocked(linearProjectManager.getMapping).mockReturnValue(mockMapping);
+
+    const res = await app.request(
+      "/api/linear/project-mappings?repoRoot=%2Fhome%2Fuser%2Fproject",
+      { method: "GET" },
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ mapping: mockMapping });
+    expect(linearProjectManager.getMapping).toHaveBeenCalledWith("/home/user/project");
+  });
+
+  it("returns null mapping when repoRoot has no mapping", async () => {
+    vi.mocked(linearProjectManager.getMapping).mockReturnValue(null);
+
+    const res = await app.request(
+      "/api/linear/project-mappings?repoRoot=%2Funknown",
+      { method: "GET" },
+    );
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ mapping: null });
+  });
+
+  it("returns all mappings when no repoRoot specified", async () => {
+    const mockMappings = [
+      { repoRoot: "/repo-a", projectId: "p1", projectName: "My Feature", createdAt: 1000, updatedAt: 1000 },
+      { repoRoot: "/repo-b", projectId: "p2", projectName: "Backend Rework", createdAt: 2000, updatedAt: 2000 },
+    ];
+    vi.mocked(linearProjectManager.listMappings).mockReturnValue(mockMappings);
+
+    const res = await app.request("/api/linear/project-mappings", { method: "GET" });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ mappings: mockMappings });
+  });
+});
+
+describe("PUT /api/linear/project-mappings", () => {
+  it("returns 400 when required fields are missing", async () => {
+    const res = await app.request("/api/linear/project-mappings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ repoRoot: "/repo" }),
+    });
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json).toEqual({ error: "repoRoot, projectId, and projectName are required" });
+  });
+
+  it("creates a mapping successfully", async () => {
+    const res = await app.request("/api/linear/project-mappings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        repoRoot: "/home/user/project",
+        projectId: "p1",
+        projectName: "My Feature",
+      }),
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.mapping).toBeDefined();
+    expect(json.mapping.repoRoot).toBe("/home/user/project");
+    expect(json.mapping.projectName).toBe("My Feature");
+    expect(linearProjectManager.upsertMapping).toHaveBeenCalledWith(
+      "/home/user/project",
+      { projectId: "p1", projectName: "My Feature" },
+    );
+  });
+});
+
+describe("DELETE /api/linear/project-mappings", () => {
+  it("returns 400 when repoRoot is missing", async () => {
+    const res = await app.request("/api/linear/project-mappings", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json).toEqual({ error: "repoRoot is required" });
+  });
+
+  it("returns 404 when mapping not found", async () => {
+    vi.mocked(linearProjectManager.removeMapping).mockReturnValue(false);
+
+    const res = await app.request("/api/linear/project-mappings", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ repoRoot: "/unknown" }),
+    });
+    expect(res.status).toBe(404);
+  });
+
+  it("removes mapping successfully", async () => {
+    vi.mocked(linearProjectManager.removeMapping).mockReturnValue(true);
+
+    const res = await app.request("/api/linear/project-mappings", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ repoRoot: "/home/user/project" }),
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ ok: true });
+    expect(linearProjectManager.removeMapping).toHaveBeenCalledWith("/home/user/project");
+  });
+});
+// ─── Git ─────────────────────────────────────────────────────────────────────
 
 describe("GET /api/git/repo-info", () => {
   it("returns repo info for a valid path", async () => {
@@ -1896,7 +3333,7 @@ describe("GET /api/git/branches", () => {
 describe("POST /api/git/worktree", () => {
   it("creates a worktree", async () => {
     const result = {
-      worktreePath: "/home/.moku/worktrees/repo/feat",
+      worktreePath: "/home/.companion/worktrees/repo/feat",
       branch: "feat",
       actualBranch: "feat",
       isNew: true,
@@ -2004,6 +3441,39 @@ describe("PATCH /api/sessions/:id/name", () => {
   });
 });
 
+// ─── Update checking ────────────────────────────────────────────────────────
+
+describe("GET /api/update-check", () => {
+  it("triggers a refresh when never checked", async () => {
+    mockUpdateCheckerState.lastChecked = 0;
+
+    const res = await app.request("/api/update-check", { method: "GET" });
+
+    expect(res.status).toBe(200);
+    expect(mockCheckForUpdate).toHaveBeenCalledOnce();
+  });
+
+  it("does not trigger a refresh when the previous check is fresh", async () => {
+    mockUpdateCheckerState.lastChecked = Date.now();
+
+    const res = await app.request("/api/update-check", { method: "GET" });
+
+    expect(res.status).toBe(200);
+    expect(mockCheckForUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/update-check", () => {
+  it("always forces a refresh", async () => {
+    mockUpdateCheckerState.lastChecked = Date.now();
+
+    const res = await app.request("/api/update-check", { method: "POST" });
+
+    expect(res.status).toBe(200);
+    expect(mockCheckForUpdate).toHaveBeenCalledOnce();
+  });
+});
+
 // ─── Filesystem ──────────────────────────────────────────────────────────────
 
 describe("GET /api/fs/home", () => {
@@ -2020,62 +3490,62 @@ describe("GET /api/fs/home", () => {
 
   it("returns home as cwd when process.cwd() is the package root", async () => {
     const origCwd = process.cwd;
-    const origEnv = process.env.__MOKU_PACKAGE_ROOT;
+    const origEnv = process.env.__COMPANION_PACKAGE_ROOT;
     try {
-      process.env.__MOKU_PACKAGE_ROOT = "/opt/moku";
-      process.cwd = () => "/opt/moku";
+      process.env.__COMPANION_PACKAGE_ROOT = "/opt/companion";
+      process.cwd = () => "/opt/companion";
       const res = await app.request("/api/fs/home", { method: "GET" });
       const json = await res.json();
       expect(json.cwd).toBe(json.home);
     } finally {
       process.cwd = origCwd;
-      process.env.__MOKU_PACKAGE_ROOT = origEnv;
+      process.env.__COMPANION_PACKAGE_ROOT = origEnv;
     }
   });
 
   it("returns home as cwd when process.cwd() is inside the package root", async () => {
     const origCwd = process.cwd;
-    const origEnv = process.env.__MOKU_PACKAGE_ROOT;
+    const origEnv = process.env.__COMPANION_PACKAGE_ROOT;
     try {
-      process.env.__MOKU_PACKAGE_ROOT = "/opt/moku";
-      process.cwd = () => "/opt/moku/node_modules/.bin";
+      process.env.__COMPANION_PACKAGE_ROOT = "/opt/companion";
+      process.cwd = () => "/opt/companion/node_modules/.bin";
       const res = await app.request("/api/fs/home", { method: "GET" });
       const json = await res.json();
       expect(json.cwd).toBe(json.home);
     } finally {
       process.cwd = origCwd;
-      process.env.__MOKU_PACKAGE_ROOT = origEnv;
+      process.env.__COMPANION_PACKAGE_ROOT = origEnv;
     }
   });
 
   it("returns actual cwd when launched from a project directory", async () => {
     const origCwd = process.cwd;
-    const origEnv = process.env.__MOKU_PACKAGE_ROOT;
+    const origEnv = process.env.__COMPANION_PACKAGE_ROOT;
     try {
-      process.env.__MOKU_PACKAGE_ROOT = "/opt/moku";
+      process.env.__COMPANION_PACKAGE_ROOT = "/opt/companion";
       process.cwd = () => "/Users/testuser/my-project";
       const res = await app.request("/api/fs/home", { method: "GET" });
       const json = await res.json();
       expect(json.cwd).toBe("/Users/testuser/my-project");
     } finally {
       process.cwd = origCwd;
-      process.env.__MOKU_PACKAGE_ROOT = origEnv;
+      process.env.__COMPANION_PACKAGE_ROOT = origEnv;
     }
   });
 
   it("returns home as cwd when process.cwd() equals home directory", async () => {
     const { homedir } = await import("node:os");
     const origCwd = process.cwd;
-    const origEnv = process.env.__MOKU_PACKAGE_ROOT;
+    const origEnv = process.env.__COMPANION_PACKAGE_ROOT;
     try {
-      delete process.env.__MOKU_PACKAGE_ROOT;
+      delete process.env.__COMPANION_PACKAGE_ROOT;
       process.cwd = () => homedir();
       const res = await app.request("/api/fs/home", { method: "GET" });
       const json = await res.json();
       expect(json.cwd).toBe(json.home);
     } finally {
       process.cwd = origCwd;
-      process.env.__MOKU_PACKAGE_ROOT = origEnv;
+      process.env.__COMPANION_PACKAGE_ROOT = origEnv;
     }
   });
 });
@@ -2565,7 +4035,8 @@ describe("POST /api/sessions/create-stream", () => {
   });
 
   it("creates branch via checkoutOrCreateBranch when createBranch is true", async () => {
-    // Branch doesn't exist yet; checkoutOrCreateBranch handles try-then-create internally
+    // Simulates the Linear auto-branch flow: branch doesn't exist yet,
+    // checkoutOrCreateBranch handles try-then-create internally
     vi.mocked(gitUtils.getRepoInfo).mockReturnValueOnce({
       repoRoot: "/test",
       currentBranch: "main",
@@ -2646,10 +4117,12 @@ describe("POST /api/sessions/create-stream", () => {
       .filter((e) => e.event === "progress")
       .map((e) => JSON.parse(e.data).step);
 
+    // Should have fetching_git before creating_worktree to refresh remote refs
+    expect(steps).toContain("fetching_git");
     expect(steps).toContain("creating_worktree");
     expect(steps).toContain("launching_cli");
-    // Should NOT have fetch/checkout/pull since it uses worktree
-    expect(steps).not.toContain("fetching_git");
+    // fetching_git must come before creating_worktree
+    expect(steps.indexOf("fetching_git")).toBeLessThan(steps.indexOf("creating_worktree"));
   });
 
   it("emits error event for invalid branch name", async () => {
@@ -2694,16 +4167,16 @@ describe("POST /api/sessions/create-stream", () => {
       name: "Docker",
       slug: "docker",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "moku:latest",
+      baseImage: "the-companion:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
     vi.spyOn(containerManager, "imageExists").mockReturnValueOnce(true);
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-stream",
-      name: "moku-stream",
-      image: "moku:latest",
+      name: "companion-stream",
+      image: "the-companion:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -2744,23 +4217,23 @@ describe("POST /api/sessions/create-stream", () => {
       name: "Docker",
       slug: "docker",
       variables: { ANTHROPIC_API_KEY: "key" },
-      baseImage: "moku:latest",
+      baseImage: "the-companion:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
     // Image not ready initially — pull manager will handle it
     mockImagePullIsReady.mockReturnValue(false);
     mockImagePullGetState.mockReturnValue({
-      image: "moku:latest",
+      image: "the-companion:latest",
       status: "idle" as const,
       progress: [],
     });
     mockImagePullWaitForReady.mockResolvedValue(true);
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-pulled",
-      name: "moku-pulled",
-      image: "moku:latest",
+      name: "companion-pulled",
+      image: "the-companion:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -2788,7 +4261,7 @@ describe("POST /api/sessions/create-stream", () => {
         containerCwd: "/workspace",
       }),
     );
-    expect(mockImagePullEnsureImage).toHaveBeenCalledWith("moku:latest");
+    expect(mockImagePullEnsureImage).toHaveBeenCalledWith("the-companion:latest");
     expect(mockImagePullWaitForReady).toHaveBeenCalled();
   });
 
@@ -2797,14 +4270,14 @@ describe("POST /api/sessions/create-stream", () => {
       name: "Docker",
       slug: "docker",
       variables: { ANTHROPIC_API_KEY: "key" },
-      baseImage: "moku:latest",
+      baseImage: "the-companion:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
     mockImagePullIsReady.mockReturnValue(false);
     mockImagePullGetState.mockReturnValue({
-      image: "moku:latest",
+      image: "the-companion:latest",
       status: "error" as const,
       progress: [],
       error: "Pull and build both failed",
@@ -2829,17 +4302,17 @@ describe("POST /api/sessions/create-stream", () => {
       name: "WithInit",
       slug: "with-init",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "moku:latest",
+      baseImage: "the-companion:latest",
       initScript: "npm install",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
     vi.spyOn(containerManager, "imageExists").mockReturnValueOnce(true);
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-init-stream",
-      name: "moku-init-stream",
-      image: "moku:latest",
+      name: "companion-init-stream",
+      image: "the-companion:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -2874,17 +4347,17 @@ describe("POST /api/sessions/create-stream", () => {
       name: "FailInit",
       slug: "fail-init",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "moku:latest",
+      baseImage: "the-companion:latest",
       initScript: "exit 1",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
     vi.spyOn(containerManager, "imageExists").mockReturnValueOnce(true);
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-fail-stream",
-      name: "moku-fail-stream",
-      image: "moku:latest",
+      name: "companion-fail-stream",
+      image: "the-companion:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -2933,15 +4406,15 @@ describe("POST /api/sessions/create-stream", () => {
       name: "Docker",
       slug: "docker",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "moku:latest",
+      baseImage: "the-companion:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-git-stream",
-      name: "moku-git-stream",
-      image: "moku:latest",
+      name: "companion-git-stream",
+      image: "the-companion:latest",
       portMappings: [],
       hostCwd: "/repo",
       containerCwd: "/workspace",
@@ -3004,15 +4477,15 @@ describe("POST /api/sessions/create-stream", () => {
       name: "Docker",
       slug: "docker",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "moku:latest",
+      baseImage: "the-companion:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-fail-git",
-      name: "moku-fail-git",
-      image: "moku:latest",
+      name: "companion-fail-git",
+      image: "the-companion:latest",
       portMappings: [],
       hostCwd: "/repo",
       containerCwd: "/workspace",
@@ -3293,14 +4766,14 @@ describe("POST /api/sessions/:id/processes/system/:pid/kill", () => {
     expect(res.status).toBe(404);
   });
 
-  it("refuses to kill the moku server process", async () => {
+  it("refuses to kill the companion server process", async () => {
     launcher.getSession.mockReturnValue({ pid: 1234 });
     const res = await app.request(`/api/sessions/sess-1/processes/system/${process.pid}/kill`, {
       method: "POST",
     });
     expect(res.status).toBe(403);
     const data = await res.json();
-    expect(data.error).toContain("Cannot kill the Moku server");
+    expect(data.error).toContain("Cannot kill the Companion server");
   });
 
   it("refuses to kill the session's own CLI process", async () => {

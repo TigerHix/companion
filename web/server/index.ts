@@ -30,6 +30,7 @@ import { CronScheduler } from "./cron-scheduler.js";
 import { AgentExecutor } from "./agent-executor.js";
 import { migrateCronJobsToAgents } from "./agent-cron-migrator.js";
 
+import { startPeriodicCheck, setServiceMode } from "./update-checker.js";
 import { imagePullManager } from "./image-pull-manager.js";
 import { isRunningAsService } from "./service.js";
 import { getToken, verifyToken } from "./auth-manager.js";
@@ -38,18 +39,18 @@ import type { SocketData } from "./ws-bridge.js";
 import type { ServerWebSocket } from "bun";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const packageRoot = process.env.__MOKU_PACKAGE_ROOT || resolve(__dirname, "..");
+const packageRoot = process.env.__COMPANION_PACKAGE_ROOT || resolve(__dirname, "..");
 
 import { DEFAULT_PORT_DEV, DEFAULT_PORT_PROD } from "./constants.js";
 
 const defaultPort = process.env.NODE_ENV === "production" ? DEFAULT_PORT_PROD : DEFAULT_PORT_DEV;
 const port = Number(process.env.PORT) || defaultPort;
-const idleTimeoutSeconds = Number(process.env.MOKU_IDLE_TIMEOUT_SECONDS || "120");
-const sessionStore = new SessionStore(process.env.MOKU_SESSION_DIR);
+const idleTimeoutSeconds = Number(process.env.COMPANION_IDLE_TIMEOUT_SECONDS || "120");
+const sessionStore = new SessionStore(process.env.COMPANION_SESSION_DIR);
 const wsBridge = new WsBridge();
 const launcher = new CliLauncher(port);
 const worktreeTracker = new WorktreeTracker();
-const CONTAINER_STATE_PATH = join(homedir(), ".moku", "containers.json");
+const CONTAINER_STATE_PATH = join(homedir(), ".companion", "containers.json");
 const terminalManager = new TerminalManager();
 const prPoller = new PRPoller(wsBridge);
 const recorder = new RecorderManager();
@@ -132,8 +133,8 @@ app.route("/api", createRoutes(launcher, wsBridge, sessionStore, worktreeTracker
 // so this is the only way to bridge auth across the install boundary.
 app.get("/manifest.json", (c) => {
   const manifest = {
-    name: "Moku",
-    short_name: "Moku",
+    name: "The Companion",
+    short_name: "Companion",
     description: "Web UI for Claude Code and Codex",
     start_url: "/",
     scope: "/",
@@ -148,7 +149,7 @@ app.get("/manifest.json", (c) => {
 
   // If the user has an auth cookie (set during login), embed token in start_url.
   // Safari sends this cookie when fetching the manifest at "Add to Home Screen" time.
-  const authCookie = getCookie(c, "moku_auth");
+  const authCookie = getCookie(c, "companion_auth");
   if (authCookie && verifyToken(authCookie)) {
     manifest.start_url = `/?token=${authCookie}`;
   } else {
@@ -267,8 +268,8 @@ const authToken = getToken();
 console.log(`Server running on http://localhost:${server.port}`);
 console.log();
 console.log(`  Auth token: ${authToken}`);
-if (process.env.MOKU_AUTH_TOKEN) {
-  console.log("  (using MOKU_AUTH_TOKEN env var)");
+if (process.env.COMPANION_AUTH_TOKEN) {
+  console.log("  (using COMPANION_AUTH_TOKEN env var)");
 }
 console.log();
 console.log(`  CLI WebSocket:     ws://localhost:${server.port}/ws/cli/:sessionId`);
@@ -288,8 +289,11 @@ agentExecutor.startAll();
 // ── Image pull manager — pre-pull missing Docker images for environments ────
 imagePullManager.initFromEnvironments();
 
+// ── Update checker ──────────────────────────────────────────────────────────
+startPeriodicCheck();
 if (isRunningAsService()) {
-  console.log("[server] Running as background service");
+  setServiceMode(true);
+  console.log("[server] Running as background service (auto-update available)");
 }
 
 // ── Graceful shutdown — persist container state ──────────────────────────────
@@ -305,7 +309,7 @@ process.on("SIGINT", gracefulShutdown);
 // After a server restart, restored CLI processes may not reconnect their
 // WebSocket. Give them a grace period, then kill + relaunch any that are
 // still in "starting" state (alive but no WS connection).
-const RECONNECT_GRACE_MS = Number(process.env.MOKU_RECONNECT_GRACE_MS || "30000");
+const RECONNECT_GRACE_MS = Number(process.env.COMPANION_RECONNECT_GRACE_MS || "30000");
 const starting = launcher.getStartingSessions();
 if (starting.length > 0) {
   console.log(`[server] Waiting ${RECONNECT_GRACE_MS / 1000}s for ${starting.length} CLI process(es) to reconnect...`);

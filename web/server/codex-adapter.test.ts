@@ -84,7 +84,7 @@ describe("CodexAdapter", () => {
     // Check stdin received the initialize request
     const allWritten = stdin.chunks.join("");
     expect(allWritten).toContain('"method":"initialize"');
-    expect(allWritten).toContain("moku");
+    expect(allWritten).toContain("thecompanion");
   });
 
   it("translates agent message streaming to content_block_delta events", async () => {
@@ -428,6 +428,7 @@ describe("CodexAdapter", () => {
     expect(taskBlock?.input?.codex_status).toBe("inProgress");
     expect(taskBlock?.input?.receiver_thread_ids).toEqual(["thr_sub_1", "thr_sub_2"]);
 
+    // Started summary should be nested under the collab task
     const nestedAssistant = messages.find((m) =>
       m.type === "assistant"
       && (m as { parent_tool_use_id?: string }).parent_tool_use_id === "collab_1"
@@ -446,6 +447,7 @@ describe("CodexAdapter", () => {
     stdout.push(JSON.stringify({ id: 2, result: { thread: { id: "thr_123" } } }) + "\n");
     await new Promise((r) => setTimeout(r, 50));
 
+    // Create collab mapping receiver thread -> parent tool id
     stdout.push(JSON.stringify({
       method: "item/started",
       params: {
@@ -462,6 +464,7 @@ describe("CodexAdapter", () => {
     }) + "\n");
     await new Promise((r) => setTimeout(r, 30));
 
+    // Subagent thread emits its own message stream
     stdout.push(JSON.stringify({
       method: "item/started",
       params: { threadId: "thr_sub_99", item: { type: "agentMessage", id: "am_sub_1" } },
@@ -497,6 +500,7 @@ describe("CodexAdapter", () => {
     stdout.push(JSON.stringify({ id: 2, result: { thread: { id: "thr_123" } } }) + "\n");
     await new Promise((r) => setTimeout(r, 50));
 
+    // Create mapping for subagent thread.
     stdout.push(JSON.stringify({
       method: "item/started",
       params: {
@@ -513,6 +517,8 @@ describe("CodexAdapter", () => {
     }) + "\n");
     await new Promise((r) => setTimeout(r, 30));
 
+    // Completion should emit tool_result (with is_error=true for failed status),
+    // a nested summary assistant message, and clear the thread mapping.
     stdout.push(JSON.stringify({
       method: "item/completed",
       params: {
@@ -529,6 +535,7 @@ describe("CodexAdapter", () => {
     }) + "\n");
     await new Promise((r) => setTimeout(r, 40));
 
+    // After clearSubagentThreadMappings, subagent thread output should not be parented.
     stdout.push(JSON.stringify({
       method: "item/started",
       params: { threadId: "thr_sub_clear", item: { type: "agentMessage", id: "am_after_clear" } },
@@ -575,6 +582,7 @@ describe("CodexAdapter", () => {
     stdout.push(JSON.stringify({ id: 2, result: { thread: { id: "thr_123" } } }) + "\n");
     await new Promise((r) => setTimeout(r, 50));
 
+    // Parent collab creates mapping thr_sub_parent -> collab_parent.
     stdout.push(JSON.stringify({
       method: "item/started",
       params: {
@@ -591,6 +599,7 @@ describe("CodexAdapter", () => {
     }) + "\n");
     await new Promise((r) => setTimeout(r, 30));
 
+    // Nested collab starts from mapped subagent thread.
     stdout.push(JSON.stringify({
       method: "item/started",
       params: {
@@ -627,6 +636,7 @@ describe("CodexAdapter", () => {
     stdout.push(JSON.stringify({ id: 2, result: { thread: { id: "thr_123" } } }) + "\n");
     await new Promise((r) => setTimeout(r, 50));
 
+    // Build thread mapping: thr_sub_parent -> collab_parent.
     stdout.push(JSON.stringify({
       method: "item/started",
       params: {
@@ -4098,6 +4108,9 @@ describe("StdioTransport RPC timeout", () => {
   }
 
   it("rejects call() when response does not arrive within the timeout", async () => {
+    // Verify that an RPC call is rejected with a timeout error when the
+    // remote end does not respond. Uses a short timeout (100ms) to keep
+    // the test fast.
     const streams = createStreams();
     const transport = new StdioTransport(streams.stdin, streams.stdout);
 
@@ -4107,11 +4120,14 @@ describe("StdioTransport RPC timeout", () => {
   });
 
   it("clears timeout timer when response arrives before deadline", async () => {
+    // When the response arrives in time, the promise should resolve
+    // normally and the timer should be cleaned up (no leak).
     const streams = createStreams();
     const transport = new StdioTransport(streams.stdin, streams.stdout);
 
     const promise = transport.call("fast/method", {}, 5000);
 
+    // Give transport time to write the request, then respond
     await new Promise((r) => setTimeout(r, 20));
     streams.pushResponse({ id: 1, result: { ok: true } });
 
@@ -4120,12 +4136,15 @@ describe("StdioTransport RPC timeout", () => {
   });
 
   it("rejects all pending calls with 'Transport closed' when stdout closes", async () => {
+    // When the transport closes, all pending RPC calls (with their timers)
+    // should be rejected and cleaned up.
     const streams = createStreams();
     const transport = new StdioTransport(streams.stdin, streams.stdout);
 
     const p1 = transport.call("method/a", {}, 60000);
     const p2 = transport.call("method/b", {}, 60000);
 
+    // Close the stdout stream to simulate transport closure
     await new Promise((r) => setTimeout(r, 20));
     streams.close();
 
@@ -4134,8 +4153,16 @@ describe("StdioTransport RPC timeout", () => {
   });
 });
 
+// ─── CodexAdapter user_message timeout error surfacing ────────────────────
+
 describe("CodexAdapter RPC timeout error surfacing", () => {
+  // Reuse createMockTransport pattern from the ICodexTransport tests above,
+  // but make call() reject with an RPC timeout to verify the user-facing
+  // error message.
+
   it("surfaces RPC timeout on user_message as a clear error to the browser", async () => {
+    // When turn/start times out, the adapter should emit an error message
+    // telling the user that Codex is not responding.
     let notifHandler: ((m: string, p: Record<string, unknown>) => void) | null = null;
     let reqHandler: ((m: string, id: number, p: Record<string, unknown>) => void) | null = null;
     let callCount = 0;
@@ -4143,6 +4170,7 @@ describe("CodexAdapter RPC timeout error surfacing", () => {
     const transport: ICodexTransport = {
       call: vi.fn(async (method: string) => {
         callCount++;
+        // Let init succeed, but make turn/start fail with timeout
         if (method === "initialize") return { userAgent: "codex" };
         if (method === "thread/start" || method === "thread/create") return { thread: { id: "thr_1" } };
         if (method === "account/rateLimits/read") return {};
@@ -4164,8 +4192,10 @@ describe("CodexAdapter RPC timeout error surfacing", () => {
     const adapter = new CodexAdapter(transport, "timeout-test", { model: "o4-mini", cwd: "/tmp" });
     adapter.onBrowserMessage((msg) => messages.push(msg));
 
+    // Wait for init
     await new Promise((r) => setTimeout(r, 100));
 
+    // Send a user message — this should trigger turn/start which will timeout
     adapter.sendBrowserMessage({ type: "user_message", content: "hello" });
     await new Promise((r) => setTimeout(r, 50));
 

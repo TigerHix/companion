@@ -9,7 +9,7 @@ function sanitizeTitle(raw: string): string | null {
 }
 
 /**
- * Generates a short session title using Anthropic Messages API.
+ * Generates a short session title using the Anthropic Messages API.
  * Returns null if Anthropic isn't configured or if generation fails.
  */
 export async function generateSessionTitle(
@@ -51,6 +51,7 @@ export async function generateSessionTitle(
             content: userPrompt,
           },
         ],
+        temperature: 0.2,
       }),
       signal: controller.signal,
     });
@@ -61,13 +62,12 @@ export async function generateSessionTitle(
     }
 
     const data = await res.json() as {
-      content?: Array<{
-        type: string;
-        text?: string;
-      }>;
+      content?: Array<{ type: string; text?: string }>;
     };
 
-    const raw = data.content?.[0]?.type === "text" ? (data.content[0].text ?? "") : "";
+    const raw = data.content?.[0]?.type === "text"
+      ? (data.content[0].text ?? "")
+      : "";
     return sanitizeTitle(raw);
   } catch (err) {
     console.warn("[auto-namer] Failed to generate session title via Anthropic:", err);

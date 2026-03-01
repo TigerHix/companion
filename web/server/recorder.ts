@@ -98,10 +98,10 @@ export class SessionRecorder {
 /**
  * Manages recording for all sessions.
  *
- * Always enabled by default. Disable explicitly with MOKU_RECORD=0.
+ * Always enabled by default. Disable explicitly with COMPANION_RECORD=0.
  *
  * Automatic rotation: when total lines across all recording files exceed
- * maxLines (default 1 000 000, override with MOKU_RECORDINGS_MAX_LINES),
+ * maxLines (default 1 000 000, override with COMPANION_RECORDINGS_MAX_LINES),
  * the oldest files are deleted until we're back under the limit.
  */
 export class RecorderManager {
@@ -122,11 +122,11 @@ export class RecorderManager {
     this.globalEnabled = options?.globalEnabled ?? RecorderManager.resolveEnabled();
     this.recordingsDir =
       options?.recordingsDir ??
-      process.env.MOKU_RECORDINGS_DIR ??
-      join(homedir(), ".moku", "recordings");
+      process.env.COMPANION_RECORDINGS_DIR ??
+      join(homedir(), ".companion", "recordings");
     this.maxLines =
       options?.maxLines ??
-      (Number(process.env.MOKU_RECORDINGS_MAX_LINES) || DEFAULT_MAX_LINES);
+      (Number(process.env.COMPANION_RECORDINGS_MAX_LINES) || DEFAULT_MAX_LINES);
 
     if (this.globalEnabled) {
       // Run cleanup at startup (async, non-blocking) and periodically
@@ -137,10 +137,10 @@ export class RecorderManager {
   }
 
   /**
-   * Always on unless explicitly disabled with MOKU_RECORD=0|false.
+   * Always on unless explicitly disabled with COMPANION_RECORD=0|false.
    */
   private static resolveEnabled(): boolean {
-    const env = process.env.MOKU_RECORD;
+    const env = process.env.COMPANION_RECORD;
     if (env === "0" || env === "false") return false;
     return true;
   }

@@ -52,6 +52,7 @@ function startHeartbeat() {
     pongTimer = setTimeout(() => {
       log("Pong timeout — connection appears dead");
       try { ws.terminate(); } catch {}
+      // terminate() fires the close event which triggers scheduleReconnect
     }, PONG_TIMEOUT_MS);
   }, PING_INTERVAL_MS);
 }
@@ -141,6 +142,7 @@ function connect() {
   });
 
   ws.on("pong", () => {
+    // Heartbeat response received — connection is alive
     if (pongTimer) { clearTimeout(pongTimer); pongTimer = null; }
   });
 

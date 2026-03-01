@@ -14,12 +14,20 @@ vi.stubGlobal("fetch", mockFetch);
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(settingsManager.getSettings).mockReturnValue({
-    anthropicApiKey: "or-key",
+    anthropicApiKey: "sk-ant-key",
     anthropicModel: "claude-sonnet-4.6",
+    linearApiKey: "",
+    linearAutoTransition: false,
+    linearAutoTransitionStateId: "",
+    linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
     editorTabEnabled: false,
     aiValidationEnabled: false,
     aiValidationAutoApprove: true,
     aiValidationAutoDeny: true,
+    updateChannel: "stable",
     updatedAt: 0,
   });
 });
@@ -42,10 +50,18 @@ describe("generateSessionTitle", () => {
     vi.mocked(settingsManager.getSettings).mockReturnValue({
       anthropicApiKey: "",
       anthropicModel: "claude-sonnet-4.6",
+      linearApiKey: "",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
+      updateChannel: "stable",
       updatedAt: 0,
     });
 
@@ -73,12 +89,20 @@ describe("generateSessionTitle", () => {
 
   it("uses configured Anthropic model", async () => {
     vi.mocked(settingsManager.getSettings).mockReturnValue({
-      anthropicApiKey: "or-key",
-      anthropicModel: "openai/gpt-4o-mini",
+      anthropicApiKey: "sk-ant-key",
+      anthropicModel: "claude-haiku-3",
+      linearApiKey: "",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
+      updateChannel: "stable",
       updatedAt: 0,
     });
     mockFetch.mockResolvedValueOnce({
@@ -90,7 +114,7 @@ describe("generateSessionTitle", () => {
 
     const [, req] = mockFetch.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(String(req.body)) as { model: string };
-    expect(body.model).toBe("openai/gpt-4o-mini");
+    expect(body.model).toBe("claude-haiku-3");
   });
 
   it("returns null when response is non-ok", async () => {
@@ -121,18 +145,6 @@ describe("generateSessionTitle", () => {
     expect(title).toBe("Refactor API Layer");
   });
 
-  it("parses array content blocks from Anthropic response", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        content: [{ type: "text", text: "Improve Task Panel" }],
-      }),
-    });
-
-    const title = await generateSessionTitle("Improve task panel", "ignored");
-    expect(title).toBe("Improve Task Panel");
-  });
-
   it("returns null for titles >= 100 chars", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -147,12 +159,20 @@ describe("generateSessionTitle", () => {
 
   it("uses default model when configured model is empty", async () => {
     vi.mocked(settingsManager.getSettings).mockReturnValue({
-      anthropicApiKey: "or-key",
+      anthropicApiKey: "sk-ant-key",
       anthropicModel: "",
+      linearApiKey: "",
+      linearAutoTransition: false,
+      linearAutoTransitionStateId: "",
+      linearAutoTransitionStateName: "",
+    linearArchiveTransition: false,
+    linearArchiveTransitionStateId: "",
+    linearArchiveTransitionStateName: "",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
+      updateChannel: "stable",
       updatedAt: 0,
     });
     mockFetch.mockResolvedValueOnce({
@@ -167,7 +187,7 @@ describe("generateSessionTitle", () => {
     expect(body.model).toBe("claude-sonnet-4.6");
   });
 
-  it("calls Anthropic endpoint with x-api-key header", async () => {
+  it("calls Anthropic endpoint with x-api-key and anthropic-version headers", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ content: [{ type: "text", text: "Title" }] }),
@@ -177,6 +197,20 @@ describe("generateSessionTitle", () => {
 
     const [url, req] = mockFetch.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://api.anthropic.com/v1/messages");
-    expect((req.headers as Record<string, string>)["x-api-key"]).toBe("or-key");
+    expect((req.headers as Record<string, string>)["x-api-key"]).toBe("sk-ant-key");
+    expect((req.headers as Record<string, string>)["anthropic-version"]).toBe("2023-06-01");
+  });
+
+  it("includes max_tokens in request body", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ content: [{ type: "text", text: "Title" }] }),
+    });
+
+    await generateSessionTitle("Fix login", "ignored");
+
+    const [, req] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(String(req.body)) as { max_tokens: number };
+    expect(body.max_tokens).toBe(256);
   });
 });

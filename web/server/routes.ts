@@ -15,6 +15,7 @@ import type { TerminalManager } from "./terminal-manager.js";
 import * as envManager from "./env-manager.js";
 import * as gitUtils from "./git-utils.js";
 import * as sessionNames from "./session-names.js";
+import * as sessionLinearIssues from "./session-linear-issues.js";
 import { containerManager, ContainerManager, type ContainerConfig, type ContainerInfo } from "./container-manager.js";
 import type { CreationStepId } from "./session-types.js";
 import { hasContainerClaudeAuth } from "./claude-container-auth.js";
@@ -25,19 +26,23 @@ import { registerSkillRoutes } from "./routes/skills-routes.js";
 import { registerEnvRoutes } from "./routes/env-routes.js";
 import { registerCronRoutes } from "./routes/cron-routes.js";
 import { registerAgentRoutes } from "./routes/agent-routes.js";
+import { registerPromptRoutes } from "./routes/prompt-routes.js";
 import { registerSettingsRoutes } from "./routes/settings-routes.js";
 import { registerGitRoutes } from "./routes/git-routes.js";
 import { registerSystemRoutes } from "./routes/system-routes.js";
+import { registerLinearRoutes, transitionLinearIssue, fetchLinearTeamStates } from "./routes/linear-routes.js";
+import { getSettings } from "./settings-manager.js";
 import { discoverClaudeSessions } from "./claude-session-discovery.js";
 import { getClaudeSessionHistoryPage } from "./claude-session-history.js";
 import { verifyToken, getToken, getLanAddress, regenerateToken, getAllAddresses } from "./auth-manager.js";
 import QRCode from "qrcode";
 
+const UPDATE_CHECK_STALE_MS = 5 * 60 * 1000;
 const ROUTES_DIR = dirname(fileURLToPath(import.meta.url));
 const WEB_DIR = dirname(ROUTES_DIR);
 const VSCODE_EDITOR_CONTAINER_PORT = 13337;
-const CODEX_APP_SERVER_CONTAINER_PORT = Number(process.env.MOKU_CODEX_CONTAINER_WS_PORT || "4502");
-const VSCODE_EDITOR_HOST_PORT = Number(process.env.MOKU_EDITOR_PORT || "13338");
+const CODEX_APP_SERVER_CONTAINER_PORT = Number(process.env.COMPANION_CODEX_CONTAINER_WS_PORT || "4502");
+const VSCODE_EDITOR_HOST_PORT = Number(process.env.COMPANION_EDITOR_PORT || "13338");
 
 function shellEscapeArg(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
@@ -63,7 +68,7 @@ export function createRoutes(
     if (verifyToken(body.token)) {
       // Set cookie so the dynamic manifest can embed the token in start_url.
       // This bridges auth from Safari to standalone PWA on iOS (isolated storage).
-      setCookie(c, "moku_auth", body.token!, {
+      setCookie(c, "companion_auth", body.token!, {
         path: "/",
         httpOnly: true,
         sameSite: "Strict",
@@ -117,7 +122,7 @@ export function createRoutes(
   api.get("/auth/auto", (c) => {
     if (isLocalhostRequest(c)) {
       const token = getToken();
-      setCookie(c, "moku_auth", token, {
+      setCookie(c, "companion_auth", token, {
         path: "/",
         httpOnly: true,
         sameSite: "Strict",
@@ -176,13 +181,13 @@ export function createRoutes(
 
       // Resolve environment variables from envSlug
       let envVars: Record<string, string> | undefined = body.env;
-      const mokuEnv = body.envSlug ? envManager.getEnv(body.envSlug) : null;
-      if (body.envSlug && mokuEnv) {
+      const companionEnv = body.envSlug ? envManager.getEnv(body.envSlug) : null;
+      if (body.envSlug && companionEnv) {
         console.log(
-          `[routes] Injecting env "${mokuEnv.name}" (${Object.keys(mokuEnv.variables).length} vars):`,
-          Object.keys(mokuEnv.variables).join(", "),
+          `[routes] Injecting env "${companionEnv.name}" (${Object.keys(companionEnv.variables).length} vars):`,
+          Object.keys(companionEnv.variables).join(", "),
         );
-        envVars = { ...mokuEnv.variables, ...body.env };
+        envVars = { ...companionEnv.variables, ...body.env };
       } else if (body.envSlug) {
         console.warn(
           `[routes] Environment "${body.envSlug}" not found, ignoring`,
@@ -190,7 +195,7 @@ export function createRoutes(
       }
 
       // Resolve Docker image early so we know whether git ops should run on host or in container
-      let effectiveImage = mokuEnv
+      let effectiveImage = companionEnv
         ? (body.envSlug ? envManager.getEffectiveImage(body.envSlug) : null)
         : (body.container?.image || null);
       const isDockerSession = !!effectiveImage;
@@ -209,6 +214,12 @@ export function createRoutes(
         // Worktree isolation: create/reuse a worktree for the selected branch
         const repoInfo = gitUtils.getRepoInfo(cwd);
         if (repoInfo) {
+          // Fetch latest remote refs so ensureWorktree bases new branches on up-to-date origin/{defaultBranch}
+          const fetchResult = gitUtils.gitFetch(repoInfo.repoRoot);
+          if (!fetchResult.success) {
+            console.warn(`[routes] git fetch failed (non-fatal): ${fetchResult.output}`);
+          }
+
           const result = gitUtils.ensureWorktree(repoInfo.repoRoot, body.branch, {
             baseBranch: repoInfo.defaultBranch,
             createBranch: body.createBranch,
@@ -289,7 +300,7 @@ export function createRoutes(
         }
 
         const tempId = crypto.randomUUID().slice(0, 8);
-        const requestedPorts = mokuEnv?.ports
+        const requestedPorts = companionEnv?.ports
           ?? (Array.isArray(body.container?.ports)
             ? body.container.ports.map(Number).filter((n: number) => n > 0)
             : []);
@@ -303,7 +314,7 @@ export function createRoutes(
         const cConfig: ContainerConfig = {
           image: effectiveImage,
           ports: containerPorts,
-          volumes: mokuEnv?.volumes ?? body.container?.volumes,
+          volumes: companionEnv?.volumes ?? body.container?.volumes,
           env: envVars,
         };
         try {
@@ -353,18 +364,18 @@ export function createRoutes(
         }
 
         // Run per-environment init script if configured
-        if (mokuEnv?.initScript?.trim()) {
+        if (companionEnv?.initScript?.trim()) {
           try {
-            console.log(`[routes] Running init script for env "${mokuEnv.name}" in container ${containerInfo.name}...`);
-            const initTimeout = Number(process.env.MOKU_INIT_SCRIPT_TIMEOUT) || 120_000;
+            console.log(`[routes] Running init script for env "${companionEnv.name}" in container ${containerInfo.name}...`);
+            const initTimeout = Number(process.env.COMPANION_INIT_SCRIPT_TIMEOUT) || 120_000;
             const result = await containerManager.execInContainerAsync(
               containerInfo.containerId,
-              ["sh", "-lc", mokuEnv.initScript],
+              ["sh", "-lc", companionEnv.initScript],
               { timeout: initTimeout },
             );
             if (result.exitCode !== 0) {
               console.error(
-                `[routes] Init script failed for env "${mokuEnv.name}" (exit ${result.exitCode}):\n${result.output}`,
+                `[routes] Init script failed for env "${companionEnv.name}" (exit ${result.exitCode}):\n${result.output}`,
               );
               containerManager.removeContainer(tempId);
               const truncated = result.output.length > 2000
@@ -374,7 +385,7 @@ export function createRoutes(
                 error: `Init script failed (exit ${result.exitCode}):\n${truncated}`,
               }, 503);
             }
-            console.log(`[routes] Init script completed successfully for env "${mokuEnv.name}"`);
+            console.log(`[routes] Init script completed successfully for env "${companionEnv.name}"`);
           } catch (e) {
             containerManager.removeContainer(tempId);
             const reason = e instanceof Error ? e.message : String(e);
@@ -467,13 +478,13 @@ export function createRoutes(
         await emitProgress(stream, "resolving_env", "Resolving environment...", "in_progress");
 
         let envVars: Record<string, string> | undefined = body.env;
-        const mokuEnv = body.envSlug ? envManager.getEnv(body.envSlug) : null;
-        if (body.envSlug && mokuEnv) {
-          envVars = { ...mokuEnv.variables, ...body.env };
+        const companionEnv = body.envSlug ? envManager.getEnv(body.envSlug) : null;
+        if (body.envSlug && companionEnv) {
+          envVars = { ...companionEnv.variables, ...body.env };
         }
 
         // Resolve Docker image early so we know whether git ops should run on host or in container
-        let effectiveImage = mokuEnv
+        let effectiveImage = companionEnv
           ? (body.envSlug ? envManager.getEffectiveImage(body.envSlug) : null)
           : (body.container?.image || null);
         const isDockerSession = !!effectiveImage;
@@ -494,9 +505,17 @@ export function createRoutes(
 
         // --- Step: Git operations (host only — Docker sessions do this inside the container) ---
         if (!isDockerSession && body.useWorktree && body.branch && cwd) {
-          await emitProgress(stream, "creating_worktree", "Creating worktree...", "in_progress");
           const repoInfo = gitUtils.getRepoInfo(cwd);
           if (repoInfo) {
+            // Fetch latest remote refs so ensureWorktree bases new branches on up-to-date origin/{defaultBranch}
+            await emitProgress(stream, "fetching_git", "Fetching from remote...", "in_progress");
+            const fetchResult = gitUtils.gitFetch(repoInfo.repoRoot);
+            if (!fetchResult.success) {
+              console.warn(`[routes] git fetch failed (non-fatal): ${fetchResult.output}`);
+            }
+            await emitProgress(stream, "fetching_git", fetchResult.success ? "Fetch complete" : "Fetch skipped (offline?)", "done");
+
+            await emitProgress(stream, "creating_worktree", "Creating worktree...", "in_progress");
             const result = gitUtils.ensureWorktree(repoInfo.repoRoot, body.branch, {
               baseBranch: repoInfo.defaultBranch,
               createBranch: body.createBranch,
@@ -606,7 +625,7 @@ export function createRoutes(
           // --- Step: Create container ---
           await emitProgress(stream, "creating_container", "Starting container...", "in_progress");
           const tempId = crypto.randomUUID().slice(0, 8);
-          const requestedPorts = mokuEnv?.ports
+          const requestedPorts = companionEnv?.ports
             ?? (Array.isArray(body.container?.ports)
               ? body.container.ports.map(Number).filter((n: number) => n > 0)
               : []);
@@ -620,7 +639,7 @@ export function createRoutes(
           const cConfig: ContainerConfig = {
             image: effectiveImage,
             ports: containerPorts,
-            volumes: mokuEnv?.volumes ?? body.container?.volumes,
+            volumes: companionEnv?.volumes ?? body.container?.volumes,
             env: envVars,
           };
           try {
@@ -699,13 +718,13 @@ export function createRoutes(
           }
 
           // --- Step: Init script ---
-          if (mokuEnv?.initScript?.trim()) {
+          if (companionEnv?.initScript?.trim()) {
             await emitProgress(stream, "running_init_script", "Running init script...", "in_progress");
             try {
-              const initTimeout = Number(process.env.MOKU_INIT_SCRIPT_TIMEOUT) || 120_000;
+              const initTimeout = Number(process.env.COMPANION_INIT_SCRIPT_TIMEOUT) || 120_000;
               const result = await containerManager.execInContainerAsync(
                 containerInfo.containerId,
-                ["sh", "-lc", mokuEnv.initScript],
+                ["sh", "-lc", companionEnv.initScript],
                 {
                   timeout: initTimeout,
                   onOutput: (line) => {
@@ -715,7 +734,7 @@ export function createRoutes(
               );
               if (result.exitCode !== 0) {
                 console.error(
-                  `[routes] Init script failed for env "${mokuEnv.name}" (exit ${result.exitCode}):\n${result.output}`,
+                  `[routes] Init script failed for env "${companionEnv.name}" (exit ${result.exitCode}):\n${result.output}`,
                 );
                 containerManager.removeContainer(tempId);
                 const truncated = result.output.length > 2000
@@ -909,7 +928,7 @@ export function createRoutes(
 
           const startCmd = [
             `if ! pgrep -f ${shellEscapeArg(`code-server.*--bind-addr 0.0.0.0:${VSCODE_EDITOR_CONTAINER_PORT}`)} >/dev/null 2>&1; then`,
-            `nohup code-server --auth none --disable-telemetry --bind-addr 0.0.0.0:${VSCODE_EDITOR_CONTAINER_PORT} /workspace >/tmp/moku-code-server.log 2>&1 &`,
+            `nohup code-server --auth none --disable-telemetry --bind-addr 0.0.0.0:${VSCODE_EDITOR_CONTAINER_PORT} /workspace >/tmp/companion-code-server.log 2>&1 &`,
             "fi",
           ].join(" ");
           containerManager.execInContainer(container.containerId, ["sh", "-lc", startCmd], 10_000);
@@ -963,14 +982,14 @@ export function createRoutes(
     const editorPathSuffix = `?folder=${encodeURIComponent(hostFallbackCwd)}`;
 
     try {
-      const mokuDir = join(homedir(), ".moku");
-      const logFile = join(mokuDir, "code-server-host.log");
+      const companionDir = join(homedir(), ".companion");
+      const logFile = join(companionDir, "code-server-host.log");
       const startCmd = [
         `if ! pgrep -f ${shellEscapeArg(`code-server.*--bind-addr 127.0.0.1:${VSCODE_EDITOR_HOST_PORT}`)} >/dev/null 2>&1; then`,
         `nohup ${shellEscapeArg(hostCodeServer)} --auth none --disable-telemetry --bind-addr 127.0.0.1:${VSCODE_EDITOR_HOST_PORT} ${shellEscapeArg(hostFallbackCwd)} >> ${shellEscapeArg(logFile)} 2>&1 &`,
         "fi",
       ].join(" ");
-      const startHostCmd = `mkdir -p ${shellEscapeArg(mokuDir)} && ${startCmd}`;
+      const startHostCmd = `mkdir -p ${shellEscapeArg(companionDir)} && ${startCmd}`;
       execSync(startHostCmd, { encoding: "utf-8", timeout: 10_000 });
 
       // Wait for code-server to be ready (up to 5s)
@@ -1316,9 +1335,9 @@ export function createRoutes(
     const session = launcher.getSession(sessionId);
     if (!session) return c.json({ error: "Session not found" }, 404);
 
-    // Safety: don't allow killing the Moku server or Claude CLI process itself
+    // Safety: don't allow killing the Companion server or Claude CLI process itself
     if (pid === process.pid) {
-      return c.json({ error: "Cannot kill the Moku server" }, 403);
+      return c.json({ error: "Cannot kill the Companion server" }, 403);
     }
     if (session.pid === pid) {
       return c.json({ error: "Use the session kill endpoint to terminate Claude" }, 403);
@@ -1350,14 +1369,107 @@ export function createRoutes(
 
     const worktreeResult = cleanupWorktree(id, true);
     prPoller?.unwatch(id);
+    sessionLinearIssues.removeLinearIssue(id);
     launcher.removeSession(id);
     wsBridge.closeSession(id);
     return c.json({ ok: true, worktree: worktreeResult });
   });
 
+  api.get("/sessions/:id/archive-info", async (c) => {
+    const id = c.req.param("id");
+    const linkedIssue = sessionLinearIssues.getLinearIssue(id);
+
+    if (!linkedIssue) {
+      return c.json({ hasLinkedIssue: false, issueNotDone: false });
+    }
+
+    const stateType = (linkedIssue.stateType || "").toLowerCase();
+    const isDone = stateType === "completed" || stateType === "canceled" || stateType === "cancelled";
+
+    if (isDone) {
+      return c.json({
+        hasLinkedIssue: true,
+        issueNotDone: false,
+        issue: {
+          id: linkedIssue.id,
+          identifier: linkedIssue.identifier,
+          stateName: linkedIssue.stateName,
+          stateType: linkedIssue.stateType,
+          teamId: linkedIssue.teamId,
+        },
+      });
+    }
+
+    // Issue is not done — check if backlog state is available and if archive transition is configured
+    const settings = getSettings();
+    const linearApiKey = settings.linearApiKey.trim();
+    let hasBacklogState = false;
+    if (linearApiKey && linkedIssue.teamId) {
+      const teams = await fetchLinearTeamStates(linearApiKey);
+      const team = teams.find((t) => t.id === linkedIssue.teamId);
+      if (team) {
+        hasBacklogState = team.states.some((s) => s.type === "backlog");
+      }
+    }
+
+    return c.json({
+      hasLinkedIssue: true,
+      issueNotDone: true,
+      issue: {
+        id: linkedIssue.id,
+        identifier: linkedIssue.identifier,
+        stateName: linkedIssue.stateName,
+        stateType: linkedIssue.stateType,
+        teamId: linkedIssue.teamId,
+      },
+      hasBacklogState,
+      archiveTransitionConfigured: settings.linearArchiveTransition && !!settings.linearArchiveTransitionStateId.trim(),
+      archiveTransitionStateName: settings.linearArchiveTransitionStateName || undefined,
+    });
+  });
+
   api.post("/sessions/:id/archive", async (c) => {
     const id = c.req.param("id");
     const body = await c.req.json().catch(() => ({}));
+
+    // ─── Best-effort Linear transition before archive ─────────────────
+    let linearTransitionResult: { ok: boolean; skipped?: boolean; error?: string; issue?: { id: string; identifier: string; stateName: string; stateType: string } } | undefined;
+    const linearTransition = body.linearTransition as string | undefined;
+
+    if (linearTransition && linearTransition !== "none") {
+      const linkedIssue = sessionLinearIssues.getLinearIssue(id);
+      if (linkedIssue) {
+        const settings = getSettings();
+        const linearApiKey = settings.linearApiKey.trim();
+        if (linearApiKey) {
+          let targetStateId = "";
+
+          if (linearTransition === "backlog" && linkedIssue.teamId) {
+            // Resolve backlog state for the issue's team
+            const teams = await fetchLinearTeamStates(linearApiKey);
+            const team = teams.find((t) => t.id === linkedIssue.teamId);
+            const backlogState = team?.states.find((s) => s.type === "backlog");
+            if (backlogState) {
+              targetStateId = backlogState.id;
+            }
+          } else if (linearTransition === "configured") {
+            targetStateId = settings.linearArchiveTransitionStateId.trim();
+          }
+
+          if (targetStateId) {
+            try {
+              linearTransitionResult = await transitionLinearIssue(linkedIssue.id, targetStateId, linearApiKey);
+            } catch {
+              linearTransitionResult = { ok: false, error: "Transition failed unexpectedly" };
+            }
+          } else {
+            linearTransitionResult = { ok: true, skipped: true };
+          }
+        }
+      }
+    }
+
+    // ─── Existing archive logic ───────────────────────────────────────
     await launcher.kill(id);
 
     // Clean up container if any
@@ -1369,7 +1481,7 @@ export function createRoutes(
     const worktreeResult = cleanupWorktree(id, body.force);
     launcher.setArchived(id, true);
     sessionStore.setArchived(id, true);
-    return c.json({ ok: true, worktree: worktreeResult });
+    return c.json({ ok: true, worktree: worktreeResult, linearTransition: linearTransitionResult });
   });
 
   api.post("/sessions/:id/unarchive", (c) => {
@@ -1476,13 +1588,19 @@ export function createRoutes(
   registerFsRoutes(api);
   registerEnvRoutes(api, { webDir: WEB_DIR });
 
+  registerPromptRoutes(api);
   registerSettingsRoutes(api);
+
+  // ─── Linear ────────────────────────────────────────────────────────
+
+  registerLinearRoutes(api);
 
   registerGitRoutes(api, prPoller);
   registerSystemRoutes(api, {
     launcher,
     wsBridge,
     terminalManager,
+    updateCheckStaleMs: UPDATE_CHECK_STALE_MS,
   });
 
   registerSkillRoutes(api);
@@ -1510,7 +1628,7 @@ export function createRoutes(
       return { cleaned: false, dirty: true, path: mapping.worktreePath };
     }
 
-    // Delete moku-managed branch if it differs from the user-selected branch
+    // Delete companion-managed branch if it differs from the user-selected branch
     const branchToDelete =
       mapping.actualBranch && mapping.actualBranch !== mapping.branch
         ? mapping.actualBranch

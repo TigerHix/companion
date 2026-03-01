@@ -73,7 +73,7 @@ export function registerEnvRoutes(
     if (!env.dockerfile) return c.json({ error: "No Dockerfile configured for this environment" }, 400);
     if (!containerManager.checkDocker()) return c.json({ error: "Docker is not available" }, 503);
 
-    const tag = `moku-env-${slug}:latest`;
+    const tag = `companion-env-${slug}:latest`;
     envManager.updateBuildStatus(slug, "building");
 
     try {
@@ -105,12 +105,12 @@ export function registerEnvRoutes(
 
   api.post("/docker/build-base", async (c) => {
     if (!containerManager.checkDocker()) return c.json({ error: "Docker is not available" }, 503);
-    const dockerfilePath = join(options.webDir, "docker", "Dockerfile.moku");
+    const dockerfilePath = join(options.webDir, "docker", "Dockerfile.the-companion");
     if (!existsSync(dockerfilePath)) {
       return c.json({ error: "Base Dockerfile not found at " + dockerfilePath }, 404);
     }
     try {
-      const log = containerManager.buildImage(dockerfilePath, "moku:latest");
+      const log = containerManager.buildImage(dockerfilePath, "the-companion:latest");
       return c.json({ success: true, log });
     } catch (e: unknown) {
       return c.json({ success: false, error: e instanceof Error ? e.message : String(e) }, 500);
@@ -118,8 +118,8 @@ export function registerEnvRoutes(
   });
 
   api.get("/docker/base-image", (c) => {
-    const exists = containerManager.imageExists("moku:latest");
-    return c.json({ exists, image: "moku:latest" });
+    const exists = containerManager.imageExists("the-companion:latest");
+    return c.json({ exists, image: "the-companion:latest" });
   });
 
   api.get("/images/:tag/status", (c) => {

@@ -4,9 +4,9 @@ import { homedir } from "node:os";
 import * as agentStore from "./agent-store.js";
 import type { CronJob } from "./cron-types.js";
 
-const MOKU_DIR = join(homedir(), ".moku");
-const CRON_DIR = join(MOKU_DIR, "cron");
-const MIGRATION_FLAG = join(MOKU_DIR, ".cron-migrated");
+const COMPANION_DIR = join(homedir(), ".companion");
+const CRON_DIR = join(COMPANION_DIR, "cron");
+const MIGRATION_FLAG = join(COMPANION_DIR, ".cron-migrated");
 
 /**
  * One-time migration: convert existing cron jobs into agents with schedule triggers.

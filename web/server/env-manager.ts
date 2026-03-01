@@ -11,7 +11,7 @@ import { homedir } from "node:os";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export interface MokuEnv {
+export interface CompanionEnv {
   name: string;
   slug: string;
   variables: Record<string, string>;
@@ -19,9 +19,9 @@ export interface MokuEnv {
   // Docker configuration
   /** Raw Dockerfile content (stored inline). When present, used to build a custom image. */
   dockerfile?: string;
-  /** Tag of the built image (e.g. "moku-env-myproject:latest") */
+  /** Tag of the built image (e.g. "companion-env-myproject:latest") */
   imageTag?: string;
-  /** Base image to use when no custom Dockerfile is provided (e.g. "moku:latest") */
+  /** Base image to use when no custom Dockerfile is provided (e.g. "the-companion:latest") */
   baseImage?: string;
   /** Current build status */
   buildStatus?: "idle" | "building" | "success" | "error";
@@ -54,8 +54,8 @@ export interface EnvUpdateFields {
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
-const MOKU_DIR = join(homedir(), ".moku");
-const ENVS_DIR = join(MOKU_DIR, "envs");
+const COMPANION_DIR = join(homedir(), ".companion");
+const ENVS_DIR = join(COMPANION_DIR, "envs");
 
 function ensureDir(): void {
   mkdirSync(ENVS_DIR, { recursive: true });
@@ -78,11 +78,11 @@ function slugify(name: string): string {
 
 // ─── CRUD ───────────────────────────────────────────────────────────────────
 
-export function listEnvs(): MokuEnv[] {
+export function listEnvs(): CompanionEnv[] {
   ensureDir();
   try {
     const files = readdirSync(ENVS_DIR).filter((f) => f.endsWith(".json"));
-    const envs: MokuEnv[] = [];
+    const envs: CompanionEnv[] = [];
     for (const file of files) {
       try {
         const raw = readFileSync(join(ENVS_DIR, file), "utf-8");
@@ -98,11 +98,11 @@ export function listEnvs(): MokuEnv[] {
   }
 }
 
-export function getEnv(slug: string): MokuEnv | null {
+export function getEnv(slug: string): CompanionEnv | null {
   ensureDir();
   try {
     const raw = readFileSync(filePath(slug), "utf-8");
-    return JSON.parse(raw) as MokuEnv;
+    return JSON.parse(raw) as CompanionEnv;
   } catch {
     return null;
   }
@@ -128,7 +128,7 @@ export function createEnv(
     volumes?: string[];
     initScript?: string;
   },
-): MokuEnv {
+): CompanionEnv {
   if (!name || !name.trim()) throw new Error("Environment name is required");
   const slug = slugify(name.trim());
   if (!slug) throw new Error("Environment name must contain alphanumeric characters");
@@ -139,7 +139,7 @@ export function createEnv(
   }
 
   const now = Date.now();
-  const env: MokuEnv = {
+  const env: CompanionEnv = {
     name: name.trim(),
     slug,
     variables,
@@ -163,7 +163,7 @@ export function createEnv(
 export function updateEnv(
   slug: string,
   updates: EnvUpdateFields,
-): MokuEnv | null {
+): CompanionEnv | null {
   ensureDir();
   const existing = getEnv(slug);
   if (!existing) return null;
@@ -177,7 +177,7 @@ export function updateEnv(
     throw new Error(`An environment with a similar name already exists ("${newSlug}")`);
   }
 
-  const env: MokuEnv = {
+  const env: CompanionEnv = {
     ...existing,
     name: newName,
     slug: newSlug,
@@ -208,9 +208,9 @@ export function updateEnv(
  */
 export function updateBuildStatus(
   slug: string,
-  status: MokuEnv["buildStatus"],
+  status: CompanionEnv["buildStatus"],
   opts?: { error?: string; imageTag?: string },
-): MokuEnv | null {
+): CompanionEnv | null {
   ensureDir();
   const existing = getEnv(slug);
   if (!existing) return null;

@@ -1,5 +1,6 @@
 import type { Hono } from "hono";
-import { DEFAULT_ANTHROPIC_MODEL, getSettings, updateSettings } from "../settings-manager.js";
+import { DEFAULT_ANTHROPIC_MODEL, getSettings, updateSettings, type UpdateChannel } from "../settings-manager.js";
+import { linearCache } from "../linear-cache.js";
 
 export function registerSettingsRoutes(api: Hono): void {
   api.get("/settings", (c) => {
@@ -7,10 +8,16 @@ export function registerSettingsRoutes(api: Hono): void {
     return c.json({
       anthropicApiKeyConfigured: !!settings.anthropicApiKey.trim(),
       anthropicModel: settings.anthropicModel || DEFAULT_ANTHROPIC_MODEL,
+      linearApiKeyConfigured: !!settings.linearApiKey.trim(),
+      linearAutoTransition: settings.linearAutoTransition,
+      linearAutoTransitionStateName: settings.linearAutoTransitionStateName,
+      linearArchiveTransition: settings.linearArchiveTransition,
+      linearArchiveTransitionStateName: settings.linearArchiveTransitionStateName,
       editorTabEnabled: settings.editorTabEnabled,
       aiValidationEnabled: settings.aiValidationEnabled,
       aiValidationAutoApprove: settings.aiValidationAutoApprove,
       aiValidationAutoDeny: settings.aiValidationAutoDeny,
+      updateChannel: settings.updateChannel,
     });
   });
 
@@ -21,6 +28,27 @@ export function registerSettingsRoutes(api: Hono): void {
     }
     if (body.anthropicModel !== undefined && typeof body.anthropicModel !== "string") {
       return c.json({ error: "anthropicModel must be a string" }, 400);
+    }
+    if (body.linearApiKey !== undefined && typeof body.linearApiKey !== "string") {
+      return c.json({ error: "linearApiKey must be a string" }, 400);
+    }
+    if (body.linearAutoTransition !== undefined && typeof body.linearAutoTransition !== "boolean") {
+      return c.json({ error: "linearAutoTransition must be a boolean" }, 400);
+    }
+    if (body.linearAutoTransitionStateId !== undefined && typeof body.linearAutoTransitionStateId !== "string") {
+      return c.json({ error: "linearAutoTransitionStateId must be a string" }, 400);
+    }
+    if (body.linearAutoTransitionStateName !== undefined && typeof body.linearAutoTransitionStateName !== "string") {
+      return c.json({ error: "linearAutoTransitionStateName must be a string" }, 400);
+    }
+    if (body.linearArchiveTransition !== undefined && typeof body.linearArchiveTransition !== "boolean") {
+      return c.json({ error: "linearArchiveTransition must be a boolean" }, 400);
+    }
+    if (body.linearArchiveTransitionStateId !== undefined && typeof body.linearArchiveTransitionStateId !== "string") {
+      return c.json({ error: "linearArchiveTransitionStateId must be a string" }, 400);
+    }
+    if (body.linearArchiveTransitionStateName !== undefined && typeof body.linearArchiveTransitionStateName !== "string") {
+      return c.json({ error: "linearArchiveTransitionStateName must be a string" }, 400);
     }
     if (body.editorTabEnabled !== undefined && typeof body.editorTabEnabled !== "boolean") {
       return c.json({ error: "editorTabEnabled must be a boolean" }, 400);
@@ -34,12 +62,24 @@ export function registerSettingsRoutes(api: Hono): void {
     if (body.aiValidationAutoDeny !== undefined && typeof body.aiValidationAutoDeny !== "boolean") {
       return c.json({ error: "aiValidationAutoDeny must be a boolean" }, 400);
     }
+    if (body.updateChannel !== undefined && body.updateChannel !== "stable" && body.updateChannel !== "prerelease") {
+      return c.json({ error: "updateChannel must be 'stable' or 'prerelease'" }, 400);
+    }
     const hasAnyField = body.anthropicApiKey !== undefined || body.anthropicModel !== undefined
+      || body.linearApiKey !== undefined || body.linearAutoTransition !== undefined
+      || body.linearAutoTransitionStateId !== undefined || body.linearAutoTransitionStateName !== undefined
+      || body.linearArchiveTransition !== undefined || body.linearArchiveTransitionStateId !== undefined
+      || body.linearArchiveTransitionStateName !== undefined
       || body.editorTabEnabled !== undefined
       || body.aiValidationEnabled !== undefined || body.aiValidationAutoApprove !== undefined
-      || body.aiValidationAutoDeny !== undefined;
+      || body.aiValidationAutoDeny !== undefined
+      || body.updateChannel !== undefined;
     if (!hasAnyField) {
       return c.json({ error: "At least one settings field is required" }, 400);
+    }
+
+    if (typeof body.linearApiKey === "string") {
+      linearCache.clear();
     }
 
     const settings = updateSettings({
@@ -50,6 +90,34 @@ export function registerSettingsRoutes(api: Hono): void {
       anthropicModel:
         typeof body.anthropicModel === "string"
           ? (body.anthropicModel.trim() || DEFAULT_ANTHROPIC_MODEL)
+          : undefined,
+      linearApiKey:
+        typeof body.linearApiKey === "string"
+          ? body.linearApiKey.trim()
+          : undefined,
+      linearAutoTransition:
+        typeof body.linearAutoTransition === "boolean"
+          ? body.linearAutoTransition
+          : undefined,
+      linearAutoTransitionStateId:
+        typeof body.linearAutoTransitionStateId === "string"
+          ? body.linearAutoTransitionStateId.trim()
+          : undefined,
+      linearAutoTransitionStateName:
+        typeof body.linearAutoTransitionStateName === "string"
+          ? body.linearAutoTransitionStateName.trim()
+          : undefined,
+      linearArchiveTransition:
+        typeof body.linearArchiveTransition === "boolean"
+          ? body.linearArchiveTransition
+          : undefined,
+      linearArchiveTransitionStateId:
+        typeof body.linearArchiveTransitionStateId === "string"
+          ? body.linearArchiveTransitionStateId.trim()
+          : undefined,
+      linearArchiveTransitionStateName:
+        typeof body.linearArchiveTransitionStateName === "string"
+          ? body.linearArchiveTransitionStateName.trim()
           : undefined,
       editorTabEnabled:
         typeof body.editorTabEnabled === "boolean"
@@ -67,15 +135,25 @@ export function registerSettingsRoutes(api: Hono): void {
         typeof body.aiValidationAutoDeny === "boolean"
           ? body.aiValidationAutoDeny
           : undefined,
+      updateChannel:
+        body.updateChannel === "stable" || body.updateChannel === "prerelease"
+          ? (body.updateChannel as UpdateChannel)
+          : undefined,
     });
 
     return c.json({
       anthropicApiKeyConfigured: !!settings.anthropicApiKey.trim(),
       anthropicModel: settings.anthropicModel || DEFAULT_ANTHROPIC_MODEL,
+      linearApiKeyConfigured: !!settings.linearApiKey.trim(),
+      linearAutoTransition: settings.linearAutoTransition,
+      linearAutoTransitionStateName: settings.linearAutoTransitionStateName,
+      linearArchiveTransition: settings.linearArchiveTransition,
+      linearArchiveTransitionStateName: settings.linearArchiveTransitionStateName,
       editorTabEnabled: settings.editorTabEnabled,
       aiValidationEnabled: settings.aiValidationEnabled,
       aiValidationAutoApprove: settings.aiValidationAutoApprove,
       aiValidationAutoDeny: settings.aiValidationAutoDeny,
+      updateChannel: settings.updateChannel,
     });
   });
 

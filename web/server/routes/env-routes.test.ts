@@ -53,7 +53,7 @@ beforeEach(() => {
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-/** Minimal env fixture matching the MokuEnv shape. */
+/** Minimal env fixture matching the CompanionEnv shape. */
 function makeEnv(overrides: Record<string, unknown> = {}) {
   return {
     name: "Test Env",
@@ -272,13 +272,13 @@ describe("POST /api/envs/:slug/build", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.success).toBe(true);
-    expect(json.imageTag).toBe("moku-env-test-env:latest");
+    expect(json.imageTag).toBe("companion-env-test-env:latest");
     // Verify build status was set to "building" then "success"
     expect(envManager.updateBuildStatus).toHaveBeenCalledWith("test-env", "building");
     expect(envManager.updateBuildStatus).toHaveBeenCalledWith(
       "test-env",
       "success",
-      expect.objectContaining({ imageTag: "moku-env-test-env:latest" }),
+      expect.objectContaining({ imageTag: "companion-env-test-env:latest" }),
     );
   });
 
@@ -349,7 +349,7 @@ describe("GET /api/envs/:slug/build-status", () => {
       buildStatus: "success",
       buildError: undefined,
       lastBuiltAt: 9999,
-      imageTag: "moku-env-test-env:latest",
+      imageTag: "companion-env-test-env:latest",
     });
     vi.mocked(envManager.getEnv).mockReturnValue(env as any);
 
@@ -358,7 +358,7 @@ describe("GET /api/envs/:slug/build-status", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.buildStatus).toBe("success");
-    expect(json.imageTag).toBe("moku-env-test-env:latest");
+    expect(json.imageTag).toBe("companion-env-test-env:latest");
     expect(json.lastBuiltAt).toBe(9999);
   });
 
@@ -441,7 +441,7 @@ describe("GET /api/docker/base-image", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.exists).toBe(false);
-    expect(json.image).toBe("moku:latest");
+    expect(json.image).toBe("the-companion:latest");
   });
 
   it("returns exists: true when the base image is present", async () => {

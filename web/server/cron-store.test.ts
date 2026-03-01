@@ -35,7 +35,7 @@ afterEach(() => {
 });
 
 function cronDir(): string {
-  return join(tempDir, ".moku", "cron");
+  return join(tempDir, ".companion", "cron");
 }
 
 function makeJobInput(overrides: Record<string, unknown> = {}) {

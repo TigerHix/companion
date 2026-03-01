@@ -12,8 +12,8 @@ import type { CronJob, CronJobCreateInput } from "./cron-types.js";
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
-const MOKU_DIR = join(homedir(), ".moku");
-const CRON_DIR = join(MOKU_DIR, "cron");
+const COMPANION_DIR = join(homedir(), ".companion");
+const CRON_DIR = join(COMPANION_DIR, "cron");
 
 function ensureDir(): void {
   mkdirSync(CRON_DIR, { recursive: true });
