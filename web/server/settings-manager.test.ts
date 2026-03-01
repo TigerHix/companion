@@ -5,7 +5,7 @@ import {
   getSettings,
   updateSettings,
   _resetForTest,
-  DEFAULT_OPENROUTER_MODEL,
+  DEFAULT_ANTHROPIC_MODEL,
 } from "./settings-manager.js";
 
 let tempDir: string;
@@ -25,8 +25,8 @@ afterEach(() => {
 describe("settings-manager", () => {
   it("returns defaults when file is missing", () => {
     expect(getSettings()).toEqual({
-      openrouterApiKey: "",
-      openrouterModel: DEFAULT_OPENROUTER_MODEL,
+      anthropicApiKey: "",
+      anthropicModel: DEFAULT_ANTHROPIC_MODEL,
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -36,22 +36,22 @@ describe("settings-manager", () => {
   });
 
   it("updates and persists settings", () => {
-    const updated = updateSettings({ openrouterApiKey: "or-key" });
-    expect(updated.openrouterApiKey).toBe("or-key");
-    expect(updated.openrouterModel).toBe(DEFAULT_OPENROUTER_MODEL);
+    const updated = updateSettings({ anthropicApiKey: "or-key" });
+    expect(updated.anthropicApiKey).toBe("or-key");
+    expect(updated.anthropicModel).toBe(DEFAULT_ANTHROPIC_MODEL);
     expect(updated.updatedAt).toBeGreaterThan(0);
 
     const saved = JSON.parse(readFileSync(settingsPath, "utf-8"));
-    expect(saved.openrouterApiKey).toBe("or-key");
-    expect(saved.openrouterModel).toBe(DEFAULT_OPENROUTER_MODEL);
+    expect(saved.anthropicApiKey).toBe("or-key");
+    expect(saved.anthropicModel).toBe(DEFAULT_ANTHROPIC_MODEL);
   });
 
   it("loads existing settings from disk", () => {
     writeFileSync(
       settingsPath,
       JSON.stringify({
-        openrouterApiKey: "existing",
-        openrouterModel: "openai/gpt-4o-mini",
+        anthropicApiKey: "existing",
+        anthropicModel: "openai/gpt-4o-mini",
         updatedAt: 123,
       }),
       "utf-8",
@@ -60,8 +60,8 @@ describe("settings-manager", () => {
     _resetForTest(settingsPath);
 
     expect(getSettings()).toEqual({
-      openrouterApiKey: "existing",
-      openrouterModel: "openai/gpt-4o-mini",
+      anthropicApiKey: "existing",
+      anthropicModel: "openai/gpt-4o-mini",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -74,28 +74,28 @@ describe("settings-manager", () => {
     writeFileSync(settingsPath, "not-json", "utf-8");
     _resetForTest(settingsPath);
 
-    expect(getSettings().openrouterModel).toBe(DEFAULT_OPENROUTER_MODEL);
+    expect(getSettings().anthropicModel).toBe(DEFAULT_ANTHROPIC_MODEL);
   });
 
   it("updates only model while preserving existing key", () => {
-    updateSettings({ openrouterApiKey: "or-key" });
-    const updated = updateSettings({ openrouterModel: "openai/gpt-4o-mini" });
+    updateSettings({ anthropicApiKey: "or-key" });
+    const updated = updateSettings({ anthropicModel: "openai/gpt-4o-mini" });
 
-    expect(updated.openrouterApiKey).toBe("or-key");
-    expect(updated.openrouterModel).toBe("openai/gpt-4o-mini");
+    expect(updated.anthropicApiKey).toBe("or-key");
+    expect(updated.anthropicModel).toBe("openai/gpt-4o-mini");
   });
 
   it("uses default model when empty model is provided", () => {
-    const updated = updateSettings({ openrouterModel: "" });
-    expect(updated.openrouterModel).toBe(DEFAULT_OPENROUTER_MODEL);
+    const updated = updateSettings({ anthropicModel: "" });
+    expect(updated.anthropicModel).toBe(DEFAULT_ANTHROPIC_MODEL);
   });
 
   it("normalizes malformed file shape to defaults", () => {
     writeFileSync(
       settingsPath,
       JSON.stringify({
-        openrouterApiKey: 123,
-        openrouterModel: null,
+        anthropicApiKey: 123,
+        anthropicModel: null,
         updatedAt: "x",
       }),
       "utf-8",
@@ -103,8 +103,8 @@ describe("settings-manager", () => {
     _resetForTest(settingsPath);
 
     expect(getSettings()).toEqual({
-      openrouterApiKey: "",
-      openrouterModel: DEFAULT_OPENROUTER_MODEL,
+      anthropicApiKey: "",
+      anthropicModel: DEFAULT_ANTHROPIC_MODEL,
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -114,14 +114,14 @@ describe("settings-manager", () => {
   });
 
   it("ignores undefined patch values and preserves existing keys", () => {
-    updateSettings({ openrouterApiKey: "or-key" });
+    updateSettings({ anthropicApiKey: "or-key" });
     const updated = updateSettings({
-      openrouterApiKey: undefined,
-      openrouterModel: "openai/gpt-4o-mini",
+      anthropicApiKey: undefined,
+      anthropicModel: "openai/gpt-4o-mini",
     });
 
-    expect(updated.openrouterApiKey).toBe("or-key");
-    expect(updated.openrouterModel).toBe("openai/gpt-4o-mini");
+    expect(updated.anthropicApiKey).toBe("or-key");
+    expect(updated.anthropicModel).toBe("openai/gpt-4o-mini");
   });
 
   it("updates editorTabEnabled", () => {

@@ -180,6 +180,18 @@ These features were **deleted entirely** from moku. If upstream introduces commi
 - `.release-please-manifest.json`, `release-please-config.json`
 - `CHANGELOG.md` (root)
 
+### Saved Prompts (fully removed)
+- `web/server/prompt-manager.ts` (+ test)
+- `web/server/routes/prompt-routes.ts`
+- `web/src/components/PromptsPage.tsx` (+ test)
+- `web/src/components/MentionMenu.tsx` (+ test)
+- `web/src/utils/use-mention-menu.ts` (+ test)
+- Saved prompt API methods in `web/src/api.ts`
+- Prompts page route (`#/prompts`)
+- "Prompts" sidebar nav item
+- Prompt insertion and prompt-saving affordances in `web/src/components/Composer.tsx`
+- Prompt insertion affordances in `web/src/components/HomePage.tsx`
+
 ## What Was Renamed (Phase 3 — Branding)
 
 All branding was renamed from "The Companion" to "Moku". If upstream commits introduce **new** strings using the old names, they must be renamed during merge.

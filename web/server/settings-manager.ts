@@ -7,11 +7,11 @@ import {
 import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 
-export const DEFAULT_OPENROUTER_MODEL = "openrouter/free";
+export const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4.6";
 
 export interface MokuSettings {
-  openrouterApiKey: string;
-  openrouterModel: string;
+  anthropicApiKey: string;
+  anthropicModel: string;
   editorTabEnabled: boolean;
   aiValidationEnabled: boolean;
   aiValidationAutoApprove: boolean;
@@ -24,8 +24,8 @@ const DEFAULT_PATH = join(homedir(), ".moku", "settings.json");
 let loaded = false;
 let filePath = DEFAULT_PATH;
 let settings: MokuSettings = {
-  openrouterApiKey: "",
-  openrouterModel: DEFAULT_OPENROUTER_MODEL,
+  anthropicApiKey: "",
+  anthropicModel: DEFAULT_ANTHROPIC_MODEL,
   editorTabEnabled: false,
   aiValidationEnabled: false,
   aiValidationAutoApprove: true,
@@ -35,11 +35,11 @@ let settings: MokuSettings = {
 
 function normalize(raw: Partial<MokuSettings> | null | undefined): MokuSettings {
   return {
-    openrouterApiKey: typeof raw?.openrouterApiKey === "string" ? raw.openrouterApiKey : "",
-    openrouterModel:
-      typeof raw?.openrouterModel === "string" && raw.openrouterModel.trim()
-        ? raw.openrouterModel
-        : DEFAULT_OPENROUTER_MODEL,
+    anthropicApiKey: typeof raw?.anthropicApiKey === "string" ? raw.anthropicApiKey : "",
+    anthropicModel:
+      typeof raw?.anthropicModel === "string" && raw.anthropicModel.trim()
+        ? raw.anthropicModel
+        : DEFAULT_ANTHROPIC_MODEL,
     editorTabEnabled: typeof raw?.editorTabEnabled === "boolean" ? raw.editorTabEnabled : false,
     aiValidationEnabled: typeof raw?.aiValidationEnabled === "boolean" ? raw.aiValidationEnabled : false,
     aiValidationAutoApprove: typeof raw?.aiValidationAutoApprove === "boolean" ? raw.aiValidationAutoApprove : true,
@@ -72,12 +72,12 @@ export function getSettings(): MokuSettings {
 }
 
 export function updateSettings(
-  patch: Partial<Pick<MokuSettings, "openrouterApiKey" | "openrouterModel" | "editorTabEnabled" | "aiValidationEnabled" | "aiValidationAutoApprove" | "aiValidationAutoDeny">>,
+  patch: Partial<Pick<MokuSettings, "anthropicApiKey" | "anthropicModel" | "editorTabEnabled" | "aiValidationEnabled" | "aiValidationAutoApprove" | "aiValidationAutoDeny">>,
 ): MokuSettings {
   ensureLoaded();
   settings = normalize({
-    openrouterApiKey: patch.openrouterApiKey ?? settings.openrouterApiKey,
-    openrouterModel: patch.openrouterModel ?? settings.openrouterModel,
+    anthropicApiKey: patch.anthropicApiKey ?? settings.anthropicApiKey,
+    anthropicModel: patch.anthropicModel ?? settings.anthropicModel,
     editorTabEnabled: patch.editorTabEnabled ?? settings.editorTabEnabled,
     aiValidationEnabled: patch.aiValidationEnabled ?? settings.aiValidationEnabled,
     aiValidationAutoApprove: patch.aiValidationAutoApprove ?? settings.aiValidationAutoApprove,

@@ -441,12 +441,6 @@ describe("Sidebar", () => {
     expect(window.location.hash).toBe("#/settings");
   });
 
-  it("navigates to prompts page when Prompts is clicked", () => {
-    render(<Sidebar />);
-    fireEvent.click(screen.getByTitle("Prompts"));
-    expect(window.location.hash).toBe("#/prompts");
-  });
-
   it("navigates to terminal page when Terminal is clicked", () => {
     render(<Sidebar />);
     fireEvent.click(screen.getByTitle("Terminal"));
@@ -819,7 +813,6 @@ describe("Sidebar", () => {
     // Verifies footer nav buttons have title attributes for tooltip/screen reader support.
     render(<Sidebar />);
     // Footer nav items should have descriptive titles from NAV_ITEMS
-    expect(screen.getByTitle("Prompts")).toBeInTheDocument();
     expect(screen.getByTitle("Settings")).toBeInTheDocument();
   });
 
@@ -1412,7 +1405,7 @@ describe("Sidebar", () => {
     // Verifies that clicking any nav item except Terminal calls closeTerminal()
     // to dismiss the terminal overlay.
     render(<Sidebar />);
-    fireEvent.click(screen.getByTitle("Prompts"));
+    fireEvent.click(screen.getByTitle("Settings"));
     expect(mockState.closeTerminal).toHaveBeenCalled();
   });
 

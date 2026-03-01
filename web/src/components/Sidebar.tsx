@@ -31,14 +31,6 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   {
-    id: "prompts",
-    label: "Prompts",
-    shortLabel: "Prompts",
-    hash: "#/prompts",
-    viewBox: "0 0 16 16",
-    iconPath: "M3 2.5A1.5 1.5 0 014.5 1h5.879c.398 0 .779.158 1.06.44l1.621 1.62c.281.282.44.663.44 1.061V13.5A1.5 1.5 0 0112 15H4.5A1.5 1.5 0 013 13.5v-11zM4.5 2a.5.5 0 00-.5.5v11a.5.5 0 00.5.5H12a.5.5 0 00.5-.5V4.121a.5.5 0 00-.146-.353l-1.621-1.621A.5.5 0 0010.379 2H4.5zm1.25 4.25a.75.75 0 01.75-.75h3a.75.75 0 010 1.5h-3a.75.75 0 01-.75-.75zm0 3a.75.75 0 01.75-.75h3.5a.75.75 0 010 1.5H6.5a.75.75 0 01-.75-.75z",
-  },
-  {
     id: "terminal",
     label: "Terminal",
     shortLabel: "Terminal",

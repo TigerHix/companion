@@ -14,7 +14,7 @@ const CATEGORIES = [
   { id: "general", label: "General" },
   { id: "authentication", label: "Authentication" },
   { id: "notifications", label: "Notifications" },
-  { id: "openrouter", label: "OpenRouter" },
+  { id: "anthropic", label: "Anthropic" },
   { id: "ai-validation", label: "AI Validation" },
   { id: "environments", label: "Environments" },
 ] as const;
@@ -22,8 +22,8 @@ const CATEGORIES = [
 type CategoryId = (typeof CATEGORIES)[number]["id"];
 
 export function SettingsPage({ embedded = false }: SettingsPageProps) {
-  const [openrouterApiKey, setOpenrouterApiKey] = useState("");
-  const [openrouterModel, setOpenrouterModel] = useState("openrouter/free");
+  const [anthropicApiKey, setAnthropicApiKey] = useState("");
+  const [anthropicModel, setAnthropicModel] = useState("");
   const [editorTabEnabled, setEditorTabEnabled] = useState(false);
   const [configured, setConfigured] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -105,8 +105,8 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
     api
       .getSettings()
       .then((s) => {
-        setConfigured(s.openrouterApiKeyConfigured);
-        setOpenrouterModel(s.openrouterModel || "openrouter/free");
+        setConfigured(s.anthropicApiKeyConfigured);
+        setAnthropicModel(s.anthropicModel || "");
         setEditorTabEnabled(s.editorTabEnabled);
         setStoreEditorTabEnabled(s.editorTabEnabled);
         if (typeof s.aiValidationEnabled === "boolean") setAiValidationEnabled(s.aiValidationEnabled);
@@ -126,20 +126,20 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
     setError("");
     setSaved(false);
     try {
-      const nextKey = openrouterApiKey.trim();
-      const payload: { openrouterApiKey?: string; openrouterModel: string; editorTabEnabled: boolean } = {
-        openrouterModel: openrouterModel.trim() || "openrouter/free",
+      const nextKey = anthropicApiKey.trim();
+      const payload: { anthropicApiKey?: string; anthropicModel: string; editorTabEnabled: boolean } = {
+        anthropicModel: anthropicModel.trim(),
         editorTabEnabled,
       };
       if (nextKey) {
-        payload.openrouterApiKey = nextKey;
+        payload.anthropicApiKey = nextKey;
       }
 
       const res = await api.updateSettings(payload);
-      setConfigured(res.openrouterApiKeyConfigured);
+      setConfigured(res.anthropicApiKeyConfigured);
       setEditorTabEnabled(res.editorTabEnabled);
       setStoreEditorTabEnabled(res.editorTabEnabled);
-      setOpenrouterApiKey("");
+      setAnthropicApiKey("");
       setSaved(true);
       setTimeout(() => setSaved(false), 1800);
     } catch (err: unknown) {
@@ -508,22 +508,22 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
               </div>
             </section>
 
-            {/* OpenRouter */}
-            <section id="openrouter" ref={setSectionRef("openrouter")}>
-              <h2 className="text-sm font-semibold text-foreground mb-4">OpenRouter</h2>
+            {/* Anthropic */}
+            <section id="anthropic" ref={setSectionRef("anthropic")}>
+              <h2 className="text-sm font-semibold text-foreground mb-4">Anthropic</h2>
               <form onSubmit={onSave} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1.5" htmlFor="openrouter-key">
-                    OpenRouter API Key
+                  <label className="block text-sm font-medium mb-1.5" htmlFor="anthropic-key">
+                    Anthropic API Key
                   </label>
                   <input
-                    id="openrouter-key"
+                    id="anthropic-key"
                     type="password"
-                    value={configured && !apiKeyFocused && !openrouterApiKey ? "••••••••••••••••" : openrouterApiKey}
-                    onChange={(e) => setOpenrouterApiKey(e.target.value)}
+                    value={configured && !apiKeyFocused && !anthropicApiKey ? "••••••••••••••••" : anthropicApiKey}
+                    onChange={(e) => setAnthropicApiKey(e.target.value)}
                     onFocus={() => setApiKeyFocused(true)}
                     onBlur={() => setApiKeyFocused(false)}
-                    placeholder={configured ? "Enter a new key to replace" : "sk-or-v1-..."}
+                    placeholder={configured ? "Enter a new key to replace" : "sk-ant-..."}
                     className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-background rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-shadow"
                   />
                   <p className="mt-1.5 text-xs text-muted-foreground">
@@ -532,15 +532,15 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1.5" htmlFor="openrouter-model">
-                    OpenRouter Model
+                  <label className="block text-sm font-medium mb-1.5" htmlFor="anthropic-model">
+                    Anthropic Model
                   </label>
                   <input
-                    id="openrouter-model"
+                    id="anthropic-model"
                     type="text"
-                    value={openrouterModel}
-                    onChange={(e) => setOpenrouterModel(e.target.value)}
-                    placeholder="openrouter/free"
+                    value={anthropicModel}
+                    onChange={(e) => setAnthropicModel(e.target.value)}
+                    placeholder="claude-sonnet-4-20250514"
                     className="w-full px-3 py-2.5 min-h-[44px] text-sm bg-background rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-shadow"
                   />
                 </div>
@@ -559,7 +559,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
 
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
-                    {loading ? "Loading..." : configured ? "OpenRouter key configured" : "OpenRouter key not configured"}
+                    {loading ? "Loading..." : configured ? "Anthropic key configured" : "Anthropic key not configured"}
                   </span>
                   <Button
                     type="submit"
@@ -585,7 +585,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                   When enabled, an AI model evaluates tool calls before they execute.
                   Safe operations are auto-approved, dangerous ones are blocked,
                   and uncertain cases are shown to you with a recommendation.
-                  Requires an OpenRouter API key. These settings serve as defaults
+                  Requires an Anthropic API key. These settings serve as defaults
                   for new sessions. Each session can override AI validation
                   independently via the shield icon in the session header.
                 </p>
@@ -609,7 +609,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                   </div>
                 </div>
                 {!configured && (
-                  <p className="text-[11px] text-warning">Configure an OpenRouter API key above to enable AI validation.</p>
+                  <p className="text-[11px] text-warning">Configure an Anthropic API key above to enable AI validation.</p>
                 )}
 
                 {aiValidationEnabled && configured && (

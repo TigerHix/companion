@@ -25,7 +25,6 @@ import { registerSkillRoutes } from "./routes/skills-routes.js";
 import { registerEnvRoutes } from "./routes/env-routes.js";
 import { registerCronRoutes } from "./routes/cron-routes.js";
 import { registerAgentRoutes } from "./routes/agent-routes.js";
-import { registerPromptRoutes } from "./routes/prompt-routes.js";
 import { registerSettingsRoutes } from "./routes/settings-routes.js";
 import { registerGitRoutes } from "./routes/git-routes.js";
 import { registerSystemRoutes } from "./routes/system-routes.js";
@@ -1477,7 +1476,6 @@ export function createRoutes(
   registerFsRoutes(api);
   registerEnvRoutes(api, { webDir: WEB_DIR });
 
-  registerPromptRoutes(api);
   registerSettingsRoutes(api);
 
   registerGitRoutes(api, prPoller);

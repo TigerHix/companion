@@ -1,7 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
 
 vi.mock("./settings-manager.js", () => ({
-  DEFAULT_OPENROUTER_MODEL: "openrouter/free",
+  DEFAULT_ANTHROPIC_MODEL: "claude-sonnet-4.6",
   getSettings: vi.fn(),
 }));
 
@@ -14,8 +14,8 @@ vi.stubGlobal("fetch", mockFetch);
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(settingsManager.getSettings).mockReturnValue({
-    openrouterApiKey: "or-key",
-    openrouterModel: "openrouter/free",
+    anthropicApiKey: "or-key",
+    anthropicModel: "claude-sonnet-4.6",
     editorTabEnabled: false,
     aiValidationEnabled: false,
     aiValidationAutoApprove: true,
@@ -25,11 +25,11 @@ beforeEach(() => {
 });
 
 describe("generateSessionTitle", () => {
-  it("returns parsed title from OpenRouter response", async () => {
+  it("returns parsed title from Anthropic response", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        choices: [{ message: { content: "Fix Auth Flow" } }],
+        content: [{ type: "text", text: "Fix Auth Flow" }],
       }),
     });
 
@@ -38,10 +38,10 @@ describe("generateSessionTitle", () => {
     expect(title).toBe("Fix Auth Flow");
   });
 
-  it("returns null when OpenRouter key is not configured", async () => {
+  it("returns null when Anthropic key is not configured", async () => {
     vi.mocked(settingsManager.getSettings).mockReturnValue({
-      openrouterApiKey: "",
-      openrouterModel: "openrouter/free",
+      anthropicApiKey: "",
+      anthropicModel: "claude-sonnet-4.6",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -58,7 +58,7 @@ describe("generateSessionTitle", () => {
   it("truncates message to 500 chars", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ choices: [{ message: { content: "Short Title" } }] }),
+      json: async () => ({ content: [{ type: "text", text: "Short Title" }] }),
     });
 
     await generateSessionTitle("X".repeat(1000), "claude-sonnet-4-6");
@@ -71,10 +71,10 @@ describe("generateSessionTitle", () => {
     expect(user?.content).not.toContain("X".repeat(501));
   });
 
-  it("uses configured OpenRouter model", async () => {
+  it("uses configured Anthropic model", async () => {
     vi.mocked(settingsManager.getSettings).mockReturnValue({
-      openrouterApiKey: "or-key",
-      openrouterModel: "openai/gpt-4o-mini",
+      anthropicApiKey: "or-key",
+      anthropicModel: "openai/gpt-4o-mini",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -83,7 +83,7 @@ describe("generateSessionTitle", () => {
     });
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ choices: [{ message: { content: "Title" } }] }),
+      json: async () => ({ content: [{ type: "text", text: "Title" }] }),
     });
 
     await generateSessionTitle("Fix login", "ignored");
@@ -113,7 +113,7 @@ describe("generateSessionTitle", () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        choices: [{ message: { content: "\"Refactor API Layer\"" } }],
+        content: [{ type: "text", text: "\"Refactor API Layer\"" }],
       }),
     });
 
@@ -121,11 +121,11 @@ describe("generateSessionTitle", () => {
     expect(title).toBe("Refactor API Layer");
   });
 
-  it("parses array content blocks from OpenRouter response", async () => {
+  it("parses array content blocks from Anthropic response", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        choices: [{ message: { content: [{ text: "Improve Task Panel" }] } }],
+        content: [{ type: "text", text: "Improve Task Panel" }],
       }),
     });
 
@@ -137,7 +137,7 @@ describe("generateSessionTitle", () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        choices: [{ message: { content: "A".repeat(100) } }],
+        content: [{ type: "text", text: "A".repeat(100) }],
       }),
     });
 
@@ -147,8 +147,8 @@ describe("generateSessionTitle", () => {
 
   it("uses default model when configured model is empty", async () => {
     vi.mocked(settingsManager.getSettings).mockReturnValue({
-      openrouterApiKey: "or-key",
-      openrouterModel: "",
+      anthropicApiKey: "or-key",
+      anthropicModel: "",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -157,26 +157,26 @@ describe("generateSessionTitle", () => {
     });
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ choices: [{ message: { content: "Title" } }] }),
+      json: async () => ({ content: [{ type: "text", text: "Title" }] }),
     });
 
     await generateSessionTitle("Fix login", "ignored");
 
     const [, req] = mockFetch.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(String(req.body)) as { model: string };
-    expect(body.model).toBe("openrouter/free");
+    expect(body.model).toBe("claude-sonnet-4.6");
   });
 
-  it("calls OpenRouter endpoint with bearer auth header", async () => {
+  it("calls Anthropic endpoint with x-api-key header", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ choices: [{ message: { content: "Title" } }] }),
+      json: async () => ({ content: [{ type: "text", text: "Title" }] }),
     });
 
     await generateSessionTitle("Fix login", "ignored");
 
     const [url, req] = mockFetch.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("https://openrouter.ai/api/v1/chat/completions");
-    expect((req.headers as Record<string, string>).Authorization).toBe("Bearer or-key");
+    expect(url).toBe("https://api.anthropic.com/v1/messages");
+    expect((req.headers as Record<string, string>)["x-api-key"]).toBe("or-key");
   });
 });

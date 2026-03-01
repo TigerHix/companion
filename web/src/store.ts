@@ -527,10 +527,32 @@ export const useStore = create<AppState>((set) => ({
   appendMessage: (sessionId, msg) =>
     set((s) => {
       const existing = s.messages.get(sessionId) || [];
-      // Deduplicate: skip if a message with same ID already exists
-      if (msg.id && existing.some((m) => m.id === msg.id)) {
+
+      // The Claude CLI sends one assistant message per content block type
+      // (thinking, text, tool_use…), all sharing the same message ID.
+      // Merge content blocks into the existing entry instead of deduplicating.
+      if (msg.id && msg.contentBlocks?.length) {
+        const existingIdx = existing.findIndex((m) => m.id === msg.id);
+        if (existingIdx >= 0) {
+          const prev = existing[existingIdx];
+          const mergedBlocks = [
+            ...(prev.contentBlocks || []),
+            ...msg.contentBlocks,
+          ];
+          const updated = existing.slice();
+          updated[existingIdx] = {
+            ...prev,
+            contentBlocks: mergedBlocks,
+            stopReason: msg.stopReason ?? prev.stopReason,
+          };
+          const messages = new Map(s.messages);
+          messages.set(sessionId, updated);
+          return { messages };
+        }
+      } else if (msg.id && existing.some((m) => m.id === msg.id)) {
         return s;
       }
+
       const messages = new Map(s.messages);
       messages.set(sessionId, [...existing, msg]);
       return { messages };

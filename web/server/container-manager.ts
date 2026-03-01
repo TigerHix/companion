@@ -293,7 +293,7 @@ export class ContainerManager {
           "mkdir -p /root/.codex",
           "for f in auth.json config.toml models_cache.json version.json; do " +
             "[ -f /moku-host-codex/$f ] && cp /moku-host-codex/$f /root/.codex/$f 2>/dev/null; done",
-          "for d in skills vendor_imports prompts rules; do " +
+          "for d in skills vendor_imports rules; do " +
             "[ -d /moku-host-codex/$d ] && cp -r /moku-host-codex/$d /root/.codex/$d 2>/dev/null; done",
           "true",
         ].join("; "),

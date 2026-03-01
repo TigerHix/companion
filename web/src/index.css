@@ -10,6 +10,7 @@
    ═══════════════════════════════════════════════════════════════════════════*/
 
 :root {
+  color-scheme: light;
   --radius: 0.65rem;
 
   /* Moku Light Theme — Warm Amber/Copper */
@@ -136,6 +137,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   /* Moku Dark Theme — Warm charcoal, lets copper pop */
   --background: oklch(0.145 0.006 45);
   --foreground: oklch(0.93 0.008 45);
@@ -390,11 +392,15 @@ html {
   min-height: calc(100% + env(safe-area-inset-top));
   overflow: hidden;
   overscroll-behavior: none;
+  background-color: #f8f4ef;
+  background-color: var(--background);
 }
 body {
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
+  background-color: #f8f4ef;
+  background-color: var(--background);
 }
 
 button,

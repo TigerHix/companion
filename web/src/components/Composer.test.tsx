@@ -1,15 +1,12 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import type { SessionState } from "../../server/session-types.js";
 
 // Polyfill scrollIntoView for jsdom
 Element.prototype.scrollIntoView = vi.fn();
 
 const mockSendToSession = vi.fn();
-const mockListPrompts = vi.fn();
-const mockCreatePrompt = vi.fn();
 const mockGetClaudeConfig = vi.fn();
 
 // Build a controllable mock store state
@@ -22,8 +19,6 @@ vi.mock("../ws.js", () => ({
 vi.mock("../api.js", () => ({
   api: {
     gitPull: vi.fn().mockResolvedValue({ success: true, output: "", git_ahead: 0, git_behind: 0 }),
-    listPrompts: (...args: unknown[]) => mockListPrompts(...args),
-    createPrompt: (...args: unknown[]) => mockCreatePrompt(...args),
     getClaudeConfig: (...args: unknown[]) => mockGetClaudeConfig(...args),
   },
 }));
@@ -112,15 +107,6 @@ function setupMockStore(overrides: {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockListPrompts.mockResolvedValue([]);
-  mockCreatePrompt.mockResolvedValue({
-    id: "p-new",
-    name: "New Prompt",
-    content: "Text",
-    scope: "project",
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  });
   mockGetClaudeConfig.mockResolvedValue({
     project: { root: "/test", claudeMd: [], settings: null, settingsLocal: null, commands: [] },
     user: { root: "/home/test/.claude", claudeMd: null, skills: [], agents: [], settings: null, commands: [] },
@@ -419,90 +405,6 @@ describe("Composer disabled state", () => {
   });
 });
 
-describe("Composer @ prompts menu", () => {
-  it("opens @ menu and inserts selected prompt with Enter", async () => {
-    // Validates keyboard insertion from @ suggestions without sending the message.
-    mockListPrompts.mockResolvedValue([
-      {
-        id: "p1",
-        name: "review-pr",
-        content: "Review this PR and list risks.",
-        scope: "global",
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      },
-    ]);
-    const { container } = render(<Composer sessionId="s1" />);
-    const textarea = container.querySelector("textarea")!;
-
-    fireEvent.change(textarea, { target: { value: "@rev", selectionStart: 4 } });
-    await screen.findByText("@review-pr");
-    fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
-
-    expect((textarea as HTMLTextAreaElement).value).toContain("Review this PR and list risks.");
-    expect(mockSendToSession).not.toHaveBeenCalled();
-  });
-
-  it("filters prompts by typed query", async () => {
-    // Validates fuzzy filtering by prompt name while typing after @.
-    mockListPrompts.mockResolvedValue([
-      {
-        id: "p1",
-        name: "review-pr",
-        content: "Review this PR",
-        scope: "global",
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      },
-      {
-        id: "p2",
-        name: "write-tests",
-        content: "Write tests",
-        scope: "project",
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      },
-    ]);
-    const { container } = render(<Composer sessionId="s1" />);
-    const textarea = container.querySelector("textarea")!;
-
-    fireEvent.change(textarea, { target: { value: "@wri", selectionStart: 4 } });
-    await screen.findByText("@write-tests");
-
-    expect(screen.getByText("@write-tests")).toBeTruthy();
-    expect(screen.queryByText("@review-pr")).toBeNull();
-  });
-
-  it("does not refetch prompts on each @ query keystroke", async () => {
-    // Validates prompt fetch remains stable while filtering happens client-side.
-    mockListPrompts.mockResolvedValue([
-      {
-        id: "p1",
-        name: "review-pr",
-        content: "Review this PR",
-        scope: "global",
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      },
-    ]);
-    const { container } = render(<Composer sessionId="s1" />);
-    const textarea = container.querySelector("textarea")!;
-
-    await waitFor(() => {
-      expect(mockListPrompts).toHaveBeenCalledTimes(1);
-    });
-
-    fireEvent.change(textarea, { target: { value: "@r", selectionStart: 2 } });
-    await screen.findByText("@review-pr");
-    fireEvent.change(textarea, { target: { value: "@re", selectionStart: 3 } });
-    await screen.findByText("@review-pr");
-    fireEvent.change(textarea, { target: { value: "@rev", selectionStart: 4 } });
-    await screen.findByText("@review-pr");
-
-    expect(mockListPrompts).toHaveBeenCalledTimes(1);
-  });
-});
-
 // ─── Keyboard navigation ────────────────────────────────────────────────────
 
 describe("Composer keyboard navigation", () => {
@@ -625,28 +527,10 @@ describe("Composer layout", () => {
   });
 });
 
-describe("Composer save prompt", () => {
-  it("shows save error when create prompt fails", async () => {
-    // Validates API failures are visible to the user instead of being silently ignored.
-    mockCreatePrompt.mockRejectedValue(new Error("Could not save prompt right now"));
-    const { container } = render(<Composer sessionId="s1" />);
-    const textarea = container.querySelector("textarea")!;
-
-    fireEvent.change(textarea, { target: { value: "Prompt body text" } });
-    // Mobile + desktop layouts render separate buttons; click the first visible one.
-    fireEvent.click(screen.getAllByTitle("Save as prompt")[0]);
-    const titleInput = screen.getByPlaceholderText("Prompt title");
-    fireEvent.change(titleInput, { target: { value: "My Prompt" } });
-    fireEvent.click(screen.getByText("Save"));
-
-    expect(await screen.findByText("Could not save prompt right now")).toBeTruthy();
-  });
-
-  it("passes axe accessibility checks", async () => {
-    const { axe } = await import("vitest-axe");
-    setupMockStore({ isConnected: true });
-    const { container } = render(<Composer sessionId="s1" />);
-    const results = await axe(container);
-    expect(results).toHaveNoViolations();
-  });
+it("passes axe accessibility checks", async () => {
+  const { axe } = await import("vitest-axe");
+  setupMockStore({ isConnected: true });
+  const { container } = render(<Composer sessionId="s1" />);
+  const results = await axe(container);
+  expect(results).toHaveNoViolations();
 });

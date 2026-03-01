@@ -4,7 +4,6 @@ export type Route =
   | { page: "home" }
   | { page: "session"; sessionId: string }
   | { page: "settings" }
-  | { page: "prompts" }
   | { page: "terminal" }
   | { page: "environments" }
   | { page: "scheduled" }
@@ -29,7 +28,6 @@ export function parseHash(hash: string): Route {
   ensureClipboardFallbackInstalled();
 
   if (hash === "#/settings") return { page: "settings" };
-  if (hash === "#/prompts") return { page: "prompts" };
   if (hash === "#/terminal") return { page: "terminal" };
   if (hash === "#/environments") return { page: "environments" };
   // #/scheduled redirects to #/agents (cron absorbed into agents)
