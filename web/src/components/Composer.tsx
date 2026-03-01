@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   Plus,
-  Bookmark,
   Image as ImageIcon,
   Send,
   Square,
@@ -14,11 +13,9 @@ import {
 import { useStore } from "../store.js";
 import { sendToSession } from "../ws.js";
 import { CLAUDE_MODES, CODEX_MODES } from "../utils/backends.js";
-import { api, type SavedPrompt, type ClaudeConfigResponse } from "../api.js";
+import { api, type ClaudeConfigResponse } from "../api.js";
 import type { ModeOption } from "../utils/backends.js";
 import { ModelSwitcher } from "./ModelSwitcher.js";
-import { MentionMenu } from "./MentionMenu.js";
-import { useMentionMenu } from "../utils/use-mention-menu.js";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -36,9 +33,6 @@ export function Composer({ sessionId }: { sessionId: string }) {
   const [images, setImages] = useState<ImageAttachment[]>([]);
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [slashMenuIndex, setSlashMenuIndex] = useState(0);
-  const [savePromptOpen, setSavePromptOpen] = useState(false);
-  const [savePromptName, setSavePromptName] = useState("");
-  const [savePromptError, setSavePromptError] = useState<string | null>(null);
   const [caretPos, setCaretPos] = useState(0);
   const [fallbackCommands, setFallbackCommands] = useState<CommandItem[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -55,13 +49,6 @@ export function Composer({ sessionId }: { sessionId: string }) {
   const isCodex = sessionData?.backend_type === "codex";
   const modes: ModeOption[] = isCodex ? CODEX_MODES : CLAUDE_MODES;
   const modeLabel = modes.find((m) => m.value === currentMode)?.label?.toLowerCase() || currentMode;
-
-  const mention = useMentionMenu({
-    text,
-    caretPos,
-    cwd: sessionData?.cwd,
-    enabled: !slashMenuOpen,
-  });
 
   // Build command list from live session data first.
   const sessionCommands = useMemo<CommandItem[]>(() => {
@@ -187,20 +174,6 @@ export function Composer({ sessionId }: { sessionId: string }) {
     textareaRef.current?.focus();
   }, [caretPos, slashToken, text]);
 
-  const selectPrompt = useCallback((prompt: SavedPrompt) => {
-    const result = mention.selectPrompt(prompt);
-    pendingSelectionRef.current = result.nextCursor;
-    setText(result.nextText);
-    mention.setMentionMenuOpen(false);
-    setCaretPos(result.nextCursor);
-    textareaRef.current?.focus();
-    // Auto-resize textarea after prompt insertion
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + "px";
-    }
-  }, [mention]);
-
   function handleSend() {
     const msg = text.trim();
     if (!msg || !isConnected) return;
@@ -223,7 +196,6 @@ export function Composer({ sessionId }: { sessionId: string }) {
     setText("");
     setImages([]);
     setSlashMenuOpen(false);
-    mention.setMentionMenuOpen(false);
 
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -259,41 +231,6 @@ export function Composer({ sessionId }: { sessionId: string }) {
         setSlashMenuOpen(false);
         return;
       }
-    }
-
-    if (mention.mentionMenuOpen) {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        mention.setMentionMenuOpen(false);
-        return;
-      }
-    }
-
-    if (mention.mentionMenuOpen && mention.filteredPrompts.length > 0) {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        mention.setMentionMenuIndex((i) => (i + 1) % mention.filteredPrompts.length);
-        return;
-      }
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        mention.setMentionMenuIndex((i) => (i - 1 + mention.filteredPrompts.length) % mention.filteredPrompts.length);
-        return;
-      }
-      if ((e.key === "Tab" && !e.shiftKey) || (e.key === "Enter" && !e.shiftKey)) {
-        e.preventDefault();
-        selectPrompt(mention.filteredPrompts[mention.mentionMenuIndex]);
-        return;
-      }
-    }
-
-    if (
-      mention.mentionMenuOpen
-      && mention.filteredPrompts.length === 0
-      && ((e.key === "Enter" && !e.shiftKey) || (e.key === "Tab" && !e.shiftKey))
-    ) {
-      e.preventDefault();
-      return;
     }
 
     if (e.key === "Tab" && e.shiftKey) {
@@ -372,33 +309,12 @@ export function Composer({ sessionId }: { sessionId: string }) {
     }
   }
 
-  async function handleCreatePrompt() {
-    const content = text.trim();
-    const name = savePromptName.trim();
-    if (!content || !name) return;
-    const payload: { name: string; content: string; scope: "global" | "project"; cwd?: string } = {
-      name,
-      content,
-      scope: "global",
-    };
-    try {
-      await api.createPrompt(payload);
-      await mention.refreshPrompts();
-      setSavePromptOpen(false);
-      setSavePromptName("");
-      setSavePromptError(null);
-    } catch (error) {
-      const message = error instanceof Error && error.message ? error.message : "Could not save prompt.";
-      setSavePromptError(message);
-    }
-  }
-
   const sessionStatus = useStore((s) => s.sessionStatus);
   const isRunning = sessionStatus.get(sessionId) === "running";
   const canSend = text.trim().length > 0 && isConnected;
 
   return (
-    <div className="relative z-10 shrink-0 px-0 sm:px-6 pt-0 sm:pt-3 pb-5 sm:pb-4 bg-card sm:bg-transparent">
+    <div className="relative z-10 shrink-0 px-0 pt-0 sm:pt-3 pb-5 sm:pb-4 bg-transparent">
       <div className="relative max-w-3xl mx-auto">
         {/* Image thumbnails */}
         {images.length > 0 && (
@@ -436,13 +352,12 @@ export function Composer({ sessionId }: { sessionId: string }) {
           aria-label="Attach images"
         />
 
-        {/* Input container: flat separator on mobile, glass card on desktop */}
+        {/* Temporary test override: use desktop card shell on all breakpoints. */}
         <div className={cn(
-          "relative overflow-visible transition-colors border-t border-border",
-          "sm:border sm:border-border sm:bg-card/95 sm:rounded-[14px] sm:shadow-[0_10px_30px_rgba(0,0,0,0.10)] sm:backdrop-blur-sm",
+          "relative overflow-visible transition-colors border border-border bg-transparent rounded-[14px] shadow-[0_10px_30px_rgba(0,0,0,0.10)]",
           isPlan
-            ? "sm:border-primary/40"
-            : "sm:focus-within:border-primary/30"
+            ? "border-primary/40"
+            : "focus-within:border-primary/30"
         )}>
           {/* Slash command menu */}
           {slashMenuOpen && (
@@ -487,59 +402,8 @@ export function Composer({ sessionId }: { sessionId: string }) {
             </div>
           )}
 
-          {/* @ prompt menu */}
-          <MentionMenu
-            open={mention.mentionMenuOpen}
-            loading={mention.promptsLoading}
-            prompts={mention.filteredPrompts}
-            selectedIndex={mention.mentionMenuIndex}
-            onSelect={selectPrompt}
-            menuRef={mention.mentionMenuRef}
-            className="absolute left-2 right-2 bottom-full mb-1 z-40"
-          />
-
-          {savePromptOpen && (
-            <div className="absolute left-2 right-2 bottom-full mb-1 card-moku border border-border rounded-[10px] shadow-lg z-40 p-3 space-y-2">
-              <div className="text-xs font-semibold text-foreground">Save prompt</div>
-              <input
-                value={savePromptName}
-                onChange={(e) => {
-                  setSavePromptName(e.target.value);
-                  if (savePromptError) setSavePromptError(null);
-                }}
-                placeholder="Prompt title"
-                aria-label="Prompt title"
-                className="w-full px-2 py-1.5 text-sm input-moku rounded-md text-foreground"
-              />
-              <div className="text-[11px] text-muted-foreground">Scope: global &bull; stored locally</div>
-              {savePromptError ? (
-                <div className="text-[11px] text-destructive">{savePromptError}</div>
-              ) : null}
-              <div className="flex items-center gap-1.5 justify-end">
-                <Button
-                  variant="outline"
-                  size="xs"
-                  onClick={() => {
-                    setSavePromptOpen(false);
-                    setSavePromptError(null);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="default"
-                  size="xs"
-                  onClick={handleCreatePrompt}
-                  disabled={!savePromptName.trim() || !text.trim()}
-                >
-                  Save
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Mobile toolbar: mode toggle + model switcher + secondary actions (hidden on sm+) */}
-          <div className="flex items-center gap-1.5 px-3 pt-1.5 pb-0.5 sm:hidden">
+          {/* Temporary test override: keep mobile toolbar disabled so all breakpoints use the desktop control layout. */}
+          <div className="hidden items-center gap-1.5 px-3 pt-1.5 pb-0.5 sm:hidden">
             <Button
               type="button"
               onClick={toggleMode}
@@ -571,21 +435,6 @@ export function Composer({ sessionId }: { sessionId: string }) {
             <Button
               variant="ghost"
               size="icon-sm"
-              onClick={() => {
-                const defaultName = text.trim().slice(0, 32);
-                setSavePromptName(defaultName || "");
-                setSavePromptError(null);
-                setSavePromptOpen((v) => !v);
-              }}
-              disabled={!isConnected || !text.trim()}
-              title="Save as prompt"
-            >
-              <Bookmark className="size-4" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon-sm"
               onClick={() => fileInputRef.current?.click()}
               disabled={!isConnected}
               title="Upload image"
@@ -606,7 +455,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
               onPaste={handlePaste}
               aria-label="Message input"
               placeholder={isConnected
-                ? "Type a message... (/ + @)"
+                ? "Type a message... (/)"
                 : "Waiting for CLI connection..."}
               disabled={!isConnected}
               rows={1}
@@ -615,8 +464,8 @@ export function Composer({ sessionId }: { sessionId: string }) {
             />
           </div>
 
-          {/* Mobile action row (hidden on sm+) */}
-          <div className="flex items-center justify-end gap-1 px-3 pb-1 sm:hidden">
+          {/* Temporary test override: keep mobile action row disabled so all breakpoints use the desktop control layout. */}
+          <div className="hidden items-center justify-end gap-1 px-3 pb-1 sm:hidden">
             {/* Send/stop */}
             {isRunning ? (
               <Button
@@ -647,8 +496,8 @@ export function Composer({ sessionId }: { sessionId: string }) {
             )}
           </div>
 
-          {/* Desktop action bar: + bookmark mode spacer model send (hidden on mobile) */}
-          <div className="hidden sm:flex items-center gap-1.5 px-2.5 pb-2">
+          {/* Temporary test override: render desktop action bar on all breakpoints. */}
+          <div className="flex items-center gap-1.5 px-2.5 pb-2">
             {/* + button (image upload) */}
             <Button
               variant="ghost"
@@ -658,22 +507,6 @@ export function Composer({ sessionId }: { sessionId: string }) {
               title="Attach image"
             >
               <Plus className="size-4" />
-            </Button>
-
-            {/* Save prompt (bookmark) */}
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => {
-                const defaultName = text.trim().slice(0, 32);
-                setSavePromptName(defaultName || "");
-                setSavePromptError(null);
-                setSavePromptOpen((v) => !v);
-              }}
-              disabled={!isConnected || !text.trim()}
-              title="Save as prompt"
-            >
-              <Bookmark className="size-4" />
             </Button>
 
             {/* Mode toggle */}

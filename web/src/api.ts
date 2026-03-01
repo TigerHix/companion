@@ -344,8 +344,8 @@ export interface EditorStartResult {
 }
 
 export interface AppSettings {
-  openrouterApiKeyConfigured: boolean;
-  openrouterModel: string;
+  anthropicApiKeyConfigured: boolean;
+  anthropicModel: string;
   editorTabEnabled: boolean;
   aiValidationEnabled: boolean;
   aiValidationAutoApprove: boolean;
@@ -475,16 +475,6 @@ export type AgentExport = Omit<
   AgentInfo,
   "id" | "createdAt" | "updatedAt" | "totalRuns" | "consecutiveFailures" | "lastRunAt" | "lastSessionId" | "enabled" | "nextRunAt"
 >;
-
-export interface SavedPrompt {
-  id: string;
-  name: string;
-  content: string;
-  scope: "global" | "project";
-  projectPath?: string;
-  createdAt: number;
-  updatedAt: number;
-}
 
 // ─── Claude Config Browser ──────────────────────────────────────────────────
 
@@ -721,10 +711,12 @@ export const api = {
   // Settings
   getSettings: () => get<AppSettings>("/settings"),
   updateSettings: (data: {
-    openrouterApiKey?: string;
-    openrouterModel?: string;
+    anthropicApiKey?: string;
+    anthropicModel?: string;
     editorTabEnabled?: boolean;
   }) => put<AppSettings>("/settings", data),
+  verifyAnthropicKey: (apiKey: string) =>
+    post<{ valid: boolean; error?: string }>("/settings/anthropic/verify", { apiKey }),
 
   // Git operations
   getRepoInfo: (path: string) =>
@@ -907,18 +899,4 @@ export const api = {
   sendSessionMessage: (sessionId: string, content: string) =>
     post<{ ok: boolean }>(`/sessions/${encodeURIComponent(sessionId)}/message`, { content }),
 
-  // Saved prompts
-  listPrompts: (cwd?: string, scope?: "global" | "project" | "all") => {
-    const params = new URLSearchParams();
-    if (cwd) params.set("cwd", cwd);
-    if (scope) params.set("scope", scope);
-    const query = params.toString();
-    return get<SavedPrompt[]>(`/prompts${query ? `?${query}` : ""}`);
-  },
-  createPrompt: (data: { name: string; content: string; scope: "global" | "project"; cwd?: string }) =>
-    post<SavedPrompt>("/prompts", data),
-  updatePrompt: (id: string, data: { name?: string; content?: string }) =>
-    put<SavedPrompt>(`/prompts/${encodeURIComponent(id)}`, data),
-  deletePrompt: (id: string) =>
-    del<{ ok: boolean }>(`/prompts/${encodeURIComponent(id)}`),
 };

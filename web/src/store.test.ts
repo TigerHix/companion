@@ -273,6 +273,58 @@ describe("Messages", () => {
     expect(messages[0].content).toBe("first");
   });
 
+  it("appendMessage: merges contentBlocks when same ID arrives multiple times", () => {
+    // The Claude CLI sends multiple assistant messages with the same ID,
+    // one per content block type (thinking, text, tool_use…).
+    // The store must merge their contentBlocks instead of deduplicating.
+    useStore.getState().addSession(makeSession("s1"));
+
+    const thinkingBlock: import("./types").ContentBlock = {
+      type: "thinking",
+      thinking: "Let me reason...",
+    };
+    const msg1 = makeMessage({
+      id: "msg-1",
+      role: "assistant",
+      contentBlocks: [thinkingBlock],
+    });
+    useStore.getState().appendMessage("s1", msg1);
+
+    const textBlock: import("./types").ContentBlock = {
+      type: "text",
+      text: "Here is my answer.",
+    };
+    const msg2 = makeMessage({
+      id: "msg-1",
+      role: "assistant",
+      contentBlocks: [textBlock],
+    });
+    useStore.getState().appendMessage("s1", msg2);
+
+    const messages = useStore.getState().messages.get("s1")!;
+    expect(messages).toHaveLength(1);
+    expect(messages[0].contentBlocks).toHaveLength(2);
+    expect(messages[0].contentBlocks![0]).toEqual(thinkingBlock);
+    expect(messages[0].contentBlocks![1]).toEqual(textBlock);
+  });
+
+  it("appendMessage: dedup still works for messages without contentBlocks", () => {
+    // Non-contentBlocks messages (user/system) should still be deduplicated by ID
+    // to avoid showing duplicates from reconnects or replays.
+    useStore.getState().addSession(makeSession("s1"));
+    const msg = makeMessage({
+      id: "user-1",
+      content: "hello",
+      contentBlocks: undefined,
+    });
+    useStore.getState().appendMessage("s1", msg);
+    useStore.getState().appendMessage("s1", { ...msg, content: "duplicate" });
+
+    const messages = useStore.getState().messages.get("s1")!;
+    expect(messages).toHaveLength(1);
+    expect(messages[0].content).toBe("hello");
+  });
+
   it("appendMessage: allows messages without IDs (no dedup)", () => {
     useStore.getState().addSession(makeSession("s1"));
     const msg1 = makeMessage({ id: "", content: "a" });

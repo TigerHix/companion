@@ -9,7 +9,25 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Moku" />
-    <meta name="theme-color" content="#d97757" />
+    <meta name="theme-color" content="#f8f4ef" />
+    <meta name="theme-color" content="#1b1714" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f8f4ef" media="(prefers-color-scheme: light)" />
+    <script>
+      (() => {
+        const stored = localStorage.getItem("cc-dark-mode");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const dark = stored === null ? prefersDark : stored === "true";
+        const bg = dark ? "#1b1714" : "#f8f4ef";
+        document.documentElement.classList.toggle("dark", dark);
+        document.documentElement.style.backgroundColor = bg;
+        document.documentElement.style.colorScheme = dark ? "dark" : "light";
+        document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+          if (!meta.media || window.matchMedia(meta.media).matches) {
+            meta.setAttribute("content", bg);
+          }
+        });
+      })();
+    </script>
     <title>Moku</title>
   </head>
   <body class="bg-cc-bg text-cc-fg">

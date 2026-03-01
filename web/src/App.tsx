@@ -14,10 +14,11 @@ import { DiffPanel } from "./components/DiffPanel.js";
 import { SessionLaunchOverlay } from "./components/SessionLaunchOverlay.js";
 import { SessionTerminalDock } from "./components/SessionTerminalDock.js";
 import { SessionEditorPane } from "./components/SessionEditorPane.js";
+import { MobileViewportBackdrop } from "./components/MobileViewportBackdrop.js";
+import { SafariTintProbe } from "./components/SafariTintProbe.js";
 // Lazy-loaded route-level pages (not needed for initial render)
 const Playground = lazy(() => import("./components/Playground.js").then((m) => ({ default: m.Playground })));
 const SettingsPage = lazy(() => import("./components/SettingsPage.js").then((m) => ({ default: m.SettingsPage })));
-const PromptsPage = lazy(() => import("./components/PromptsPage.js").then((m) => ({ default: m.PromptsPage })));
 const EnvManager = lazy(() => import("./components/EnvManager.js").then((m) => ({ default: m.EnvManager })));
 const CronManager = lazy(() => import("./components/CronManager.js").then((m) => ({ default: m.CronManager })));
 const AgentsPage = lazy(() => import("./components/AgentsPage.js").then((m) => ({ default: m.AgentsPage })));
@@ -56,16 +57,23 @@ export default function App() {
   const hash = useHash();
   const route = useMemo(() => parseHash(hash), [hash]);
   const isSettingsPage = route.page === "settings";
-  const isPromptsPage = route.page === "prompts";
   const isTerminalPage = route.page === "terminal";
   const isEnvironmentsPage = route.page === "environments";
   const isScheduledPage = route.page === "scheduled";
   const isAgentsPage = route.page === "agents" || route.page === "agent-detail";
   const isSessionView = route.page === "session" || route.page === "home";
+  const themeColor = darkMode ? "#1b1714" : "#f8f4ef";
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
-  }, [darkMode]);
+    document.documentElement.style.backgroundColor = themeColor;
+    document.documentElement.style.colorScheme = darkMode ? "dark" : "light";
+    document.body.style.backgroundColor = themeColor;
+
+    document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+      meta.setAttribute("content", themeColor);
+    });
+  }, [darkMode, themeColor]);
 
   // Migrate legacy "files" tab to "editor"
   useEffect(() => {
@@ -137,6 +145,9 @@ export default function App() {
 
   return (
     <div className="fixed inset-0 flex font-sans bg-background text-foreground antialiased pt-safe overflow-hidden overscroll-none">
+      <SafariTintProbe />
+      <MobileViewportBackdrop />
+
       {/* Mobile overlay backdrop */}
       {sidebarOpen && (
         <div
@@ -164,12 +175,6 @@ export default function App() {
           {isSettingsPage && (
             <div className="absolute inset-0">
               <Suspense fallback={<LazyFallback />}><SettingsPage embedded /></Suspense>
-            </div>
-          )}
-
-          {isPromptsPage && (
-            <div className="absolute inset-0">
-              <Suspense fallback={<LazyFallback />}><PromptsPage embedded /></Suspense>
             </div>
           )}
 

@@ -194,7 +194,6 @@ describe("ContainerManager Codex file seeding", () => {
     expect(seedCmd).toContain("models_cache.json");
     // Verify it copies directories
     expect(seedCmd).toContain("skills");
-    expect(seedCmd).toContain("prompts");
     expect(seedCmd).toContain("rules");
   });
 

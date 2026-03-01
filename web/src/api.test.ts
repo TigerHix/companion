@@ -273,7 +273,7 @@ describe("updateEnv", () => {
 // ===========================================================================
 describe("settings", () => {
   it("sends GET to /api/settings", async () => {
-    const settings = { openrouterApiKeyConfigured: true, openrouterModel: "openrouter/free" };
+    const settings = { anthropicApiKeyConfigured: true, anthropicModel: "claude-sonnet-4.6" };
     mockFetch.mockResolvedValueOnce(mockResponse(settings));
 
     const result = await api.getSettings();
@@ -284,15 +284,15 @@ describe("settings", () => {
   });
 
   it("sends PUT to /api/settings", async () => {
-    const settings = { openrouterApiKeyConfigured: true, openrouterModel: "openrouter/free" };
+    const settings = { anthropicApiKeyConfigured: true, anthropicModel: "claude-sonnet-4.6" };
     mockFetch.mockResolvedValueOnce(mockResponse(settings));
 
-    await api.updateSettings({ openrouterApiKey: "or-key" });
+    await api.updateSettings({ anthropicApiKey: "anthropic-key" });
 
     const [url, opts] = mockFetch.mock.calls[0];
     expect(url).toBe("/api/settings");
     expect(opts.method).toBe("PUT");
-    expect(JSON.parse(opts.body)).toEqual({ openrouterApiKey: "or-key" });
+    expect(JSON.parse(opts.body)).toEqual({ anthropicApiKey: "anthropic-key" });
   });
 
 });
@@ -1399,110 +1399,6 @@ describe("sendSessionMessage", () => {
     expect(opts.method).toBe("POST");
     expect(JSON.parse(opts.body)).toEqual({ content: "Hello from another session" });
     expect(result).toEqual({ ok: true });
-  });
-});
-
-// ===========================================================================
-// Saved prompts API
-// ===========================================================================
-describe("saved prompts API", () => {
-  const mockPrompt = {
-    id: "p1",
-    name: "Fix tests",
-    content: "Please fix the failing tests",
-    scope: "global" as const,
-    createdAt: 1,
-    updatedAt: 1,
-  };
-
-  it("listPrompts sends GET to /api/prompts without params", async () => {
-    mockFetch.mockResolvedValueOnce(mockResponse([mockPrompt]));
-
-    const result = await api.listPrompts();
-
-    const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/prompts");
-    expect(result).toEqual([mockPrompt]);
-  });
-
-  it("listPrompts includes cwd and scope as query params", async () => {
-    mockFetch.mockResolvedValueOnce(mockResponse([mockPrompt]));
-
-    await api.listPrompts("/repo", "project");
-
-    const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe(`/api/prompts?cwd=${encodeURIComponent("/repo")}&scope=project`);
-  });
-
-  it("listPrompts includes only cwd when scope is omitted", async () => {
-    mockFetch.mockResolvedValueOnce(mockResponse([]));
-
-    await api.listPrompts("/repo");
-
-    const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe(`/api/prompts?cwd=${encodeURIComponent("/repo")}`);
-  });
-
-  it("createPrompt sends POST to /api/prompts", async () => {
-    mockFetch.mockResolvedValueOnce(mockResponse(mockPrompt));
-
-    const result = await api.createPrompt({
-      name: "Fix tests",
-      content: "Please fix the failing tests",
-      scope: "global",
-    });
-
-    const [url, opts] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/prompts");
-    expect(opts.method).toBe("POST");
-    expect(JSON.parse(opts.body)).toEqual({
-      name: "Fix tests",
-      content: "Please fix the failing tests",
-      scope: "global",
-    });
-    expect(result).toEqual(mockPrompt);
-  });
-
-  it("createPrompt includes cwd for project-scoped prompts", async () => {
-    mockFetch.mockResolvedValueOnce(mockResponse({ ...mockPrompt, scope: "project", projectPath: "/repo" }));
-
-    await api.createPrompt({
-      name: "Fix tests",
-      content: "Please fix the failing tests",
-      scope: "project",
-      cwd: "/repo",
-    });
-
-    const [, opts] = mockFetch.mock.calls[0];
-    expect(JSON.parse(opts.body)).toEqual({
-      name: "Fix tests",
-      content: "Please fix the failing tests",
-      scope: "project",
-      cwd: "/repo",
-    });
-  });
-
-  it("updatePrompt sends PUT to /api/prompts/:id", async () => {
-    const updated = { ...mockPrompt, name: "Updated name" };
-    mockFetch.mockResolvedValueOnce(mockResponse(updated));
-
-    const result = await api.updatePrompt("p1", { name: "Updated name" });
-
-    const [url, opts] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/prompts/p1");
-    expect(opts.method).toBe("PUT");
-    expect(JSON.parse(opts.body)).toEqual({ name: "Updated name" });
-    expect(result).toEqual(updated);
-  });
-
-  it("deletePrompt sends DELETE to /api/prompts/:id", async () => {
-    mockFetch.mockResolvedValueOnce(mockResponse({ ok: true }));
-
-    await api.deletePrompt("p1");
-
-    const [url, opts] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/prompts/p1");
-    expect(opts.method).toBe("DELETE");
   });
 });
 

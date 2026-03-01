@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { CodexAdapter } from "./codex-adapter.js";
+import { CodexAdapter, StdioTransport } from "./codex-adapter.js";
 import type { ICodexTransport } from "./codex-adapter.js";
 import type { BrowserIncomingMessage, BrowserOutgoingMessage } from "./session-types.js";
 
@@ -384,6 +384,289 @@ describe("CodexAdapter", () => {
     const blockStartIdx = messages.indexOf(toolUseBlockStart!);
     const assistantIdx = messages.indexOf(toolUseMsg!);
     expect(blockStartIdx).toBeLessThan(assistantIdx);
+  });
+
+  it("maps collabAgentToolCall to Task-style tool_use for subagent grouping", async () => {
+    const messages: BrowserIncomingMessage[] = [];
+    const adapter = new CodexAdapter(proc as never, "test-session", { model: "o4-mini" });
+    adapter.onBrowserMessage((msg) => messages.push(msg));
+
+    await new Promise((r) => setTimeout(r, 50));
+    stdout.push(JSON.stringify({ id: 1, result: { userAgent: "codex" } }) + "\n");
+    await new Promise((r) => setTimeout(r, 20));
+    stdout.push(JSON.stringify({ id: 2, result: { thread: { id: "thr_123" } } }) + "\n");
+    await new Promise((r) => setTimeout(r, 50));
+
+    stdout.push(JSON.stringify({
+      method: "item/started",
+      params: {
+        threadId: "thr_123",
+        item: {
+          type: "collabAgentToolCall",
+          id: "collab_1",
+          tool: "spawn_agent",
+          status: "inProgress",
+          receiverThreadIds: ["thr_sub_1", "thr_sub_2"],
+          prompt: "Investigate auth edge-cases",
+        },
+      },
+    }) + "\n");
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    const taskToolUseMsg = messages.find((m) => {
+      if (m.type !== "assistant") return false;
+      const content = (m as { message: { content: Array<{ type: string; name?: string }> } }).message.content;
+      return content.some((b) => b.type === "tool_use" && b.name === "Task");
+    }) as { message: { content: Array<{ type: string; id?: string; name?: string; input?: Record<string, unknown> }> } } | undefined;
+
+    expect(taskToolUseMsg).toBeDefined();
+    const taskBlock = taskToolUseMsg!.message.content.find((b) => b.type === "tool_use" && b.name === "Task");
+    expect(taskBlock?.id).toBe("collab_1");
+    expect(taskBlock?.input?.description).toBe("Investigate auth edge-cases");
+    expect(taskBlock?.input?.subagent_type).toBe("spawn_agent");
+    expect(taskBlock?.input?.codex_status).toBe("inProgress");
+    expect(taskBlock?.input?.receiver_thread_ids).toEqual(["thr_sub_1", "thr_sub_2"]);
+
+    const nestedAssistant = messages.find((m) =>
+      m.type === "assistant"
+      && (m as { parent_tool_use_id?: string }).parent_tool_use_id === "collab_1"
+    );
+    expect(nestedAssistant).toBeDefined();
+  });
+
+  it("links subagent thread agentMessage events to collab parent via parent_tool_use_id", async () => {
+    const messages: BrowserIncomingMessage[] = [];
+    const adapter = new CodexAdapter(proc as never, "test-session", { model: "o4-mini" });
+    adapter.onBrowserMessage((msg) => messages.push(msg));
+
+    await new Promise((r) => setTimeout(r, 50));
+    stdout.push(JSON.stringify({ id: 1, result: { userAgent: "codex" } }) + "\n");
+    await new Promise((r) => setTimeout(r, 20));
+    stdout.push(JSON.stringify({ id: 2, result: { thread: { id: "thr_123" } } }) + "\n");
+    await new Promise((r) => setTimeout(r, 50));
+
+    stdout.push(JSON.stringify({
+      method: "item/started",
+      params: {
+        threadId: "thr_123",
+        item: {
+          type: "collabAgentToolCall",
+          id: "collab_2",
+          tool: "spawn_agent",
+          status: "inProgress",
+          receiverThreadIds: ["thr_sub_99"],
+          prompt: "Audit auth middleware",
+        },
+      },
+    }) + "\n");
+    await new Promise((r) => setTimeout(r, 30));
+
+    stdout.push(JSON.stringify({
+      method: "item/started",
+      params: { threadId: "thr_sub_99", item: { type: "agentMessage", id: "am_sub_1" } },
+    }) + "\n");
+    stdout.push(JSON.stringify({
+      method: "item/agentMessage/delta",
+      params: { threadId: "thr_sub_99", itemId: "am_sub_1", delta: "Found 3 middleware layers." },
+    }) + "\n");
+    stdout.push(JSON.stringify({
+      method: "item/completed",
+      params: { threadId: "thr_sub_99", item: { type: "agentMessage", id: "am_sub_1" } },
+    }) + "\n");
+
+    await new Promise((r) => setTimeout(r, 80));
+
+    const subagentAssistant = messages.find((m) =>
+      m.type === "assistant"
+      && (m as { message: { id: string }; parent_tool_use_id: string | null }).message.id === "codex-agent-am_sub_1"
+    ) as { parent_tool_use_id: string | null } | undefined;
+
+    expect(subagentAssistant).toBeDefined();
+    expect(subagentAssistant!.parent_tool_use_id).toBe("collab_2");
+  });
+
+  it("handles collabAgentToolCall completion with error result and clears thread mapping", async () => {
+    const messages: BrowserIncomingMessage[] = [];
+    const adapter = new CodexAdapter(proc as never, "test-session", { model: "o4-mini" });
+    adapter.onBrowserMessage((msg) => messages.push(msg));
+
+    await new Promise((r) => setTimeout(r, 50));
+    stdout.push(JSON.stringify({ id: 1, result: { userAgent: "codex" } }) + "\n");
+    await new Promise((r) => setTimeout(r, 20));
+    stdout.push(JSON.stringify({ id: 2, result: { thread: { id: "thr_123" } } }) + "\n");
+    await new Promise((r) => setTimeout(r, 50));
+
+    stdout.push(JSON.stringify({
+      method: "item/started",
+      params: {
+        threadId: "thr_123",
+        item: {
+          type: "collabAgentToolCall",
+          id: "collab_3",
+          tool: "spawn_agent",
+          status: "inProgress",
+          receiverThreadIds: ["thr_sub_clear"],
+          prompt: "Run deep checks",
+        },
+      },
+    }) + "\n");
+    await new Promise((r) => setTimeout(r, 30));
+
+    stdout.push(JSON.stringify({
+      method: "item/completed",
+      params: {
+        threadId: "thr_123",
+        item: {
+          type: "collabAgentToolCall",
+          id: "collab_3",
+          tool: "spawn_agent",
+          status: "failed",
+          receiverThreadIds: ["thr_sub_clear"],
+          senderThreadId: "thr_123",
+        },
+      },
+    }) + "\n");
+    await new Promise((r) => setTimeout(r, 40));
+
+    stdout.push(JSON.stringify({
+      method: "item/started",
+      params: { threadId: "thr_sub_clear", item: { type: "agentMessage", id: "am_after_clear" } },
+    }) + "\n");
+    stdout.push(JSON.stringify({
+      method: "item/completed",
+      params: { threadId: "thr_sub_clear", item: { type: "agentMessage", id: "am_after_clear" } },
+    }) + "\n");
+
+    await new Promise((r) => setTimeout(r, 80));
+
+    const toolResultMsg = messages.find((m) => {
+      if (m.type !== "assistant") return false;
+      const content = (m as { message: { content: Array<{ type: string; tool_use_id?: string; is_error?: boolean }> } }).message.content;
+      return content.some((b) => b.type === "tool_result" && b.tool_use_id === "collab_3");
+    }) as { message: { content: Array<{ type: string; tool_use_id?: string; is_error?: boolean }> } } | undefined;
+
+    expect(toolResultMsg).toBeDefined();
+    const resultBlock = toolResultMsg!.message.content.find((b) => b.type === "tool_result");
+    expect(resultBlock?.tool_use_id).toBe("collab_3");
+    expect(resultBlock?.is_error).toBe(true);
+
+    const nestedSummary = messages.find((m) =>
+      m.type === "assistant" && (m as { parent_tool_use_id?: string }).parent_tool_use_id === "collab_3"
+    );
+    expect(nestedSummary).toBeDefined();
+
+    const postClearAssistant = messages.find((m) =>
+      m.type === "assistant"
+      && (m as { message: { id: string } }).message.id === "codex-agent-am_after_clear"
+    ) as { parent_tool_use_id: string | null } | undefined;
+    expect(postClearAssistant).toBeDefined();
+    expect(postClearAssistant!.parent_tool_use_id).toBeNull();
+  });
+
+  it("nests collabAgentToolCall tool_use under parent when started from subagent thread", async () => {
+    const messages: BrowserIncomingMessage[] = [];
+    const adapter = new CodexAdapter(proc as never, "test-session", { model: "o4-mini" });
+    adapter.onBrowserMessage((msg) => messages.push(msg));
+
+    await new Promise((r) => setTimeout(r, 50));
+    stdout.push(JSON.stringify({ id: 1, result: { userAgent: "codex" } }) + "\n");
+    await new Promise((r) => setTimeout(r, 20));
+    stdout.push(JSON.stringify({ id: 2, result: { thread: { id: "thr_123" } } }) + "\n");
+    await new Promise((r) => setTimeout(r, 50));
+
+    stdout.push(JSON.stringify({
+      method: "item/started",
+      params: {
+        threadId: "thr_123",
+        item: {
+          type: "collabAgentToolCall",
+          id: "collab_parent",
+          tool: "spawn_agent",
+          status: "inProgress",
+          receiverThreadIds: ["thr_sub_parent"],
+          prompt: "Parent call",
+        },
+      },
+    }) + "\n");
+    await new Promise((r) => setTimeout(r, 30));
+
+    stdout.push(JSON.stringify({
+      method: "item/started",
+      params: {
+        threadId: "thr_sub_parent",
+        item: {
+          type: "collabAgentToolCall",
+          id: "collab_nested",
+          tool: "spawn_agent",
+          status: "inProgress",
+          receiverThreadIds: ["thr_nested_1"],
+          prompt: "Nested call",
+        },
+      },
+    }) + "\n");
+    await new Promise((r) => setTimeout(r, 60));
+
+    const nestedToolUse = messages.find((m) =>
+      m.type === "assistant"
+      && (m as { parent_tool_use_id?: string; message?: { content?: Array<{ type: string; id?: string; name?: string }> } }).parent_tool_use_id === "collab_parent"
+      && (m as { message: { content: Array<{ type: string; id?: string; name?: string }> } }).message.content
+        .some((b) => b.type === "tool_use" && b.name === "Task" && b.id === "collab_nested")
+    );
+    expect(nestedToolUse).toBeDefined();
+  });
+
+  it("backfills nested collabAgentToolCall tool_use with parent on item/completed-only path", async () => {
+    const messages: BrowserIncomingMessage[] = [];
+    const adapter = new CodexAdapter(proc as never, "test-session", { model: "o4-mini" });
+    adapter.onBrowserMessage((msg) => messages.push(msg));
+
+    await new Promise((r) => setTimeout(r, 50));
+    stdout.push(JSON.stringify({ id: 1, result: { userAgent: "codex" } }) + "\n");
+    await new Promise((r) => setTimeout(r, 20));
+    stdout.push(JSON.stringify({ id: 2, result: { thread: { id: "thr_123" } } }) + "\n");
+    await new Promise((r) => setTimeout(r, 50));
+
+    stdout.push(JSON.stringify({
+      method: "item/started",
+      params: {
+        threadId: "thr_123",
+        item: {
+          type: "collabAgentToolCall",
+          id: "collab_parent",
+          tool: "spawn_agent",
+          status: "inProgress",
+          receiverThreadIds: ["thr_sub_parent"],
+          prompt: "Parent call",
+        },
+      },
+    }) + "\n");
+    await new Promise((r) => setTimeout(r, 30));
+
+    // Nested collab arrives as completed-only (no prior item/started), which triggers backfill.
+    stdout.push(JSON.stringify({
+      method: "item/completed",
+      params: {
+        threadId: "thr_sub_parent",
+        item: {
+          type: "collabAgentToolCall",
+          id: "collab_nested_backfill",
+          tool: "spawn_agent",
+          status: "completed",
+          receiverThreadIds: ["thr_nested_1"],
+          prompt: "Nested completed-only",
+        },
+      },
+    }) + "\n");
+    await new Promise((r) => setTimeout(r, 60));
+
+    const nestedBackfilledToolUse = messages.find((m) =>
+      m.type === "assistant"
+      && (m as { parent_tool_use_id?: string; message?: { content?: Array<{ type: string; id?: string; name?: string }> } }).parent_tool_use_id === "collab_parent"
+      && (m as { message: { content: Array<{ type: string; id?: string; name?: string }> } }).message.content
+        .some((b) => b.type === "tool_use" && b.name === "Task" && b.id === "collab_nested_backfill")
+    );
+    expect(nestedBackfilledToolUse).toBeDefined();
   });
 
   it("emits session_init with codex backend type", async () => {
@@ -3782,5 +4065,113 @@ describe("CodexAdapter with ICodexTransport", () => {
     await new Promise((r) => setTimeout(r, 20));
     // The plan handler accumulates; coverage of extractPlanTodosFromMarkdown
     // is the goal here
+  });
+});
+
+// ─── StdioTransport RPC Timeout Tests ──────────────────────────────────────
+
+describe("StdioTransport RPC timeout", () => {
+  function createStreams() {
+    const stdinChunks: string[] = [];
+    const stdin = new WritableStream<Uint8Array>({
+      write(chunk) {
+        stdinChunks.push(new TextDecoder().decode(chunk));
+      },
+    });
+
+    let controller: ReadableStreamDefaultController<Uint8Array>;
+    const stdout = new ReadableStream<Uint8Array>({
+      start(c) { controller = c; },
+    });
+
+    return {
+      stdin,
+      stdout,
+      stdinChunks,
+      pushResponse(json: object) {
+        controller.enqueue(new TextEncoder().encode(JSON.stringify(json) + "\n"));
+      },
+      close() {
+        controller.close();
+      },
+    };
+  }
+
+  it("rejects call() when response does not arrive within the timeout", async () => {
+    const streams = createStreams();
+    const transport = new StdioTransport(streams.stdin, streams.stdout);
+
+    const promise = transport.call("slow/method", {}, 100);
+
+    await expect(promise).rejects.toThrow("RPC timeout: slow/method did not respond within 100ms");
+  });
+
+  it("clears timeout timer when response arrives before deadline", async () => {
+    const streams = createStreams();
+    const transport = new StdioTransport(streams.stdin, streams.stdout);
+
+    const promise = transport.call("fast/method", {}, 5000);
+
+    await new Promise((r) => setTimeout(r, 20));
+    streams.pushResponse({ id: 1, result: { ok: true } });
+
+    const result = await promise;
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("rejects all pending calls with 'Transport closed' when stdout closes", async () => {
+    const streams = createStreams();
+    const transport = new StdioTransport(streams.stdin, streams.stdout);
+
+    const p1 = transport.call("method/a", {}, 60000);
+    const p2 = transport.call("method/b", {}, 60000);
+
+    await new Promise((r) => setTimeout(r, 20));
+    streams.close();
+
+    await expect(p1).rejects.toThrow("Transport closed");
+    await expect(p2).rejects.toThrow("Transport closed");
+  });
+});
+
+describe("CodexAdapter RPC timeout error surfacing", () => {
+  it("surfaces RPC timeout on user_message as a clear error to the browser", async () => {
+    let notifHandler: ((m: string, p: Record<string, unknown>) => void) | null = null;
+    let reqHandler: ((m: string, id: number, p: Record<string, unknown>) => void) | null = null;
+    let callCount = 0;
+
+    const transport: ICodexTransport = {
+      call: vi.fn(async (method: string) => {
+        callCount++;
+        if (method === "initialize") return { userAgent: "codex" };
+        if (method === "thread/start" || method === "thread/create") return { thread: { id: "thr_1" } };
+        if (method === "account/rateLimits/read") return {};
+        if (method === "turn/start") {
+          throw new Error("RPC timeout: turn/start did not respond within 120000ms");
+        }
+        return {};
+      }),
+      notify: vi.fn(async () => {}),
+      respond: vi.fn(async () => {}),
+      onNotification: vi.fn((h) => { notifHandler = h; }),
+      onRequest: vi.fn((h) => { reqHandler = h; }),
+      onRawIncoming: vi.fn(),
+      onRawOutgoing: vi.fn(),
+      isConnected: vi.fn(() => true),
+    };
+
+    const messages: BrowserIncomingMessage[] = [];
+    const adapter = new CodexAdapter(transport, "timeout-test", { model: "o4-mini", cwd: "/tmp" });
+    adapter.onBrowserMessage((msg) => messages.push(msg));
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    adapter.sendBrowserMessage({ type: "user_message", content: "hello" });
+    await new Promise((r) => setTimeout(r, 50));
+
+    const errors = messages.filter((m) => m.type === "error");
+    expect(errors.length).toBeGreaterThanOrEqual(1);
+    const errorMsg = (errors[errors.length - 1] as { message: string }).message;
+    expect(errorMsg).toContain("not responding");
   });
 });

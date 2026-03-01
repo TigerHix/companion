@@ -21,7 +21,6 @@ const { mockApi, createSessionStreamMock, mockStoreState, mockStoreGetState } = 
     getImageStatus: vi.fn(),
     pullImage: vi.fn(),
     gitPull: vi.fn(),
-    listPrompts: vi.fn(),
   },
   createSessionStreamMock: vi.fn(),
   mockStoreState: {
@@ -114,7 +113,6 @@ describe("HomePage", () => {
     mockApi.listSessions.mockResolvedValue([]);
     mockApi.discoverClaudeSessions.mockResolvedValue({ sessions: [] });
     mockApi.gitFetch.mockResolvedValue({ ok: true });
-    mockApi.listPrompts.mockResolvedValue([]);
   });
 
   it("passes axe accessibility checks", async () => {
@@ -1122,131 +1120,4 @@ describe("HomePage", () => {
     });
   });
 
-  describe("@ mention prompts", () => {
-    const samplePrompts = [
-      { id: "1", name: "review", content: "Please review this code", scope: "global", createdAt: Date.now(), updatedAt: Date.now() },
-      { id: "2", name: "refactor", content: "Refactor this module", scope: "global", createdAt: Date.now(), updatedAt: Date.now() },
-      { id: "3", name: "test-review", content: "Review the tests", scope: "global", createdAt: Date.now(), updatedAt: Date.now() },
-    ];
-
-    it("opens @ mention menu when typing @", async () => {
-      // Prompts must be available for the menu to show items
-      mockApi.listPrompts.mockResolvedValue(samplePrompts);
-
-      render(<HomePage />);
-      const textarea = await screen.findByLabelText("Task description");
-
-      // Type @ to trigger the mention menu
-      await act(async () => {
-        fireEvent.change(textarea, { target: { value: "@", selectionStart: 1 } });
-      });
-
-      // The mention menu should appear with prompt names
-      await waitFor(() => {
-        expect(screen.getByText("@review")).toBeInTheDocument();
-        expect(screen.getByText("@refactor")).toBeInTheDocument();
-        expect(screen.getByText("@test-review")).toBeInTheDocument();
-      });
-    });
-
-    it("filters prompts by query after @", async () => {
-      mockApi.listPrompts.mockResolvedValue(samplePrompts);
-
-      render(<HomePage />);
-      const textarea = await screen.findByLabelText("Task description");
-
-      // Type @rev to filter — should match "review" (startsWith) and "test-review" (includes)
-      await act(async () => {
-        fireEvent.change(textarea, { target: { value: "@rev", selectionStart: 4 } });
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("@review")).toBeInTheDocument();
-        expect(screen.getByText("@test-review")).toBeInTheDocument();
-      });
-      // "refactor" should not appear since it doesn't match "rev"
-      expect(screen.queryByText("@refactor")).not.toBeInTheDocument();
-    });
-
-    it("inserts prompt content on Enter without sending/creating session", async () => {
-      mockApi.listPrompts.mockResolvedValue(samplePrompts);
-
-      render(<HomePage />);
-      const textarea = await screen.findByLabelText("Task description") as HTMLTextAreaElement;
-
-      // Type @ to open menu
-      await act(async () => {
-        fireEvent.change(textarea, { target: { value: "@", selectionStart: 1 } });
-      });
-
-      // Wait for menu to appear
-      await waitFor(() => {
-        expect(screen.getByText("@review")).toBeInTheDocument();
-      });
-
-      // Press Enter to select the first prompt
-      await act(async () => {
-        fireEvent.keyDown(textarea, { key: "Enter" });
-      });
-
-      // The textarea should contain the prompt content, not just "@"
-      expect(textarea.value).toBe("Please review this code ");
-      // No session should have been created (createSessionStream should not be called)
-      expect(createSessionStreamMock).not.toHaveBeenCalled();
-    });
-
-    it("navigates prompts with ArrowDown and selects with Enter", async () => {
-      mockApi.listPrompts.mockResolvedValue(samplePrompts);
-
-      render(<HomePage />);
-      const textarea = await screen.findByLabelText("Task description") as HTMLTextAreaElement;
-
-      // Type @ to open menu
-      await act(async () => {
-        fireEvent.change(textarea, { target: { value: "@", selectionStart: 1 } });
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("@review")).toBeInTheDocument();
-      });
-
-      // Arrow down once to select "refactor" (second item)
-      await act(async () => {
-        fireEvent.keyDown(textarea, { key: "ArrowDown" });
-      });
-
-      // Press Enter to insert the second prompt
-      await act(async () => {
-        fireEvent.keyDown(textarea, { key: "Enter" });
-      });
-
-      // Should contain the second prompt's content
-      expect(textarea.value).toBe("Refactor this module ");
-    });
-
-    it("works with @ in the middle of text", async () => {
-      mockApi.listPrompts.mockResolvedValue(samplePrompts);
-
-      render(<HomePage />);
-      const textarea = await screen.findByLabelText("Task description") as HTMLTextAreaElement;
-
-      // Type "Please " then "@rev"
-      await act(async () => {
-        fireEvent.change(textarea, { target: { value: "Please @rev", selectionStart: 11 } });
-      });
-
-      // Menu should appear with filtered prompts
-      await waitFor(() => {
-        expect(screen.getByText("@review")).toBeInTheDocument();
-      });
-
-      // Select the first prompt
-      await act(async () => {
-        fireEvent.keyDown(textarea, { key: "Enter" });
-      });
-
-      // Should replace @rev with the prompt content, keeping the prefix
-      expect(textarea.value).toBe("Please Please review this code ");
-    });
-  });
 });

@@ -18,14 +18,6 @@ vi.mock("./env-manager.js", () => ({
   deleteEnv: vi.fn(),
 }));
 
-vi.mock("./prompt-manager.js", () => ({
-  listPrompts: vi.fn(() => []),
-  getPrompt: vi.fn(() => null),
-  createPrompt: vi.fn(),
-  updatePrompt: vi.fn(),
-  deletePrompt: vi.fn(() => false),
-}));
-
 vi.mock("node:child_process", () => ({
   execSync: vi.fn(() => ""),
   execFileSync: vi.fn(() => ""),
@@ -67,10 +59,10 @@ vi.mock("./session-names.js", () => ({
 }));
 
 vi.mock("./settings-manager.js", () => ({
-  DEFAULT_OPENROUTER_MODEL: "openrouter/free",
+  DEFAULT_ANTHROPIC_MODEL: "claude-sonnet-4.6",
   getSettings: vi.fn(() => ({
-    openrouterApiKey: "",
-    openrouterModel: "openrouter/free",
+    anthropicApiKey: "",
+    anthropicModel: "claude-sonnet-4.6",
     editorTabEnabled: false,
     aiValidationEnabled: false,
     aiValidationAutoApprove: true,
@@ -78,8 +70,8 @@ vi.mock("./settings-manager.js", () => ({
     updatedAt: 0,
   })),
   updateSettings: vi.fn((patch) => ({
-    openrouterApiKey: patch.openrouterApiKey ?? "",
-    openrouterModel: patch.openrouterModel ?? "openrouter/free",
+    anthropicApiKey: patch.anthropicApiKey ?? "",
+    anthropicModel: patch.anthropicModel ?? "claude-sonnet-4.6",
     editorTabEnabled: patch.editorTabEnabled ?? false,
     aiValidationEnabled: patch.aiValidationEnabled ?? false,
     aiValidationAutoApprove: patch.aiValidationAutoApprove ?? true,
@@ -161,7 +153,6 @@ import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { createRoutes } from "./routes.js";
 import * as envManager from "./env-manager.js";
-import * as promptManager from "./prompt-manager.js";
 import * as gitUtils from "./git-utils.js";
 import * as sessionNames from "./session-names.js";
 import * as settingsManager from "./settings-manager.js";
@@ -1520,96 +1511,6 @@ describe("DELETE /api/envs/:slug", () => {
   });
 });
 
-describe("Saved prompts API", () => {
-  it("lists prompts with cwd filter", async () => {
-    // Confirms route passes cwd/scope filter through to prompt manager.
-    const prompts = [
-      {
-        id: "p1",
-        name: "Review",
-        content: "Review this PR",
-        scope: "global" as const,
-        createdAt: 1,
-        updatedAt: 2,
-      },
-    ];
-    vi.mocked(promptManager.listPrompts).mockReturnValue(prompts);
-
-    const res = await app.request("/api/prompts?cwd=%2Frepo", { method: "GET" });
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json).toEqual(prompts);
-    expect(promptManager.listPrompts).toHaveBeenCalledWith({ cwd: "/repo", scope: undefined });
-  });
-
-  it("creates a prompt", async () => {
-    // Confirms payload mapping for prompt creation including project cwd.
-    const created = {
-      id: "p1",
-      name: "Review",
-      content: "Review this PR",
-      scope: "project" as const,
-      projectPath: "/repo",
-      createdAt: 1,
-      updatedAt: 1,
-    };
-    vi.mocked(promptManager.createPrompt).mockReturnValue(created);
-
-    const res = await app.request("/api/prompts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: "Review",
-        content: "Review this PR",
-        scope: "project",
-        cwd: "/repo",
-      }),
-    });
-
-    expect(res.status).toBe(201);
-    expect(promptManager.createPrompt).toHaveBeenCalledWith(
-      "Review",
-      "Review this PR",
-      "project",
-      "/repo",
-    );
-  });
-
-  it("updates a prompt", async () => {
-    // Confirms update fields are forwarded verbatim.
-    vi.mocked(promptManager.updatePrompt).mockReturnValue({
-      id: "p1",
-      name: "Updated",
-      content: "Updated content",
-      scope: "global",
-      createdAt: 1,
-      updatedAt: 2,
-    });
-
-    const res = await app.request("/api/prompts/p1", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Updated", content: "Updated content" }),
-    });
-    expect(res.status).toBe(200);
-    expect(promptManager.updatePrompt).toHaveBeenCalledWith("p1", {
-      name: "Updated",
-      content: "Updated content",
-    });
-  });
-
-  it("deletes a prompt", async () => {
-    // Confirms delete endpoint calls manager and returns ok shape.
-    vi.mocked(promptManager.deletePrompt).mockReturnValue(true);
-
-    const res = await app.request("/api/prompts/p1", { method: "DELETE" });
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json).toEqual({ ok: true });
-    expect(promptManager.deletePrompt).toHaveBeenCalledWith("p1");
-  });
-});
-
 // ─── Image Pull Manager API ──────────────────────────────────────────────────
 
 describe("GET /api/images/:tag/status", () => {
@@ -1664,8 +1565,8 @@ describe("POST /api/images/:tag/pull", () => {
 describe("GET /api/settings", () => {
   it("returns settings status without exposing the key", async () => {
     vi.mocked(settingsManager.getSettings).mockReturnValue({
-      openrouterApiKey: "or-secret",
-      openrouterModel: "openrouter/free",
+      anthropicApiKey: "or-secret",
+      anthropicModel: "claude-sonnet-4.6",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -1678,8 +1579,8 @@ describe("GET /api/settings", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json).toEqual({
-      openrouterApiKeyConfigured: true,
-      openrouterModel: "openrouter/free",
+      anthropicApiKeyConfigured: true,
+      anthropicModel: "claude-sonnet-4.6",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -1689,8 +1590,8 @@ describe("GET /api/settings", () => {
 
   it("reports key as not configured when empty", async () => {
     vi.mocked(settingsManager.getSettings).mockReturnValue({
-      openrouterApiKey: "",
-      openrouterModel: "openai/gpt-4o-mini",
+      anthropicApiKey: "",
+      anthropicModel: "openai/gpt-4o-mini",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -1703,8 +1604,8 @@ describe("GET /api/settings", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json).toEqual({
-      openrouterApiKeyConfigured: false,
-      openrouterModel: "openai/gpt-4o-mini",
+      anthropicApiKeyConfigured: false,
+      anthropicModel: "openai/gpt-4o-mini",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -1716,8 +1617,8 @@ describe("GET /api/settings", () => {
 describe("PUT /api/settings", () => {
   it("updates settings", async () => {
     vi.mocked(settingsManager.updateSettings).mockReturnValue({
-      openrouterApiKey: "new-key",
-      openrouterModel: "openrouter/free",
+      anthropicApiKey: "new-key",
+      anthropicModel: "claude-sonnet-4.6",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -1728,13 +1629,13 @@ describe("PUT /api/settings", () => {
     const res = await app.request("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ openrouterApiKey: "new-key" }),
+      body: JSON.stringify({ anthropicApiKey: "new-key" }),
     });
 
     expect(res.status).toBe(200);
     expect(settingsManager.updateSettings).toHaveBeenCalledWith({
-      openrouterApiKey: "new-key",
-      openrouterModel: undefined,
+      anthropicApiKey: "new-key",
+      anthropicModel: undefined,
       editorTabEnabled: undefined,
       aiValidationEnabled: undefined,
       aiValidationAutoApprove: undefined,
@@ -1742,8 +1643,8 @@ describe("PUT /api/settings", () => {
     });
     const json = await res.json();
     expect(json).toEqual({
-      openrouterApiKeyConfigured: true,
-      openrouterModel: "openrouter/free",
+      anthropicApiKeyConfigured: true,
+      anthropicModel: "claude-sonnet-4.6",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -1753,8 +1654,8 @@ describe("PUT /api/settings", () => {
 
   it("trims key and falls back to default model for blank value", async () => {
     vi.mocked(settingsManager.updateSettings).mockReturnValue({
-      openrouterApiKey: "trimmed-key",
-      openrouterModel: "openrouter/free",
+      anthropicApiKey: "trimmed-key",
+      anthropicModel: "claude-sonnet-4.6",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -1765,21 +1666,21 @@ describe("PUT /api/settings", () => {
     const res = await app.request("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ openrouterApiKey: "  trimmed-key  ", openrouterModel: "   " }),
+      body: JSON.stringify({ anthropicApiKey: "  trimmed-key  ", anthropicModel: "   " }),
     });
 
     expect(res.status).toBe(200);
     expect(settingsManager.updateSettings).toHaveBeenCalledWith({
-      openrouterApiKey: "trimmed-key",
-      openrouterModel: "openrouter/free",
+      anthropicApiKey: "trimmed-key",
+      anthropicModel: "claude-sonnet-4.6",
       editorTabEnabled: undefined,
     });
   });
 
   it("updates only model without overriding key", async () => {
     vi.mocked(settingsManager.updateSettings).mockReturnValue({
-      openrouterApiKey: "existing-key",
-      openrouterModel: "openai/gpt-4o-mini",
+      anthropicApiKey: "existing-key",
+      anthropicModel: "openai/gpt-4o-mini",
       editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
@@ -1790,13 +1691,13 @@ describe("PUT /api/settings", () => {
     const res = await app.request("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ openrouterModel: "openai/gpt-4o-mini" }),
+      body: JSON.stringify({ anthropicModel: "openai/gpt-4o-mini" }),
     });
 
     expect(res.status).toBe(200);
     expect(settingsManager.updateSettings).toHaveBeenCalledWith({
-      openrouterApiKey: undefined,
-      openrouterModel: "openai/gpt-4o-mini",
+      anthropicApiKey: undefined,
+      anthropicModel: "openai/gpt-4o-mini",
       editorTabEnabled: undefined,
     });
   });
@@ -1805,24 +1706,24 @@ describe("PUT /api/settings", () => {
     const res = await app.request("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ openrouterApiKey: "new-key", openrouterModel: 123 }),
+      body: JSON.stringify({ anthropicApiKey: "new-key", anthropicModel: 123 }),
     });
 
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json).toEqual({ error: "openrouterModel must be a string" });
+    expect(json).toEqual({ error: "anthropicModel must be a string" });
   });
 
   it("returns 400 for non-string key", async () => {
     const res = await app.request("/api/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ openrouterApiKey: 123 }),
+      body: JSON.stringify({ anthropicApiKey: 123 }),
     });
 
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json).toEqual({ error: "openrouterApiKey must be a string" });
+    expect(json).toEqual({ error: "anthropicApiKey must be a string" });
   });
 
   it("returns 400 for non-boolean editor tab setting", async () => {
@@ -1850,7 +1751,99 @@ describe("PUT /api/settings", () => {
   });
 });
 
-// (Linear API test blocks removed — linear modules have been deleted)
+// ─── Anthropic API Key Verification ──────────────────────────────────────────
+
+describe("POST /api/settings/anthropic/verify", () => {
+  it("returns valid: true when Anthropic API responds ok", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+    } as Response);
+
+    const res = await app.request("/api/settings/anthropic/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: "sk-ant-test-key" }),
+    });
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ valid: true });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "https://api.anthropic.com/v1/models",
+      expect.objectContaining({
+        headers: {
+          "x-api-key": "sk-ant-test-key",
+          "anthropic-version": "2023-06-01",
+        },
+      }),
+    );
+
+    fetchSpy.mockRestore();
+  });
+
+  it("returns valid: false when Anthropic API responds with error", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+    } as Response);
+
+    const res = await app.request("/api/settings/anthropic/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: "bad-key" }),
+    });
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ valid: false, error: "API returned 401" });
+
+    fetchSpy.mockRestore();
+  });
+
+  it("returns 400 when API key is missing", async () => {
+    const res = await app.request("/api/settings/anthropic/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json).toEqual({ valid: false, error: "API key is required" });
+  });
+
+  it("returns 400 when API key is empty string", async () => {
+    const res = await app.request("/api/settings/anthropic/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: "   " }),
+    });
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json).toEqual({ valid: false, error: "API key is required" });
+  });
+
+  it("returns valid: false when fetch throws a network error", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+      new Error("Network error"),
+    );
+
+    const res = await app.request("/api/settings/anthropic/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: "sk-ant-test-key" }),
+    });
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json).toEqual({ valid: false, error: "Request failed" });
+
+    fetchSpy.mockRestore();
+  });
+});
 
 // ─── Git ─────────────────────────────────────────────────────────────────────
 
