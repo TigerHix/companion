@@ -661,7 +661,7 @@ export function SessionEditorPane({ sessionId }: SessionEditorPaneProps) {
   ) : null;
 
   return (
-    <div className="h-full min-h-0 flex bg-background">
+    <div className="h-full min-h-0 flex bg-background pb-28 md:pb-0">
       {/* Desktop: side-by-side */}
       <aside className="hidden sm:flex w-[240px] shrink-0 border-r border-border bg-sidebar/60 flex-col min-h-0">
         {treePanel}

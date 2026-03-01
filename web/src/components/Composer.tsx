@@ -314,7 +314,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
   const canSend = text.trim().length > 0 && isConnected;
 
   return (
-    <div className="relative z-10 shrink-0 px-0 pt-0 sm:pt-3 pb-5 sm:pb-4 bg-transparent">
+    <div className="relative z-10 shrink-0 px-3 sm:px-0 pt-0 sm:pt-3 pb-8 sm:pb-4 bg-transparent">
       <div className="relative max-w-3xl mx-auto">
         {/* Image thumbnails */}
         {images.length > 0 && (
@@ -460,7 +460,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
               disabled={!isConnected}
               rows={1}
               className="w-full px-1 py-1.5 text-base sm:text-sm bg-transparent resize-none outline-none text-foreground font-sans placeholder:text-muted-foreground disabled:opacity-50 overflow-y-auto"
-              style={{ minHeight: "36px", maxHeight: "200px" }}
+              style={{ minHeight: "72px", maxHeight: "200px" }}
             />
           </div>
 

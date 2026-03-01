@@ -981,3 +981,25 @@ select {
 .xterm .xterm-viewport {
   height: 100% !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLASSMORPHISM — Navbar Dock & Mobile Tab Bar
+   Adapted from nemu, using Moku's warm amber palette (hue ~45)
+   ═══════════════════════════════════════════════════════════════════════════*/
+
+.navbar-dock {
+  background: var(--surface-panel);
+  border-right: 0.5px solid var(--surface-panel-border);
+  box-shadow: var(--surface-panel-shadow);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+.mobile-tab-bar {
+  background: var(--surface-panel);
+  border: 0.5px solid var(--surface-panel-border);
+  box-shadow: var(--surface-panel-shadow);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+

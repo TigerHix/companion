@@ -210,7 +210,7 @@ export function SessionTerminalDock({
 
   if (terminalOnly) {
     return (
-      <div className="h-full min-h-0 bg-card">
+      <div className="h-full min-h-0 bg-card pb-28 md:pb-0">
         {terminalPanel}
       </div>
     );

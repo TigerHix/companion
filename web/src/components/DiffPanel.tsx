@@ -149,7 +149,7 @@ export function DiffPanel({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto overscroll-y-contain bg-background relative sm:flex sm:overflow-hidden">
+    <div className="h-full min-h-0 overflow-y-auto overscroll-y-contain bg-background relative sm:flex sm:overflow-hidden pb-28 md:pb-0">
       {/* Mobile backdrop */}
       {sidebarOpen && (
         <div

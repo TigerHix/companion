@@ -760,111 +760,12 @@ describe("Sidebar & task panel configuration", () => {
     expect(useStore.getState().sidebarOpen).toBe(true);
   });
 
-  it("setTaskPanelOpen: sets the task panel open state", () => {
-    useStore.getState().setTaskPanelOpen(false);
-    expect(useStore.getState().taskPanelOpen).toBe(false);
+  it("setInfoPanelOpen: sets the info panel open state", () => {
+    useStore.getState().setInfoPanelOpen(true);
+    expect(useStore.getState().infoPanelOpen).toBe(true);
 
-    useStore.getState().setTaskPanelOpen(true);
-    expect(useStore.getState().taskPanelOpen).toBe(true);
-  });
-
-  it("setTaskPanelConfigMode: toggles config mode on and off", () => {
-    useStore.getState().setTaskPanelConfigMode(true);
-    expect(useStore.getState().taskPanelConfigMode).toBe(true);
-
-    useStore.getState().setTaskPanelConfigMode(false);
-    expect(useStore.getState().taskPanelConfigMode).toBe(false);
-  });
-
-  it("toggleSectionEnabled: flips the enabled state for a section and persists config", () => {
-    // Sections start enabled by default
-    const sectionId = "tasks";
-    const initialEnabled = useStore.getState().taskPanelConfig.enabled[sectionId];
-    expect(initialEnabled).toBe(true);
-
-    useStore.getState().toggleSectionEnabled(sectionId);
-    expect(useStore.getState().taskPanelConfig.enabled[sectionId]).toBe(false);
-
-    // Verify persistence to localStorage
-    const stored = JSON.parse(localStorage.getItem("cc-task-panel-config") || "{}");
-    expect(stored.enabled[sectionId]).toBe(false);
-
-    // Toggle back
-    useStore.getState().toggleSectionEnabled(sectionId);
-    expect(useStore.getState().taskPanelConfig.enabled[sectionId]).toBe(true);
-  });
-
-  it("moveSectionUp: swaps section with the one above it", () => {
-    const order = useStore.getState().taskPanelConfig.order;
-    // Move the second section up
-    const secondId = order[1];
-    const firstId = order[0];
-
-    useStore.getState().moveSectionUp(secondId);
-
-    const newOrder = useStore.getState().taskPanelConfig.order;
-    expect(newOrder[0]).toBe(secondId);
-    expect(newOrder[1]).toBe(firstId);
-
-    // Verify persistence
-    const stored = JSON.parse(localStorage.getItem("cc-task-panel-config") || "{}");
-    expect(stored.order[0]).toBe(secondId);
-  });
-
-  it("moveSectionUp: no-op when section is already at the top", () => {
-    const orderBefore = [...useStore.getState().taskPanelConfig.order];
-    const firstId = orderBefore[0];
-
-    useStore.getState().moveSectionUp(firstId);
-
-    // Order should remain unchanged
-    expect(useStore.getState().taskPanelConfig.order).toEqual(orderBefore);
-  });
-
-  it("moveSectionDown: swaps section with the one below it", () => {
-    const order = useStore.getState().taskPanelConfig.order;
-    const firstId = order[0];
-    const secondId = order[1];
-
-    useStore.getState().moveSectionDown(firstId);
-
-    const newOrder = useStore.getState().taskPanelConfig.order;
-    expect(newOrder[0]).toBe(secondId);
-    expect(newOrder[1]).toBe(firstId);
-
-    // Verify persistence
-    const stored = JSON.parse(localStorage.getItem("cc-task-panel-config") || "{}");
-    expect(stored.order[0]).toBe(secondId);
-  });
-
-  it("moveSectionDown: no-op when section is already at the bottom", () => {
-    const orderBefore = [...useStore.getState().taskPanelConfig.order];
-    const lastId = orderBefore[orderBefore.length - 1];
-
-    useStore.getState().moveSectionDown(lastId);
-
-    expect(useStore.getState().taskPanelConfig.order).toEqual(orderBefore);
-  });
-
-  it("resetTaskPanelConfig: restores default config and persists", () => {
-    // First, modify the config
-    useStore.getState().toggleSectionEnabled("tasks");
-    const orderBefore = useStore.getState().taskPanelConfig.order;
-    useStore.getState().moveSectionDown(orderBefore[0]);
-
-    // Reset
-    useStore.getState().resetTaskPanelConfig();
-
-    const config = useStore.getState().taskPanelConfig;
-    // All sections should be enabled
-    for (const key of Object.keys(config.enabled)) {
-      expect(config.enabled[key]).toBe(true);
-    }
-
-    // Verify persistence
-    const stored = JSON.parse(localStorage.getItem("cc-task-panel-config") || "{}");
-    expect(stored.order).toBeDefined();
-    expect(stored.enabled).toBeDefined();
+    useStore.getState().setInfoPanelOpen(false);
+    expect(useStore.getState().infoPanelOpen).toBe(false);
   });
 });
 

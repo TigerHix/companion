@@ -806,7 +806,7 @@ export function ProcessPanel({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-background">
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto pb-28 md:pb-0">
         {/* Claude Background Tasks */}
         {processes.length > 0 && (
           <>

@@ -5,6 +5,11 @@ import type { SessionState, SdkSessionInfo } from "../types.js";
 
 // ─── Mock setup ──────────────────────────────────────────────────────────────
 
+// Mock useIsMobile hook (required by shadcn SidebarProvider) — JSDOM has no matchMedia
+vi.mock("@/hooks/use-mobile", () => ({
+  useIsMobile: () => false,
+}));
+
 const mockConnectSession = vi.fn();
 const mockConnectAllSessions = vi.fn();
 const mockDisconnectSession = vi.fn();
@@ -141,6 +146,16 @@ vi.mock("../store.js", () => {
 // ─── Import component after mocks ───────────────────────────────────────────
 
 import { Sidebar } from "./Sidebar.js";
+import { SidebarProvider } from "@/components/ui/sidebar";
+
+/** Wraps <Sidebar /> in the SidebarProvider context required by shadcn sidebar components. */
+function renderSidebar() {
+  return render(
+    <SidebarProvider defaultOpen>
+      <Sidebar />
+    </SidebarProvider>
+  );
+}
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
@@ -152,14 +167,14 @@ beforeEach(() => {
 
 describe("Sidebar", () => {
   it("renders 'New Session' button", () => {
-    // Desktop header + mobile FAB both have title="New Session"
-    render(<Sidebar />);
-    const buttons = screen.getAllByTitle("New Session");
-    expect(buttons.length).toBeGreaterThanOrEqual(1);
+    // Single New Session button in the sidebar header (uniform on all screen sizes)
+    renderSidebar();
+    const button = screen.getByTitle("New Session");
+    expect(button).toBeInTheDocument();
   });
 
   it("renders 'No sessions yet.' when no sessions exist", () => {
-    render(<Sidebar />);
+    renderSidebar();
     expect(screen.getByText("No sessions yet.")).toBeInTheDocument();
   });
 
@@ -171,7 +186,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     // The session label defaults to model name
     expect(screen.getByText("claude-sonnet-4-6")).toBeInTheDocument();
   });
@@ -193,7 +208,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk1, sdk2],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     expect(screen.getByText("claude-opus-4-6")).toBeInTheDocument();
     // Falls back to shortId (first 8 chars)
     expect(screen.getByText("abcdef12")).toBeInTheDocument();
@@ -208,7 +223,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     // Group header shows "myapp"
     const matches = screen.getAllByText("myapp");
     expect(matches.length).toBeGreaterThanOrEqual(1);
@@ -226,7 +241,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     expect(screen.queryByText("feature/awesome")).not.toBeInTheDocument();
   });
 
@@ -238,7 +253,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     const badge = screen.getByTitle("Docker");
     expect(badge).toBeInTheDocument();
     const dockerLogo = badge.querySelector('img[src="/logo-docker.svg"]');
@@ -261,7 +276,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     expect(screen.queryByText("+42")).not.toBeInTheDocument();
     expect(screen.queryByText("-7")).not.toBeInTheDocument();
   });
@@ -275,7 +290,7 @@ describe("Sidebar", () => {
       currentSessionId: "s1",
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     // Find the session button element
     const sessionButton = screen.getByText("claude-sonnet-4-6").closest("button");
     expect(sessionButton).toHaveClass("bg-accent");
@@ -292,7 +307,7 @@ describe("Sidebar", () => {
       currentSessionId: null,
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     const sessionButton = screen.getByText("claude-sonnet-4-6").closest("button")!;
     fireEvent.click(sessionButton);
 
@@ -301,7 +316,7 @@ describe("Sidebar", () => {
 
   it("New Session button calls newSession", () => {
     // There are two New Session buttons: desktop header + mobile FAB
-    render(<Sidebar />);
+    renderSidebar();
     const buttons = screen.getAllByTitle("New Session");
     fireEvent.click(buttons[0]);
 
@@ -316,7 +331,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     const sessionButton = screen.getByText("claude-sonnet-4-6").closest("button")!;
     fireEvent.doubleClick(sessionButton);
 
@@ -334,7 +349,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     // Session actions button (three-dot menu) has title "Session actions"
     const menuButton = screen.getByTitle("Session actions");
     expect(menuButton).toBeInTheDocument();
@@ -348,7 +363,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     const menuButton = screen.getByTitle("Session actions");
     fireEvent.click(menuButton);
 
@@ -365,7 +380,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     const menuButton = screen.getByTitle("Session actions");
 
     expect(menuButton).toHaveClass("opacity-100");
@@ -383,7 +398,7 @@ describe("Sidebar", () => {
       cliConnected: new Map([["s1", true]]),
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     const awaitingDot = document.querySelector(".bg-warning.animate-\\[ring-pulse_1\\.5s_ease-out_infinite\\]");
     expect(awaitingDot).toBeTruthy();
   });
@@ -397,7 +412,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk1, sdk2, sdk3],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     // The component renders "Archived (2)"
     expect(screen.getByText(/Archived \(2\)/)).toBeInTheDocument();
   });
@@ -410,7 +425,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk1, sdk2],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
 
     // Archived sessions should not be visible initially
     expect(screen.queryByText("archived-model")).not.toBeInTheDocument();
@@ -424,27 +439,9 @@ describe("Sidebar", () => {
   });
 
   it("does not render settings controls directly in sidebar", () => {
-    render(<Sidebar />);
+    renderSidebar();
     expect(screen.queryByText("Notification")).not.toBeInTheDocument();
     expect(screen.queryByText("Dark mode")).not.toBeInTheDocument();
-  });
-
-  it("navigates to environments page when Environments is clicked", () => {
-    render(<Sidebar />);
-    fireEvent.click(screen.getByTitle("Environments"));
-    expect(window.location.hash).toBe("#/environments");
-  });
-
-  it("navigates to settings page when Settings is clicked", () => {
-    render(<Sidebar />);
-    fireEvent.click(screen.getByTitle("Settings"));
-    expect(window.location.hash).toBe("#/settings");
-  });
-
-  it("navigates to terminal page when Terminal is clicked", () => {
-    render(<Sidebar />);
-    fireEvent.click(screen.getByTitle("Terminal"));
-    expect(window.location.hash).toBe("#/terminal");
   });
 
   it("session name shows animate-name-appear class when recently renamed", () => {
@@ -457,7 +454,7 @@ describe("Sidebar", () => {
       recentlyRenamed: new Set(["s1"]),
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     const nameElement = screen.getByText("Auto Generated Title");
     // Animation class is on the parent span wrapper, not the inner text span
     expect(nameElement.closest(".animate-name-appear")).toBeTruthy();
@@ -473,7 +470,7 @@ describe("Sidebar", () => {
       recentlyRenamed: new Set(), // not recently renamed
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     const nameElement = screen.getByText("Regular Name");
     expect(nameElement.className).not.toContain("animate-name-appear");
   });
@@ -488,7 +485,7 @@ describe("Sidebar", () => {
       recentlyRenamed: new Set(["s1"]),
     });
 
-    const { container } = render(<Sidebar />);
+    const { container } = renderSidebar();
     // The animated span has the animate-name-appear class and an onAnimationEnd
     // handler that calls onClearRecentlyRenamed(sessionId).
     const animatedSpan = container.querySelector(".animate-name-appear");
@@ -528,7 +525,7 @@ describe("Sidebar", () => {
       recentlyRenamed: new Set(["s1"]), // only s1 was renamed
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     const renamedElement = screen.getByText("Renamed Session");
     const otherElement = screen.getByText("Other Session");
 
@@ -551,7 +548,7 @@ describe("Sidebar", () => {
       cliConnected: new Map([["s1", true]]),
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     const awaitingDot = document.querySelector(".bg-warning.animate-\\[ring-pulse_1\\.5s_ease-out_infinite\\]");
     expect(awaitingDot).toBeTruthy();
   });
@@ -562,7 +559,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     fireEvent.click(screen.getByText(/Archived \(1\)/));
 
     const archivedRowButton = screen.getByText("archived-clickable").closest("button");
@@ -588,7 +585,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     expect(screen.queryByText("feature/from-rest")).not.toBeInTheDocument();
     expect(screen.queryByText("+100")).not.toBeInTheDocument();
     expect(screen.queryByText("-20")).not.toBeInTheDocument();
@@ -604,7 +601,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     expect(screen.getByText("CX")).toBeInTheDocument();
   });
 
@@ -620,7 +617,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk1, sdk2],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     expect(screen.getAllByText("CC").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("CX").length).toBeGreaterThanOrEqual(1);
   });
@@ -637,7 +634,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk1, sdk2, sdk3],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     // Project group headers should be visible (also appears as dirName in session items)
     expect(screen.getAllByText("project-a").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("project-b").length).toBeGreaterThanOrEqual(1);
@@ -654,7 +651,7 @@ describe("Sidebar", () => {
       sessionStatus: new Map([["s1", "running"], ["s2", "running"]]),
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     // Status dot with title "2 running" should be present
     expect(screen.getByTitle("2 running")).toBeInTheDocument();
     // Session count badge should show "2"
@@ -670,7 +667,7 @@ describe("Sidebar", () => {
       collapsedProjects: new Set(["/home/user/myapp"]),
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     // Group header should still be visible
     expect(screen.getByText("myapp")).toBeInTheDocument();
     // The session button itself should not be present (no clickable session row)
@@ -693,7 +690,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk1, sdk2],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
 
     // Expand the archived section first
     const toggleButton = screen.getByText(/Archived \(1\)/);
@@ -722,18 +719,8 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     expect(screen.queryByText("1h ago")).not.toBeInTheDocument();
-  });
-
-  it("footer nav uses a 3x2 grid layout with short labels", () => {
-    const { container } = render(<Sidebar />);
-    // The grid container should exist
-    const gridElement = container.querySelector(".grid.grid-cols-3");
-    expect(gridElement).toBeTruthy();
-    // Short labels should be visible
-    expect(screen.getByText("Envs")).toBeInTheDocument();
-    expect(screen.getByText("Agents")).toBeInTheDocument();
   });
 
   it("session item has minimum touch target height", () => {
@@ -744,7 +731,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     const sessionButton = screen.getByText("claude-sonnet-4-6").closest("button");
     // The button should have min-h-[44px] class for touch accessibility
     expect(sessionButton).toHaveClass("min-h-[44px]");
@@ -760,7 +747,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     const sessionButton = screen.getByText("claude-sonnet-4-6").closest("button")!;
     fireEvent.doubleClick(sessionButton);
 
@@ -781,7 +768,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     const sessionButton = screen.getByText("claude-sonnet-4-6").closest("button")!;
     fireEvent.doubleClick(sessionButton);
 
@@ -803,17 +790,10 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     const nameEl = screen.getByText(longName);
     // The name should use the truncate utility class to prevent overflow
     expect(nameEl).toHaveClass("truncate");
-  });
-
-  it("footer nav buttons have title attributes for accessibility", () => {
-    // Verifies footer nav buttons have title attributes for tooltip/screen reader support.
-    render(<Sidebar />);
-    // Footer nav items should have descriptive titles from NAV_ITEMS
-    expect(screen.getByTitle("Settings")).toBeInTheDocument();
   });
 
   it("passes axe accessibility checks", async () => {
@@ -824,7 +804,7 @@ describe("Sidebar", () => {
       sessions: new Map([["s1", session]]),
       sdkSessions: [sdk],
     });
-    const { container } = render(<Sidebar />);
+    const { container } = renderSidebar();
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
@@ -845,7 +825,7 @@ describe("Sidebar", () => {
       sessionNames: new Map([["s1", "Alpha Beta"]]),
     });
 
-    render(<Sidebar />);
+    renderSidebar();
 
     // Wait for the poll() promise to resolve
     await vi.waitFor(() => {
@@ -873,7 +853,7 @@ describe("Sidebar", () => {
       sessionNames: new Map([["s1", "My Custom Name"]]),
     });
 
-    render(<Sidebar />);
+    renderSidebar();
 
     await vi.waitFor(() => {
       expect(mockApi.listSessions).toHaveBeenCalled();
@@ -893,7 +873,7 @@ describe("Sidebar", () => {
       sessionNames: new Map(), // no names in store at all
     });
 
-    render(<Sidebar />);
+    renderSidebar();
 
     await vi.waitFor(() => {
       expect(mockState.setSessionName).toHaveBeenCalledWith("s1", "Fresh Name");
@@ -907,7 +887,7 @@ describe("Sidebar", () => {
     // and still renders correctly.
     mockApi.listSessions.mockRejectedValueOnce(new Error("server not ready"));
 
-    render(<Sidebar />);
+    renderSidebar();
 
     // Should still render "No sessions yet." since the API call failed
     await vi.waitFor(() => {
@@ -926,7 +906,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
 
     // Expand archived section
     fireEvent.click(screen.getByText(/Archived \(1\)/));
@@ -949,7 +929,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
 
     // Expand archived, open menu, click Delete
     fireEvent.click(screen.getByText(/Archived \(1\)/));
@@ -978,7 +958,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
 
     // Expand archived, open menu, click Delete
     fireEvent.click(screen.getByText(/Archived \(1\)/));
@@ -1007,7 +987,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     fireEvent.click(screen.getByText(/Archived \(1\)/));
     fireEvent.click(screen.getByTitle("Session actions"));
     fireEvent.click(screen.getByText("Delete"));
@@ -1029,7 +1009,7 @@ describe("Sidebar", () => {
       currentSessionId: "s1",
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     fireEvent.click(screen.getByText(/Archived \(1\)/));
     fireEvent.click(screen.getByTitle("Session actions"));
     fireEvent.click(screen.getByText("Delete"));
@@ -1058,7 +1038,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk1, sdk2],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
 
     // Before expanding, "Delete all" should not be visible
     expect(screen.queryByText("Delete all")).not.toBeInTheDocument();
@@ -1070,7 +1050,7 @@ describe("Sidebar", () => {
     expect(screen.getByText("Delete all")).toBeInTheDocument();
   });
 
-  it("clicking 'Delete all' shows confirmation modal for all archived sessions", () => {
+  it("clicking 'Delete all' shows confirmation modal for all archived sessions", async () => {
     // Verifies that clicking "Delete all" triggers the bulk delete confirmation
     // modal with the correct count of archived sessions.
     const sdk1 = makeSdkSession("s1", { archived: true });
@@ -1080,11 +1060,13 @@ describe("Sidebar", () => {
       sdkSessions: [sdk1, sdk2, sdk3],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     fireEvent.click(screen.getByText(/Archived \(2\)/));
     fireEvent.click(screen.getByText("Delete all"));
 
-    expect(screen.getByText("Delete all archived?")).toBeInTheDocument();
+    await vi.waitFor(() => {
+      expect(screen.getByText("Delete all archived?")).toBeInTheDocument();
+    });
     expect(screen.getByText(/This will permanently delete 2 archived sessions/)).toBeInTheDocument();
   });
 
@@ -1098,13 +1080,14 @@ describe("Sidebar", () => {
       sdkSessions: [sdk1, sdk2, sdk3],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     fireEvent.click(screen.getByText(/Archived \(2\)/));
     fireEvent.click(screen.getByText("Delete all"));
 
     // Click "Delete all" in the confirmation modal
+    // The dialog is rendered via a portal; find the button inside the dialog role element
     const confirmBtn = screen.getAllByText("Delete all").find(
-      (el) => el.closest(".fixed") !== null,
+      (el) => el.closest("[role='dialog']") !== null || el.closest("[data-slot='dialog-content']") !== null,
     );
     fireEvent.click(confirmBtn!);
 
@@ -1127,7 +1110,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk1, sdk2],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     fireEvent.click(screen.getByText(/Archived \(2\)/));
     fireEvent.click(screen.getByText("Delete all"));
 
@@ -1153,7 +1136,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
 
     // Open the context menu and click Archive
     fireEvent.click(screen.getByTitle("Session actions"));
@@ -1174,7 +1157,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
 
     // Trigger archive via context menu
     fireEvent.click(screen.getByTitle("Session actions"));
@@ -1205,7 +1188,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     fireEvent.click(screen.getByTitle("Session actions"));
     fireEvent.click(screen.getByText("Archive"));
 
@@ -1232,7 +1215,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     fireEvent.click(screen.getByTitle("Session actions"));
     fireEvent.click(screen.getByText("Archive"));
 
@@ -1257,7 +1240,7 @@ describe("Sidebar", () => {
       currentSessionId: "s1",
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     fireEvent.click(screen.getByTitle("Session actions"));
     fireEvent.click(screen.getByText("Archive"));
 
@@ -1279,7 +1262,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     fireEvent.click(screen.getByText(/Archived \(1\)/));
 
     // Open context menu on the archived session
@@ -1304,7 +1287,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk1, sdk2],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     expect(screen.getByText(/Scheduled Runs \(1\)/)).toBeInTheDocument();
   });
 
@@ -1317,7 +1300,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk1, sdk2],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     // regular-session should be in the main list
     expect(screen.getByText("regular-session")).toBeInTheDocument();
     // cron-session should appear under Scheduled Runs, not in main list
@@ -1332,7 +1315,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     // Initially expanded (showCronSessions defaults to true)
     expect(screen.getByText("cron-model")).toBeInTheDocument();
 
@@ -1358,7 +1341,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk1, sdk2],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     expect(screen.getByText(/Agent Runs \(1\)/)).toBeInTheDocument();
   });
 
@@ -1371,7 +1354,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk1, sdk2],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     expect(screen.getByText("normal")).toBeInTheDocument();
     expect(screen.getByText(/Agent Runs \(1\)/)).toBeInTheDocument();
   });
@@ -1386,7 +1369,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdkActive, sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     // Initially expanded
     expect(screen.getByText("agent-model")).toBeInTheDocument();
 
@@ -1399,75 +1382,14 @@ describe("Sidebar", () => {
     expect(screen.getByText("agent-model")).toBeInTheDocument();
   });
 
-  // ─── Footer nav: closeTerminal behavior ────────────────────────────────────
+  // ─── Sidebar is a uniform push-panel (no mobile close button) ──────────────
 
-  it("clicking a non-terminal nav item calls closeTerminal", () => {
-    // Verifies that clicking any nav item except Terminal calls closeTerminal()
-    // to dismiss the terminal overlay.
-    render(<Sidebar />);
-    fireEvent.click(screen.getByTitle("Settings"));
-    expect(mockState.closeTerminal).toHaveBeenCalled();
-  });
-
-  it("clicking Terminal nav item does NOT call closeTerminal", () => {
-    // Verifies that clicking the Terminal nav item does NOT call closeTerminal,
-    // since the terminal should remain open when navigating to it.
-    render(<Sidebar />);
-
-    // Reset mocks from initial poll
-    mockState.closeTerminal.mockClear();
-
-    fireEvent.click(screen.getByTitle("Terminal"));
-    expect(mockState.closeTerminal).not.toHaveBeenCalled();
-  });
-
-  it("New Session button calls closeTerminal", () => {
-    // Verifies that clicking the New Session button closes any open terminal.
-    render(<Sidebar />);
-    const buttons = screen.getAllByTitle("New Session");
-    fireEvent.click(buttons[0]);
-    expect(mockState.closeTerminal).toHaveBeenCalled();
-  });
-
-  it("selecting a session calls closeTerminal", () => {
-    // Verifies that clicking on a session item closes any open terminal.
-    const session = makeSession("s1");
-    const sdk = makeSdkSession("s1");
-    mockState = createMockState({
-      sessions: new Map([["s1", session]]),
-      sdkSessions: [sdk],
-    });
-
-    render(<Sidebar />);
-    const sessionButton = screen.getByText("claude-sonnet-4-6").closest("button")!;
-    fireEvent.click(sessionButton);
-
-    expect(mockState.closeTerminal).toHaveBeenCalled();
-  });
-
-  // ─── Footer nav: active state ──────────────────────────────────────────────
-
-  it("footer nav button shows active state when on its page", () => {
-    // Verifies that the footer nav button for the current page gets the
-    // bg-accent class to indicate the user is on that page.
-    window.location.hash = "#/settings";
-    render(<Sidebar />);
-
-    const settingsBtn = screen.getByTitle("Settings");
-    expect(settingsBtn).toHaveClass("bg-accent");
-  });
-
-  // ─── Close sidebar button (mobile) ─────────────────────────────────────────
-
-  it("renders a close sidebar button for mobile", () => {
-    // Verifies that the mobile close sidebar button exists and calls
-    // setSidebarOpen(false) when clicked.
-    render(<Sidebar />);
-    const closeBtn = screen.getByLabelText("Close sidebar");
-    expect(closeBtn).toBeInTheDocument();
-
-    fireEvent.click(closeBtn);
-    expect(mockState.setSidebarOpen).toHaveBeenCalledWith(false);
+  it("does not render a separate close button (toggle is in TopBar)", () => {
+    // The sidebar is now a uniform 260px push-panel on all screen sizes.
+    // The sidebar toggle is handled exclusively by the TopBar's PanelLeft button,
+    // so no dedicated close button should exist inside the sidebar itself.
+    renderSidebar();
+    expect(screen.queryByLabelText("Close sidebar")).not.toBeInTheDocument();
   });
 
   // ─── Logo source based on backend type ─────────────────────────────────────
@@ -1481,7 +1403,7 @@ describe("Sidebar", () => {
       currentSessionId: "s1",
     });
 
-    const { container } = render(<Sidebar />);
+    const { container } = renderSidebar();
     const logo = container.querySelector("img[src='/logo-codex.svg']");
     expect(logo).toBeTruthy();
   });
@@ -1495,7 +1417,7 @@ describe("Sidebar", () => {
       currentSessionId: "s1",
     });
 
-    const { container } = render(<Sidebar />);
+    const { container } = renderSidebar();
     const logo = container.querySelector("img[src='/logo.svg']");
     expect(logo).toBeTruthy();
   });
@@ -1510,7 +1432,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     fireEvent.click(screen.getByText(/Archived \(1\)/));
     fireEvent.click(screen.getByTitle("Session actions"));
     fireEvent.click(screen.getByText("Delete"));
@@ -1535,7 +1457,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     fireEvent.click(screen.getByTitle("Session actions"));
     fireEvent.click(screen.getByText("Rename"));
 
@@ -1557,7 +1479,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     const sessionButton = screen.getByText("claude-sonnet-4-6").closest("button")!;
     fireEvent.doubleClick(sessionButton);
 
@@ -1577,7 +1499,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     expect(screen.getByTitle("Scheduled")).toBeInTheDocument();
   });
 
@@ -1594,7 +1516,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk1, sdk2, sdk3],
     });
 
-    render(<Sidebar />);
+    renderSidebar();
     fireEvent.click(screen.getByText(/Archived \(3\)/));
     fireEvent.click(screen.getByText("Delete all"));
 

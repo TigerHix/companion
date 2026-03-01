@@ -184,8 +184,8 @@ export function TerminalView({
 
   const terminalFrame = (
     <div
-      className={`flex flex-col shadow-2xl overflow-hidden border border-border ${
-        embedded ? "h-full" : "flex-1 min-h-0"
+      className={`flex flex-col overflow-hidden ${
+        embedded ? "h-full" : "flex-1 min-h-0 shadow-2xl border border-border"
       }`}
       style={{ background: "var(--terminal-bg)" }}
       onClick={(e) => e.stopPropagation()}

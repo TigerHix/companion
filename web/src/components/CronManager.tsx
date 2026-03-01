@@ -256,7 +256,7 @@ export function CronManager({ onClose, embedded = false }: Props) {
   if (embedded) {
     return (
       <div className="h-full bg-background text-foreground font-sans antialiased overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-safe">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-28 md:pb-6">
           {/* Header */}
           <div className="flex items-start justify-between gap-3 mb-2">
             <div className="min-w-0">

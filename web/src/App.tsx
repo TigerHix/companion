@@ -1,5 +1,4 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
-import { PanelRight } from "lucide-react";
 import { useStore } from "./store.js";
 import { connectSession } from "./ws.js";
 import { api } from "./api.js";
@@ -9,13 +8,14 @@ import { Sidebar } from "./components/Sidebar.js";
 import { ChatView } from "./components/ChatView.js";
 import { TopBar } from "./components/TopBar.js";
 import { HomePage } from "./components/HomePage.js";
-import { TaskPanel } from "./components/TaskPanel.js";
+import { Navbar } from "./components/Navbar.js";
 import { DiffPanel } from "./components/DiffPanel.js";
 import { SessionLaunchOverlay } from "./components/SessionLaunchOverlay.js";
 import { SessionTerminalDock } from "./components/SessionTerminalDock.js";
 import { SessionEditorPane } from "./components/SessionEditorPane.js";
 import { MobileViewportBackdrop } from "./components/MobileViewportBackdrop.js";
 import { SafariTintProbe } from "./components/SafariTintProbe.js";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 // Lazy-loaded route-level pages (not needed for initial render)
 const Playground = lazy(() => import("./components/Playground.js").then((m) => ({ default: m.Playground })));
 const SettingsPage = lazy(() => import("./components/SettingsPage.js").then((m) => ({ default: m.SettingsPage })));
@@ -46,7 +46,6 @@ export default function App() {
   const darkMode = useStore((s) => s.darkMode);
   const currentSessionId = useStore((s) => s.currentSessionId);
   const sidebarOpen = useStore((s) => s.sidebarOpen);
-  const taskPanelOpen = useStore((s) => s.taskPanelOpen);
   const homeResetKey = useStore((s) => s.homeResetKey);
   const activeTab = useStore((s) => s.activeTab);
   const setActiveTab = useStore((s) => s.setActiveTab);
@@ -54,6 +53,7 @@ export default function App() {
   const sessionCreatingBackend = useStore((s) => s.sessionCreatingBackend);
   const creationProgress = useStore((s) => s.creationProgress);
   const creationError = useStore((s) => s.creationError);
+  const setSidebarOpen = useStore((s) => s.setSidebarOpen);
   const hash = useHash();
   const route = useMemo(() => parseHash(hash), [hash]);
   const isSettingsPage = route.page === "settings";
@@ -144,32 +144,25 @@ export default function App() {
   }
 
   return (
-    <div className="fixed inset-0 flex font-sans bg-background text-foreground antialiased pt-safe overflow-hidden overscroll-none">
+    <SidebarProvider
+      open={sidebarOpen}
+      onOpenChange={setSidebarOpen}
+      style={{ "--sidebar-width": "19rem" } as React.CSSProperties}
+      className="fixed inset-0 font-sans bg-background text-foreground antialiased pt-safe overflow-hidden overscroll-none"
+    >
       <SafariTintProbe />
       <MobileViewportBackdrop />
 
-      {/* Mobile overlay backdrop */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/30 z-30 md:hidden"
-          onClick={() => useStore.getState().setSidebarOpen(false)}
-        />
-      )}
+      {/* Sidebar — shadcn sidebar-04 floating variant */}
+      <Sidebar />
 
-      {/* Sidebar — overlay on mobile, inline on desktop */}
-      <div
-        className={`
-          fixed inset-y-0 left-0 md:relative md:inset-auto z-40 md:z-auto
-          h-full shrink-0 transition-all duration-200 pt-safe md:pt-0
-          ${sidebarOpen ? "w-full md:w-[260px] translate-x-0" : "w-0 -translate-x-full md:w-0 md:-translate-x-full"}
-          overflow-hidden
-        `}
-      >
-        <Sidebar />
-      </div>
+      {/* App shell — Navbar + main area */}
+      <SidebarInset className="flex flex-row overflow-hidden">
+        {/* Navbar dock — desktop vertical strip, mobile fixed bottom bar */}
+        <Navbar />
 
-      {/* Main area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Main area */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <TopBar />
         <div className="flex-1 overflow-hidden relative">
           {isSettingsPage && (
@@ -242,43 +235,8 @@ export default function App() {
             </>
           )}
         </div>
-      </div>
-
-      {/* Task panel — overlay on mobile, inline on desktop */}
-      {currentSessionId && isSessionView && (
-        <>
-          {!taskPanelOpen && (
-            <button
-              type="button"
-              onClick={() => useStore.getState().setTaskPanelOpen(true)}
-              className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-30 items-center gap-1 rounded-l-lg border border-r-0 border-border bg-card/95 backdrop-blur px-2 py-2 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
-              title="Open context panel"
-            >
-              <PanelRight className="w-3 h-3" />
-              <span className="[writing-mode:vertical-rl] rotate-180 tracking-wide">Context</span>
-            </button>
-          )}
-
-          {/* Mobile overlay backdrop */}
-          {taskPanelOpen && (
-            <div
-              className="fixed inset-0 bg-black/30 z-30 lg:hidden"
-              onClick={() => useStore.getState().setTaskPanelOpen(false)}
-            />
-          )}
-
-          <div
-            className={`
-              fixed inset-y-0 right-0 lg:relative lg:inset-auto z-40 lg:z-auto
-              h-full shrink-0 transition-all duration-200 pt-safe lg:pt-0
-              ${taskPanelOpen ? "w-full lg:w-[320px] translate-x-0" : "w-0 translate-x-full lg:w-0 lg:translate-x-full"}
-              overflow-hidden
-            `}
-          >
-            <TaskPanel sessionId={currentSessionId} />
-          </div>
-        </>
-      )}
-    </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

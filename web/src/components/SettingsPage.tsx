@@ -17,6 +17,7 @@ const CATEGORIES = [
   { id: "anthropic", label: "Anthropic" },
   { id: "ai-validation", label: "AI Validation" },
   { id: "environments", label: "Environments" },
+  { id: "agents", label: "Agents" },
 ] as const;
 
 type CategoryId = (typeof CATEGORIES)[number]["id"];
@@ -259,7 +260,7 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
         </nav>
 
         {/* Scrollable content */}
-        <div ref={contentRef} className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-8 sm:pl-0 pb-safe">
+        <div ref={contentRef} className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-8 sm:pl-0 pb-28 md:pb-0">
           <div className="space-y-10 py-4 sm:py-2">
             {/* General */}
             <section id="general" ref={setSectionRef("general")}>
@@ -668,6 +669,25 @@ export function SettingsPage({ embedded = false }: SettingsPageProps) {
                   className="min-h-[44px] px-3 py-2 text-sm font-medium"
                 >
                   Open Environments Page
+                </Button>
+              </div>
+            </section>
+
+            <section id="agents" ref={setSectionRef("agents")}>
+              <h2 className="text-sm font-semibold text-foreground mb-4">Agents</h2>
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  View and manage agent runs and their sessions.
+                </p>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    window.location.hash = "#/agents";
+                  }}
+                  size="sm"
+                  className="min-h-[44px] px-3 py-2 text-sm font-medium"
+                >
+                  Open Agents Page
                 </Button>
               </div>
             </section>

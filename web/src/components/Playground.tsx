@@ -13,7 +13,7 @@ import { AiValidationBadge } from "./AiValidationBadge.js";
 import { AiValidationToggle } from "./AiValidationToggle.js";
 import type { TaskItem } from "../types.js";
 import type { GitHubPRInfo } from "../api.js";
-import { GitHubPRDisplay, CodexRateLimitsSection, CodexTokenDetailsSection } from "./TaskPanel.js";
+import { GitHubPRDisplay, CodexRateLimitsSection, CodexTokenDetailsSection } from "./session-info-sections.js";
 import { SessionCreationProgress } from "./SessionCreationProgress.js";
 import { SessionLaunchOverlay } from "./SessionLaunchOverlay.js";
 import { SessionItem } from "./SessionItem.js";
@@ -806,7 +806,7 @@ export function Playground() {
           </div>
         </Section>
 
-        {/* ─── Task Panel ──────────────────────────────── */}
+        {/* ─── Tasks (InfoPopover section) ──────────────────────────────── */}
         <Section title="Tasks" description="Task list states: pending, in progress, completed, blocked">
           <div className="w-[280px] border border-border rounded-xl overflow-hidden bg-card">
             {/* Session stats mock */}
@@ -844,7 +844,7 @@ export function Playground() {
         </Section>
 
         {/* ─── GitHub PR Status ──────────────────────────────── */}
-        <Section title="GitHub PR Status" description="PR health shown in the TaskPanel — checks, reviews, unresolved comments">
+        <Section title="GitHub PR Status" description="PR health shown in the InfoPopover — checks, reviews, unresolved comments">
           <div className="space-y-4">
             <Card label="Open PR — failing checks + changes requested">
               <div className="w-[280px] border border-border rounded-xl overflow-hidden bg-card">
@@ -2000,7 +2000,7 @@ function PlaygroundMcpRow({ server }: { server: McpServerDetail }) {
   );
 }
 
-// ─── Inline TaskRow (avoids store dependency from TaskPanel) ────────────────
+// ─── Inline TaskRow (avoids store dependency from InfoPopover sections) ─────
 
 function TaskRow({ task }: { task: TaskItem }) {
   const isCompleted = task.status === "completed";

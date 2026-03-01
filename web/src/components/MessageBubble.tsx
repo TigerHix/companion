@@ -12,12 +12,12 @@ import { Separator } from "@/components/ui/separator";
 export function MessageBubble({ message }: { message: ChatMessage }) {
   if (message.role === "system") {
     return (
-      <div className="flex items-center gap-3 py-1">
-        <Separator className="flex-1" />
-        <span className="text-[11px] text-muted-foreground italic font-mono shrink-0 px-1">
+      <div className="flex items-center gap-3 py-1 min-w-0 overflow-hidden">
+        <Separator className="flex-1 shrink-[2]" />
+        <span className="text-[11px] text-muted-foreground italic font-mono shrink min-w-0 truncate px-1">
           {message.content}
         </span>
-        <Separator className="flex-1" />
+        <Separator className="flex-1 shrink-[2]" />
       </div>
     );
   }

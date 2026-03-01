@@ -10,7 +10,7 @@ export function TerminalPage() {
 
   return (
     <div className="h-full bg-background overflow-y-auto">
-      <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6 sm:py-10 pb-safe h-full flex flex-col">
+      <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6 sm:py-10 pb-28 md:pb-10 h-full flex flex-col">
         <div className="flex items-start justify-between gap-3 mb-6 shrink-0">
           <div>
             <h1 className="text-xl font-semibold text-foreground">Terminal</h1>
@@ -31,7 +31,7 @@ export function TerminalPage() {
           {terminalCwd ? (
             <TerminalView cwd={terminalCwd} embedded />
           ) : (
-            <div className="h-full bg-card border border-border rounded-xl p-6 sm:p-8 flex items-center justify-center text-center">
+            <div className="h-full bg-card rounded-xl p-6 sm:p-8 flex items-center justify-center text-center">
               <div className="max-w-md">
                 <h2 className="text-lg font-semibold text-foreground mb-2">No terminal started yet</h2>
                 <p className="text-sm text-muted-foreground">

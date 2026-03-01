@@ -1,28 +1,29 @@
+/**
+ * Extracted section components from TaskPanel.
+ * Used by InfoPopover (and previously by TaskPanel).
+ * Each section renders contextual info about a session (usage limits, git, PR, tasks, etc.)
+ */
+
 import { useEffect, useState, useCallback, useRef, type ComponentType } from "react";
 import { useStore } from "../store.js";
 import { api, type UsageLimits, type GitHubPRInfo } from "../api.js";
 import type { TaskItem } from "../types.js";
-import { McpSection } from "./McpPanel.js";
-import { ClaudeConfigBrowser } from "./ClaudeConfigBrowser.js";
-import { SECTION_DEFINITIONS } from "./task-panel-sections.js";
 import { formatResetTime, formatCodexResetTime, formatWindowDuration, formatTokenCount } from "../utils/format.js";
-import { timeAgo } from "../utils/time-ago.js";
-import { X, ChevronUp, ChevronDown, Settings, Check, CircleCheck, Circle, Loader2, Ban, MessageSquare } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { X, Check, CircleCheck, Circle, Loader2, Ban, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-import { SectionErrorBoundary } from "./SectionErrorBoundary.js";
 
 const EMPTY_TASKS: TaskItem[] = [];
 const COUNTDOWN_REFRESH_MS = 30_000;
 
-function barColor(pct: number): string {
+export function barColor(pct: number): string {
   if (pct > 80) return "bg-destructive";
   if (pct > 50) return "bg-warning";
   return "bg-primary";
 }
 
-function UsageLimitsSection({ sessionId }: { sessionId: string }) {
+// ─── Usage Limits (Claude) ──────────────────────────────────────────────────
+
+export function UsageLimitsSection({ sessionId }: { sessionId: string }) {
   const [limits, setLimits] = useState<UsageLimits | null>(null);
 
   const fetchLimits = useCallback(async () => {
@@ -142,9 +143,9 @@ function UsageLimitsSection({ sessionId }: { sessionId: string }) {
   );
 }
 
-// ─── Codex Rate Limits ───────────────────────────────────────────────────────
+// ─── Codex Rate Limits ──────────────────────────────────────────────────────
 
-function CodexRateLimitsSection({ sessionId }: { sessionId: string }) {
+export function CodexRateLimitsSection({ sessionId }: { sessionId: string }) {
   const rateLimits = useStore((s) => s.sessions.get(sessionId)?.codex_rate_limits);
 
   // Tick for countdown refresh
@@ -211,11 +212,10 @@ function CodexRateLimitsSection({ sessionId }: { sessionId: string }) {
   );
 }
 
-// ─── Codex Token Details ─────────────────────────────────────────────────────
+// ─── Codex Token Details ────────────────────────────────────────────────────
 
-function CodexTokenDetailsSection({ sessionId }: { sessionId: string }) {
+export function CodexTokenDetailsSection({ sessionId }: { sessionId: string }) {
   const details = useStore((s) => s.sessions.get(sessionId)?.codex_token_details);
-  // Use the server-computed context percentage (input+output / contextWindow, capped 0-100)
   const contextPct = useStore((s) => s.sessions.get(sessionId)?.context_used_percent ?? 0);
 
   if (!details) return null;
@@ -263,9 +263,9 @@ function CodexTokenDetailsSection({ sessionId }: { sessionId: string }) {
   );
 }
 
-// ─── GitHub PR Status ────────────────────────────────────────────────────────
+// ─── GitHub PR Status ───────────────────────────────────────────────────────
 
-function prStatePill(state: GitHubPRInfo["state"], isDraft: boolean) {
+export function prStatePill(state: GitHubPRInfo["state"], isDraft: boolean) {
   if (isDraft) return { label: "Draft", cls: "text-muted-foreground bg-accent" };
   switch (state) {
     case "OPEN": return { label: "Open", cls: "text-success bg-success/10" };
@@ -373,7 +373,7 @@ export function GitHubPRDisplay({ pr }: { pr: GitHubPRInfo }) {
   );
 }
 
-function GitHubPRSection({ sessionId }: { sessionId: string }) {
+export function GitHubPRSection({ sessionId }: { sessionId: string }) {
   const session = useStore((s) => s.sessions.get(sessionId));
   const sdk = useStore((s) => s.sdkSessions.find((x) => x.sessionId === sessionId));
   const prStatus = useStore((s) => s.prStatus.get(sessionId));
@@ -394,28 +394,9 @@ function GitHubPRSection({ sessionId }: { sessionId: string }) {
   return <GitHubPRDisplay pr={prStatus.pr} />;
 }
 
-// ─── Extracted Section Components ─────────────────────────────────────────────
+// ─── Git Branch ─────────────────────────────────────────────────────────────
 
-
-/** Wrapper that renders the correct usage/rate-limit component based on backend type */
-function UsageLimitsRenderer({ sessionId }: { sessionId: string }) {
-  const session = useStore((s) => s.sessions.get(sessionId));
-  const sdk = useStore((s) => s.sdkSessions.find((x) => x.sessionId === sessionId));
-  const isCodex = (session?.backend_type || sdk?.backendType) === "codex";
-
-  if (isCodex) {
-    return (
-      <>
-        <CodexRateLimitsSection sessionId={sessionId} />
-        <CodexTokenDetailsSection sessionId={sessionId} />
-      </>
-    );
-  }
-  return <UsageLimitsSection sessionId={sessionId} />;
-}
-
-/** Git branch info — extracted from inline JSX in TaskPanel */
-function GitBranchSection({ sessionId }: { sessionId: string }) {
+export function GitBranchSection({ sessionId }: { sessionId: string }) {
   const session = useStore((s) => s.sessions.get(sessionId));
   const sdk = useStore((s) => s.sdkSessions.find((x) => x.sessionId === sessionId));
 
@@ -474,263 +455,27 @@ function GitBranchSection({ sessionId }: { sessionId: string }) {
   );
 }
 
-/** Tasks section — only visible for Claude Code sessions */
-function TasksSection({ sessionId }: { sessionId: string }) {
-  const tasks = useStore((s) => s.sessionTasks.get(sessionId) || EMPTY_TASKS);
+// ─── Usage Limits Renderer (dispatches Claude vs Codex) ─────────────────────
+
+export function UsageLimitsRenderer({ sessionId }: { sessionId: string }) {
   const session = useStore((s) => s.sessions.get(sessionId));
   const sdk = useStore((s) => s.sdkSessions.find((x) => x.sessionId === sessionId));
   const isCodex = (session?.backend_type || sdk?.backendType) === "codex";
 
-  if (!session || isCodex) return null;
-
-  const completedCount = tasks.filter((t) => t.status === "completed").length;
-
-  return (
-    <>
-      {/* Task section header */}
-      <div className="px-4 py-2.5 flex items-center justify-between">
-        <span className="text-[13px] font-semibold text-foreground">Tasks</span>
-        {tasks.length > 0 && (
-          <span className="text-[11px] text-muted-foreground tabular-nums">
-            {completedCount}/{tasks.length}
-          </span>
-        )}
-      </div>
-
-      {/* Task list */}
-      <div className="px-3 py-2">
-        {tasks.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-8">No tasks yet</p>
-        ) : (
-          <div className="space-y-0.5">
-            {tasks.map((task) => (
-              <TaskRow key={task.id} task={task} />
-            ))}
-          </div>
-        )}
-      </div>
-    </>
-  );
+  if (isCodex) {
+    return (
+      <>
+        <CodexRateLimitsSection sessionId={sessionId} />
+        <CodexTokenDetailsSection sessionId={sessionId} />
+      </>
+    );
+  }
+  return <UsageLimitsSection sessionId={sessionId} />;
 }
 
-// ─── Section Component Map ───────────────────────────────────────────────────
+// ─── Tasks ──────────────────────────────────────────────────────────────────
 
-const SECTION_COMPONENTS: Record<string, ComponentType<{ sessionId: string }>> = {
-  "usage-limits": UsageLimitsRenderer,
-  "git-branch": GitBranchSection,
-  "github-pr": GitHubPRSection,
-  "mcp-servers": McpSection,
-  "tasks": TasksSection,
-};
-
-// ─── Panel Config View ───────────────────────────────────────────────────────
-
-function TaskPanelConfigView({ isCodex }: { isCodex: boolean }) {
-  const config = useStore((s) => s.taskPanelConfig);
-  const toggleSectionEnabled = useStore((s) => s.toggleSectionEnabled);
-  const moveSectionUp = useStore((s) => s.moveSectionUp);
-  const moveSectionDown = useStore((s) => s.moveSectionDown);
-  const resetTaskPanelConfig = useStore((s) => s.resetTaskPanelConfig);
-  const setConfigMode = useStore((s) => s.setTaskPanelConfigMode);
-
-  const backendFilter = isCodex ? "codex" : "claude";
-
-  // Only show sections applicable to the current backend
-  const applicableOrder = config.order.filter((id) => {
-    const def = SECTION_DEFINITIONS.find((d) => d.id === id);
-    if (!def) return false;
-    if (def.backends && !def.backends.includes(backendFilter)) return false;
-    return true;
-  });
-
-  return (
-    <div className="flex-1 flex flex-col min-h-0">
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
-        {applicableOrder.map((sectionId, index) => {
-          const def = SECTION_DEFINITIONS.find((d) => d.id === sectionId)!;
-          const enabled = config.enabled[sectionId] ?? true;
-          const isFirst = index === 0;
-          const isLast = index === applicableOrder.length - 1;
-
-          return (
-            <div
-              key={sectionId}
-              data-testid={`config-section-${sectionId}`}
-              className={`flex items-center gap-2 px-2.5 py-2 rounded-lg border border-border transition-opacity ${
-                enabled ? "bg-background" : "bg-accent/50 opacity-60"
-              }`}
-            >
-              {/* Move up/down buttons */}
-              <div className="flex flex-col gap-0.5 shrink-0">
-                <Button
-                  type="button"
-                  onClick={() => moveSectionUp(sectionId)}
-                  disabled={isFirst}
-                  variant="ghost"
-                  size="icon-xs"
-                  className="h-4 w-5 rounded-sm text-muted-foreground hover:text-foreground disabled:opacity-20"
-                  title="Move up"
-                  data-testid={`move-up-${sectionId}`}
-                >
-                  <ChevronUp className="w-3 h-3" />
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => moveSectionDown(sectionId)}
-                  disabled={isLast}
-                  variant="ghost"
-                  size="icon-xs"
-                  className="h-4 w-5 rounded-sm text-muted-foreground hover:text-foreground disabled:opacity-20"
-                  title="Move down"
-                  data-testid={`move-down-${sectionId}`}
-                >
-                  <ChevronDown className="w-3 h-3" />
-                </Button>
-              </div>
-
-              {/* Section info */}
-              <div className="flex-1 min-w-0">
-                <span className="text-[12px] font-medium text-foreground block">
-                  {def.label}
-                </span>
-                <span className="text-[10px] text-muted-foreground block truncate">
-                  {def.description}
-                </span>
-              </div>
-
-              {/* Toggle switch */}
-              <Switch
-                checked={enabled}
-                size="sm"
-                onCheckedChange={() => toggleSectionEnabled(sectionId)}
-                aria-label={`${enabled ? "Hide" : "Show"} ${def.label} section`}
-                title={enabled ? "Hide section" : "Show section"}
-                data-testid={`toggle-${sectionId}`}
-              />
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Footer buttons */}
-      <div className="shrink-0 px-3 py-2.5 flex items-center justify-between">
-        <Button
-          type="button"
-          onClick={() => resetTaskPanelConfig()}
-          variant="ghost"
-          size="xs"
-          className="h-auto px-0 py-0 text-[11px] text-muted-foreground"
-          data-testid="reset-panel-config"
-        >
-          Reset to defaults
-        </Button>
-        <Button
-          type="button"
-          onClick={() => setConfigMode(false)}
-          variant="ghost"
-          size="xs"
-          className="h-auto px-0 py-0 text-[11px] font-medium text-primary hover:text-primary"
-          data-testid="config-done"
-        >
-          Done
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Task Panel ──────────────────────────────────────────────────────────────
-
-export { CodexRateLimitsSection, CodexTokenDetailsSection };
-
-export function TaskPanel({ sessionId }: { sessionId: string }) {
-  const session = useStore((s) => s.sessions.get(sessionId));
-  const sdk = useStore((s) => s.sdkSessions.find((x) => x.sessionId === sessionId));
-  const taskPanelOpen = useStore((s) => s.taskPanelOpen);
-  const setTaskPanelOpen = useStore((s) => s.setTaskPanelOpen);
-  const configMode = useStore((s) => s.taskPanelConfigMode);
-  const config = useStore((s) => s.taskPanelConfig);
-
-  if (!taskPanelOpen) return null;
-
-  const isCodex = (session?.backend_type || sdk?.backendType) === "codex";
-  const backendFilter = isCodex ? "codex" : "claude";
-
-  // Filter and order sections based on config + backend compatibility
-  const applicableSections = config.order.filter((sectionId) => {
-    const def = SECTION_DEFINITIONS.find((d) => d.id === sectionId);
-    if (!def) return false;
-    if (def.backends && !def.backends.includes(backendFilter)) return false;
-    return true;
-  });
-
-  return (
-    <aside className="w-full lg:w-[320px] h-full flex flex-col overflow-hidden bg-card">
-      {/* Header */}
-      <div className="shrink-0 h-11 flex items-center justify-between px-4 bg-card">
-        <span className="text-sm font-semibold text-foreground tracking-tight">
-          {configMode ? "Panel Settings" : "Context"}
-        </span>
-        <Button
-          type="button"
-          onClick={() => {
-            if (configMode) {
-              useStore.getState().setTaskPanelConfigMode(false);
-            } else {
-              setTaskPanelOpen(false);
-            }
-          }}
-          aria-label="Close panel"
-          variant="ghost"
-          size="icon-sm"
-          className="text-muted-foreground hover:text-foreground"
-        >
-          <X className="w-3.5 h-3.5" />
-        </Button>
-      </div>
-
-      {configMode ? (
-        <TaskPanelConfigView isCodex={isCodex} />
-      ) : (
-        <>
-          <div data-testid="task-panel-content" className="min-h-0 flex-1 overflow-y-auto">
-            <ClaudeConfigBrowser sessionId={sessionId} />
-            {applicableSections
-              .filter((id) => config.enabled[id] !== false)
-              .map((sectionId) => {
-                const Component = SECTION_COMPONENTS[sectionId];
-                if (!Component) return null;
-                const label = SECTION_DEFINITIONS.find((d) => d.id === sectionId)?.label;
-                return (
-                  <SectionErrorBoundary key={sectionId} label={label}>
-                    <Component sessionId={sessionId} />
-                  </SectionErrorBoundary>
-                );
-              })}
-          </div>
-
-          {/* Settings button at bottom */}
-          <div className="shrink-0 px-4 py-2 pb-safe">
-            <Button
-              type="button"
-              onClick={() => useStore.getState().setTaskPanelConfigMode(true)}
-              variant="ghost"
-              size="xs"
-              className="h-auto px-0 py-0 text-[11px] text-muted-foreground hover:text-foreground"
-              title="Configure panel sections"
-              data-testid="customize-panel-btn"
-            >
-              <Settings className="w-3.5 h-3.5" />
-              Customize panel
-            </Button>
-          </div>
-        </>
-      )}
-    </aside>
-  );
-}
-
-function TaskRow({ task }: { task: TaskItem }) {
+export function TaskRow({ task }: { task: TaskItem }) {
   const isCompleted = task.status === "completed";
   const isInProgress = task.status === "in_progress";
 
@@ -779,3 +524,51 @@ function TaskRow({ task }: { task: TaskItem }) {
     </div>
   );
 }
+
+export function TasksSection({ sessionId }: { sessionId: string }) {
+  const tasks = useStore((s) => s.sessionTasks.get(sessionId) || EMPTY_TASKS);
+  const session = useStore((s) => s.sessions.get(sessionId));
+  const sdk = useStore((s) => s.sdkSessions.find((x) => x.sessionId === sessionId));
+  const isCodex = (session?.backend_type || sdk?.backendType) === "codex";
+
+  if (!session || isCodex) return null;
+
+  const completedCount = tasks.filter((t) => t.status === "completed").length;
+
+  return (
+    <>
+      {/* Task section header */}
+      <div className="px-4 py-2.5 flex items-center justify-between">
+        <span className="text-[13px] font-semibold text-foreground">Tasks</span>
+        {tasks.length > 0 && (
+          <span className="text-[11px] text-muted-foreground tabular-nums">
+            {completedCount}/{tasks.length}
+          </span>
+        )}
+      </div>
+
+      {/* Task list */}
+      <div className="px-3 py-2">
+        {tasks.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-8">No tasks yet</p>
+        ) : (
+          <div className="space-y-0.5">
+            {tasks.map((task) => (
+              <TaskRow key={task.id} task={task} />
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ─── Section Component Map ──────────────────────────────────────────────────
+
+export const SECTION_COMPONENTS: Record<string, ComponentType<{ sessionId: string }>> = {
+  "usage-limits": UsageLimitsRenderer,
+  "git-branch": GitBranchSection,
+  "github-pr": GitHubPRSection,
+  "mcp-servers": undefined as unknown as ComponentType<{ sessionId: string }>, // McpSection imported separately
+  "tasks": TasksSection,
+};

@@ -22,7 +22,7 @@ export function ChatView({ sessionId }: { sessionId: string }) {
   );
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col h-full min-h-0 pb-14 md:pb-0">
       {/* CLI disconnected banner */}
       {connStatus === "connected" && !cliConnected && (
         <div className="px-4 py-2 bg-warning/10 border-b border-warning/20 text-center flex items-center justify-center gap-3">
