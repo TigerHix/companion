@@ -24,8 +24,8 @@ describe("parseHash", () => {
     expect(parseHash("#/settings")).toEqual({ page: "settings" });
   });
 
-  it("parses terminal route", () => {
-    expect(parseHash("#/terminal")).toEqual({ page: "terminal" });
+  it("terminal route falls through to home (standalone terminal removed)", () => {
+    expect(parseHash("#/terminal")).toEqual({ page: "home" });
   });
 
   it("parses environments route", () => {

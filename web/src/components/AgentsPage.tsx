@@ -438,7 +438,7 @@ export function AgentsPage({ route }: Props) {
 
   return (
     <>
-    <div className="max-w-4xl mx-auto p-6 pb-28 md:pb-6">
+    <div className="max-w-4xl mx-auto p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -861,7 +861,7 @@ function AgentEditor({
   const pillActive = `${pill} text-primary bg-primary/10 hover:bg-primary/15`;
 
   return (
-    <div className="max-w-3xl mx-auto p-6 pb-28 md:pb-6">
+    <div className="max-w-3xl mx-auto p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-3">

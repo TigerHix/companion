@@ -1,0 +1,4 @@
+interface:
+  display_name: "Companion Upstream Sync"
+  short_description: "Sync the companion fork with upstream safely"
+  default_prompt: "Use this skill to fetch upstream, realign backend, merge upstream commits, resolve frontend conflicts under the repo policy, validate the result, and clean up helper worktrees and stashes."

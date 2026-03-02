@@ -19,10 +19,11 @@ import { getModelsForBackend, getModesForBackend, getDefaultModel, getDefaultMod
 import type { BackendType } from "../types.js";
 import { EnvManager } from "./EnvManager.js";
 import { FolderPicker } from "./FolderPicker.js";
-import { readFileAsBase64, type ImageAttachment } from "../utils/image.js";
+import { type ImageAttachment } from "../utils/image.js";
 import { BranchPicker } from "./home/BranchPicker.js";
 import type { SdkSessionInfo } from "../types.js";
 import { Button } from "@/components/ui/button";
+import { Composer, type ComposerRef } from "./Composer.js";
 
 let idCounter = 0;
 
@@ -88,7 +89,6 @@ function formatTimeAgo(timestamp: number): string {
 }
 
 export function HomePage() {
-  const [text, setText] = useState("");
   const [backend, setBackend] = useState<BackendType>(() =>
     (localStorage.getItem("cc-backend") as BackendType) || "claude",
   );
@@ -100,7 +100,6 @@ export function HomePage() {
     (localStorage.getItem("cc-backend") as BackendType) || "claude",
   ));
   const [cwd, setCwd] = useState(() => getRecentDirs()[0] || "");
-  const [images, setImages] = useState<ImageAttachment[]>([]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [dynamicModels, setDynamicModels] = useState<ModelOption[] | null>(null);
@@ -118,11 +117,11 @@ export function HomePage() {
   const [envImageState, setEnvImageState] = useState<ImagePullState | null>(null);
   const envImagePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<ComposerRef>(null);
+  const pendingRef = useRef<{ text: string; images: ImageAttachment[] }>({ text: "", images: [] });
 
   // Dropdown states
   const [showModelDropdown, setShowModelDropdown] = useState(false);
-  const [showModeDropdown, setShowModeDropdown] = useState(false);
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [showBranchingControls, setShowBranchingControls] = useState(false);
   const [resumeSessionAt, setResumeSessionAt] = useState("");
@@ -146,18 +145,16 @@ export function HomePage() {
   const [pulling, setPulling] = useState(false);
   const [pullError, setPullError] = useState("");
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
-  const modeDropdownRef = useRef<HTMLDivElement>(null);
   const envDropdownRef = useRef<HTMLDivElement>(null);
 
   const currentSessionId = useStore((s) => s.currentSessionId);
 
-  // Auto-focus textarea (desktop only — on mobile it triggers the keyboard immediately)
+  // Auto-focus composer (desktop only — on mobile it triggers the keyboard immediately)
   useEffect(() => {
     const isDesktop = window.matchMedia("(min-width: 640px)").matches;
     if (isDesktop) {
-      textareaRef.current?.focus();
+      composerRef.current?.focus();
     }
   }, []);
 
@@ -261,9 +258,6 @@ export function HomePage() {
       if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
         setShowModelDropdown(false);
       }
-      if (modeDropdownRef.current && !modeDropdownRef.current.contains(e.target as Node)) {
-        setShowModeDropdown(false);
-      }
       if (envDropdownRef.current && !envDropdownRef.current.contains(e.target as Node)) {
         setShowEnvDropdown(false);
       }
@@ -290,7 +284,6 @@ export function HomePage() {
   }, [cwd]);
 
   const selectedModel = MODELS.find((m) => m.value === model) || MODELS[0];
-  const selectedMode = MODES.find((m) => m.value === mode) || MODES[0];
   const logoSrc = backend === "codex" ? "/logo-codex.svg" : "/logo.svg";
   const dirLabel = cwd ? cwd.split("/").pop() || cwd : "Select folder";
   const trimmedResumeSessionAt = useMemo(() => resumeSessionAt.trim(), [resumeSessionAt]);
@@ -407,93 +400,36 @@ export function HomePage() {
     setVisibleResumeCandidateRows(INITIAL_VISIBLE_SESSION_ROWS);
   }, [normalizedResumeSearchQuery, showOlderResumeCandidates]);
 
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files;
-    if (!files) return;
-    const newImages: ImageAttachment[] = [];
-    for (const file of Array.from(files)) {
-      if (!file.type.startsWith("image/")) continue;
-      const { base64, mediaType } = await readFileAsBase64(file);
-      newImages.push({ name: file.name, base64, mediaType });
-    }
-    setImages((prev) => [...prev, ...newImages]);
-    e.target.value = "";
-  }
-
-  function removeImage(index: number) {
-    setImages((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  async function handlePaste(e: React.ClipboardEvent) {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    const newImages: ImageAttachment[] = [];
-    for (const item of Array.from(items)) {
-      if (!item.type.startsWith("image/")) continue;
-      const file = item.getAsFile();
-      if (!file) continue;
-      const { base64, mediaType } = await readFileAsBase64(file);
-      newImages.push({ name: `pasted-${Date.now()}.${file.type.split("/")[1]}`, base64, mediaType });
-    }
-    if (newImages.length > 0) {
-      e.preventDefault();
-      setImages((prev) => [...prev, ...newImages]);
-    }
-  }
-
-  function handleInput(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setText(e.target.value);
-    const ta = e.target;
-    ta.style.height = "auto";
-    ta.style.height = Math.min(ta.scrollHeight, 200) + "px";
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Tab" && e.shiftKey) {
-      e.preventDefault();
-      const currentModes = getModesForBackend(backend);
-      const currentIndex = currentModes.findIndex((m) => m.value === mode);
-      const nextIndex = (currentIndex + 1) % currentModes.length;
-      setMode(currentModes[nextIndex].value);
-      return;
-    }
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  }
-
   function buildInitialMessage(msg: string): string {
     return msg;
   }
 
-  async function handleSend() {
-    const msg = text.trim();
-    if (!msg || sending) return;
+  function handleComposerSend(msg: string, imgs: ImageAttachment[]) {
+    if (sending) return;
+    pendingRef.current = { text: msg, images: imgs };
 
     setSending(true);
     setError("");
     setPullError("");
 
     // Branch freshness check: warn if behind remote
-    // Only offer pull when the effective branch is the currently checked-out branch,
-    // since git pull operates on the checked-out branch
     if (gitRepoInfo) {
       const effectiveBranch = selectedBranch || gitRepoInfo.currentBranch;
       if (effectiveBranch && effectiveBranch === gitRepoInfo.currentBranch) {
         const branchInfo = branches.find(b => b.name === effectiveBranch && !b.isRemote);
         if (branchInfo && branchInfo.behind > 0) {
           setPullPrompt({ behind: branchInfo.behind, branchName: effectiveBranch });
-          return; // Pause — user must choose pull/skip/cancel
+          return;
         }
       }
     }
 
-    await doCreateSession(msg);
+    doCreateSession(msg, imgs);
   }
 
   async function doCreateSession(
     msg: string,
+    imgs?: ImageAttachment[],
     launchOverride?: SessionLaunchOverride,
   ) {
     const store = useStore.getState();
@@ -583,29 +519,28 @@ export function HomePage() {
       await waitForConnection(sessionId);
 
       const trimmedMsg = msg.trim();
+      const effectiveImages = imgs || [];
       if (trimmedMsg.length > 0) {
         const initialMessage = buildInitialMessage(trimmedMsg);
 
-        // Send message
         sendToSession(sessionId, {
           type: "user_message",
           content: initialMessage,
           session_id: sessionId,
-          images: images.length > 0 ? images.map((img) => ({ media_type: img.mediaType, data: img.base64 })) : undefined,
+          images: effectiveImages.length > 0 ? effectiveImages.map((img) => ({ media_type: img.mediaType, data: img.base64 })) : undefined,
         });
 
-        // Add user message to store
         useStore.getState().appendMessage(sessionId, {
           id: `user-${Date.now()}-${++idCounter}`,
           role: "user",
           content: initialMessage,
-          images: images.length > 0 ? images.map((img) => ({ media_type: img.mediaType, data: img.base64 })) : undefined,
+          images: effectiveImages.length > 0 ? effectiveImages.map((img) => ({ media_type: img.mediaType, data: img.base64 })) : undefined,
           timestamp: Date.now(),
         });
       }
 
-      // Clear progress on success
       useStore.getState().clearCreation();
+      composerRef.current?.clear();
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : String(e);
       setError(errMsg);
@@ -627,7 +562,7 @@ export function HomePage() {
     setSelectedBranch(candidate.gitBranch || "");
     setResumeSessionAt(candidate.resumeSessionId);
     setForkSession(shouldFork);
-    await doCreateSession("", {
+    await doCreateSession("", [], {
       resumeSessionAt: candidate.resumeSessionId,
       forkSession: shouldFork,
       cwd: candidate.cwd,
@@ -656,7 +591,7 @@ export function HomePage() {
 
       setPullPrompt(null);
       setPulling(false);
-      await doCreateSession(text.trim());
+      await doCreateSession(pendingRef.current.text, pendingRef.current.images);
     } catch (e: unknown) {
       setPullError(e instanceof Error ? e.message : String(e));
       setPulling(false);
@@ -664,10 +599,9 @@ export function HomePage() {
   }
 
   function handleSkipPull() {
-    const msg = text.trim();
     setPullPrompt(null);
     setPullError("");
-    doCreateSession(msg);
+    doCreateSession(pendingRef.current.text, pendingRef.current.images);
   }
 
   function handleCancelPull() {
@@ -685,8 +619,6 @@ export function HomePage() {
     setBranches(loadedBranches);
   }, []);
 
-  const canSend = text.trim().length > 0 && !sending;
-
   return (
     <div className="flex-1 h-full flex items-start justify-center px-3 sm:px-4 pt-6 sm:pt-8 pb-28 md:pb-6 overflow-y-auto overscroll-y-contain">
       <div className="w-full max-w-2xl">
@@ -698,137 +630,20 @@ export function HomePage() {
           </h1>
         </div>
 
-        {/* Image thumbnails */}
-        {images.length > 0 && (
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            {images.map((img, i) => (
-              <div key={i} className="relative group">
-                <img
-                  src={`data:${img.mediaType};base64,${img.base64}`}
-                  alt={img.name}
-                  className="w-12 h-12 rounded-lg object-cover border border-border"
-                />
-                <Button
-                  type="button"
-                  onClick={() => removeImage(i)}
-                  variant="destructive"
-                  size="icon-xs"
-                  className="absolute -top-1.5 -right-1.5 rounded-full text-white opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
-                >
-                  <svg viewBox="0 0 16 16" fill="currentColor" className="w-2.5 h-2.5">
-                    <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
-                  </svg>
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Hidden file input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={handleFileSelect}
-          className="hidden"
-          aria-label="Attach images"
-        />
-
         <div className="grid grid-cols-1 gap-3 sm:gap-4 items-start">
           <div>
-            {/* Input card */}
-            <div className="relative bg-card border border-border rounded-[14px] shadow-sm">
-              <textarea
-                ref={textareaRef}
-                value={text}
-                onChange={handleInput}
-                onKeyDown={handleKeyDown}
-                onPaste={handlePaste}
-                aria-label="Task description"
+            <Composer
+              ref={composerRef}
+              onSend={handleComposerSend}
+              cwd={cwd}
+              disabled={sending}
               placeholder="Fix a bug, build a feature, refactor code..."
-                rows={4}
-                className="w-full px-4 pt-4 pb-2 text-base sm:text-sm bg-transparent resize-none focus:outline-none text-foreground font-sans placeholder:text-muted-foreground overflow-y-auto"
-                style={{ minHeight: "100px", maxHeight: "200px" }}
-              />
-
-              {/* Bottom toolbar */}
-              <div className="flex items-center justify-between px-3 pb-3">
-                {/* Left: mode dropdown */}
-                <div className="relative" ref={modeDropdownRef}>
-                  <Button
-                    type="button"
-                    onClick={() => setShowModeDropdown(!showModeDropdown)}
-                    aria-expanded={showModeDropdown}
-                    variant="ghost"
-                    size="xs"
-                    className="font-medium"
-                  >
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3.5 h-3.5">
-                      <path d="M2 4h12M2 8h8M2 12h10" strokeLinecap="round" />
-                    </svg>
-                    {selectedMode.label}
-                    <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50">
-                      <path d="M4 6l4 4 4-4" />
-                    </svg>
-                  </Button>
-                  {showModeDropdown && (
-                    <div className="absolute left-0 bottom-full mb-1 w-40 bg-card border border-border rounded-[10px] shadow-lg z-10 py-1 overflow-hidden">
-                      {MODES.map((m) => (
-                        <Button
-                          key={m.value}
-                          type="button"
-                          onClick={() => { setMode(m.value); setShowModeDropdown(false); }}
-                          variant="ghost"
-                          size="sm"
-                          className={`w-full justify-start text-xs ${
-                            m.value === mode ? "text-primary font-medium" : "text-foreground"
-                          }`}
-                        >
-                          {m.label}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Right: image placeholder + send */}
-                <div className="flex items-center gap-1.5">
-                  {/* Image upload */}
-                  <Button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    variant="ghost"
-                    size="icon-sm"
-                    title="Upload image"
-                  >
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
-                      <rect x="2" y="2" width="12" height="12" rx="2" />
-                      <circle cx="5.5" cy="5.5" r="1" fill="currentColor" stroke="none" />
-                      <path d="M2 11l3-3 2 2 3-4 4 5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </Button>
-
-                  {/* Send button */}
-                  <Button
-                    type="button"
-                    onClick={handleSend}
-                    disabled={!canSend}
-                    size="icon-lg"
-                    className={`rounded-full ${
-                      canSend
-                        ? "bg-primary hover:bg-primary/90 text-white"
-                        : "bg-accent text-muted-foreground"
-                    }`}
-                    title="Send message"
-                  >
-                    <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
-                      <path d="M3 2l11 6-11 6V9.5l7-1.5-7-1.5V2z" />
-                    </svg>
-                  </Button>
-                </div>
-              </div>
-            </div>
+              mode={mode}
+              modes={MODES}
+              onModeChange={setMode}
+              minHeight={100}
+              className="px-0 pt-0 pb-0"
+            />
 
             {/* Below-card selectors */}
           <div className="flex items-center gap-1 sm:gap-2 mt-2 sm:mt-3 px-1 flex-wrap">
@@ -1012,7 +827,7 @@ export function HomePage() {
               size="xs"
               className="text-muted-foreground hover:text-foreground"
             >
-              <span>{selectedModel.icon}</span>
+              {selectedModel.icon && <span>{selectedModel.icon}</span>}
               <span>{selectedModel.label}</span>
               <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50">
                 <path d="M4 6l4 4 4-4" />
@@ -1031,7 +846,7 @@ export function HomePage() {
                       m.value === model ? "text-primary font-medium" : "text-foreground"
                     }`}
                   >
-                    <span>{m.icon}</span>
+                    {m.icon && <span>{m.icon}</span>}
                     {m.label}
                   </Button>
                 ))}

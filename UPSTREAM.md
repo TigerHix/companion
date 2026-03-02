@@ -162,6 +162,70 @@ Choose the smallest safe method:
 - `git merge --no-ff upstream/main` when a broad sync is appropriate
 - `git merge --no-ff --no-commit upstream/main` when you want to inspect conflict resolution before committing
 
+## Battle-Tested Workflow
+
+This is the safest default when the main worktree is dirty or product divergence is non-trivial.
+
+1. Fetch upstream and inspect commit/file scope first.
+2. If the current worktree has uncommitted edits, create a clean helper worktree from current `HEAD`.
+3. Realign backend scope to upstream in the helper worktree first.
+4. Commit the backend realignment before doing the broad upstream merge.
+5. Merge `upstream/main` into the helper branch with `--no-commit`.
+6. Resolve conflicts by area:
+   - backend: follow upstream
+   - frontend: preserve moku product intent
+7. If there is local UI work that should survive, prefer committing it separately and cherry-picking it onto the helper merge branch.
+8. Validate the helper branch.
+9. Move `main` to the validated result only after the helper branch is correct.
+
+Example helper worktree flow:
+
+```bash
+git fetch upstream main
+git worktree add -b chore/merge-upstream-YYYY-MM-DD /tmp/companion-upstream-merge HEAD
+cd /tmp/companion-upstream-merge
+git checkout upstream/main -- web/server web/bin web/package.json
+git commit -m "chore(upstream): realign backend to upstream"
+git merge --no-ff --no-commit upstream/main
+```
+
+## Dirty Worktree Safety
+
+If the original worktree contains local edits:
+
+- prefer doing merge/conflict resolution in a clean helper worktree
+- do not mix unrelated uncommitted work into the merge by accident
+- do not use destructive reset commands to clear the original worktree
+
+If you must temporarily clear the original worktree before moving `main`, make a backup stash first:
+
+```bash
+git stash push --include-untracked -m "backup before integrating main"
+```
+
+Important pitfall:
+
+- `--include-untracked` also stashes untracked local files such as `.agent/` content
+- restore those selectively afterward if needed instead of blindly applying the whole stash
+
+Example selective restore of an untracked file from the stash's third parent:
+
+```bash
+git show 'stash@{0}^3:.agent/skills/frontend-design/SKILL.md' > .agent/skills/frontend-design/SKILL.md
+```
+
+## Integrating Local Product Work
+
+When local frontend work exists alongside the upstream sync:
+
+- commit the local UI work separately if possible
+- cherry-pick that commit onto the validated upstream merge branch
+- resolve only the overlapping frontend files there
+
+Prefer this over hand-copying final files between worktrees.
+
+Do not cherry-pick merge commits directly unless you explicitly want that history shape. Cherry-pick ordinary local commits onto the merge branch, then move `main` to the final result.
+
 ## Conflict Resolution Rules
 
 Resolve by area, not by whichever side is easier.
@@ -197,6 +261,18 @@ For `web/src/`, review carefully because this is where moku intentionally diverg
 
 If an upstream frontend change affects product behavior or reintroduces UI we may not want, ask the user before merging it.
 
+Common frontend conflict pattern from this repo:
+
+- keep backend support for prompts, Linear, updates, and similar upstream features
+- keep those features hidden or removed from `web/src/` if moku does not want to expose them
+- do not reintroduce docs or navigation for hidden features unless the user explicitly wants them back
+
+Another practical pitfall:
+
+- avoid relying on parallel `git status` / `git log` reads immediately after branch-switching, merging, or committing
+- those reads can appear stale when run concurrently with state-changing commands
+- when verifying critical git state, run the read after the write has finished
+
 ### Useful Commands
 
 ```bash
@@ -223,6 +299,47 @@ Ask the user before taking non-trivial upstream changes that add or materially c
 - architectural changes with user-visible tradeoffs
 
 Backend changes are generally accepted directly. Frontend changes require more careful product review.
+
+Ask the user about frontend/product choices such as:
+
+- whether hidden features should remain hidden in the UI
+- whether docs/README changes that expose hidden features should be merged
+- whether local UI commits should be preserved as-is or adjusted during the sync
+
+Do not ask the user to review ordinary backend realignment unless a backend patch would remain local.
+
+## Validation And Finalization
+
+Minimum validation after resolving the merge:
+
+```bash
+cd web
+bun run typecheck
+bun run build
+```
+
+Then run targeted tests for the changed frontend areas before attempting the full suite.
+
+Full `bun run test` may still fail in restricted environments for reasons unrelated to the merge, such as:
+
+- sandboxed `git` subprocess calls in tests
+- environment-specific network interface queries
+
+Record those separately instead of treating them as automatic merge regressions.
+
+When the helper branch is validated:
+
+1. switch the real repo back to `main`
+2. fast-forward `main` to the validated helper branch result
+3. verify the real worktree is clean
+4. only then push
+
+After success, remove temporary artifacts:
+
+```bash
+git worktree remove --force /tmp/companion-upstream-merge
+git branch -d chore/merge-upstream-YYYY-MM-DD
+```
 
 ## Quick Decision Summary
 

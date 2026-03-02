@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from "react";
 import {
   Plus,
   Image as ImageIcon,
@@ -28,27 +28,64 @@ interface CommandItem {
   type: "command" | "skill";
 }
 
-export function Composer({ sessionId }: { sessionId: string }) {
+export interface ComposerRef {
+  clear: () => void;
+  focus: () => void;
+}
+
+interface ComposerProps {
+  sessionId?: string;
+  /** Standalone mode: called on send instead of WS dispatch. Composer does NOT auto-clear; call ref.clear(). */
+  onSend?: (text: string, images: ImageAttachment[]) => void;
+  /** Working directory — used for loading slash commands when no session exists. */
+  cwd?: string;
+  disabled?: boolean;
+  placeholder?: string;
+  mode?: string;
+  modes?: ModeOption[];
+  onModeChange?: (mode: string) => void;
+  className?: string;
+  minHeight?: number;
+}
+
+export const Composer = forwardRef<ComposerRef, ComposerProps>(function Composer({
+  sessionId,
+  onSend: onSendProp,
+  cwd: cwdProp,
+  disabled: disabledProp,
+  placeholder: placeholderProp,
+  mode: modeProp,
+  modes: modesProp,
+  onModeChange,
+  className: classNameProp,
+  minHeight: minHeightProp,
+}, ref) {
   const [text, setText] = useState("");
   const [images, setImages] = useState<ImageAttachment[]>([]);
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [slashMenuIndex, setSlashMenuIndex] = useState(0);
   const [caretPos, setCaretPos] = useState(0);
   const [fallbackCommands, setFallbackCommands] = useState<CommandItem[]>([]);
+  const [showModeMenu, setShowModeMenu] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const modeMenuRef = useRef<HTMLDivElement>(null);
   const pendingSelectionRef = useRef<number | null>(null);
-  const cliConnected = useStore((s) => s.cliConnected);
-  const sessionData = useStore((s) => s.sessions.get(sessionId));
-  const previousMode = useStore((s) => s.previousPermissionMode.get(sessionId) || "acceptEdits");
 
-  const isConnected = cliConnected.get(sessionId) ?? false;
-  const currentMode = sessionData?.permissionMode || "acceptEdits";
+  const standalone = !sessionId;
+  const cliConnected = useStore((s) => s.cliConnected);
+  const sessionData = useStore((s) => sessionId ? s.sessions.get(sessionId) : undefined);
+  const previousMode = useStore((s) => sessionId ? (s.previousPermissionMode.get(sessionId) || "acceptEdits") : "acceptEdits");
+
+  const isConnected = standalone ? !disabledProp : (cliConnected.get(sessionId!) ?? false);
+  const currentMode = standalone ? (modeProp || "acceptEdits") : (sessionData?.permissionMode || "acceptEdits");
   const isPlan = currentMode === "plan";
   const isCodex = sessionData?.backend_type === "codex";
-  const modes: ModeOption[] = isCodex ? CODEX_MODES : CLAUDE_MODES;
-  const modeLabel = modes.find((m) => m.value === currentMode)?.label?.toLowerCase() || currentMode;
+  const effectiveModes: ModeOption[] = standalone ? (modesProp || CLAUDE_MODES) : (isCodex ? CODEX_MODES : CLAUDE_MODES);
+  const modeLabel = standalone
+    ? (effectiveModes.find((m) => m.value === currentMode)?.label || currentMode)
+    : (effectiveModes.find((m) => m.value === currentMode)?.label?.toLowerCase() || currentMode);
 
   // Build command list from live session data first.
   const sessionCommands = useMemo<CommandItem[]>(() => {
@@ -66,15 +103,17 @@ export function Composer({ sessionId }: { sessionId: string }) {
     return cmds;
   }, [sessionData?.slash_commands, sessionData?.skills]);
 
+  const effectiveCwd = sessionData?.cwd || cwdProp;
+
   useEffect(() => {
-    if (!sessionData?.cwd || sessionCommands.length > 0) {
+    if (!effectiveCwd || sessionCommands.length > 0) {
       if (sessionCommands.length > 0) {
         setFallbackCommands([]);
       }
       return;
     }
     let cancelled = false;
-    api.getClaudeConfig(sessionData.cwd)
+    api.getClaudeConfig(effectiveCwd)
       .then((config: ClaudeConfigResponse) => {
         if (cancelled) return;
         const next: CommandItem[] = [];
@@ -99,7 +138,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [sessionData?.cwd, sessionCommands.length]);
+  }, [effectiveCwd, sessionCommands.length]);
 
   const allCommands = sessionCommands.length > 0 ? sessionCommands : fallbackCommands;
 
@@ -157,6 +196,29 @@ export function Composer({ sessionId }: { sessionId: string }) {
     pendingSelectionRef.current = null;
   }, [text]);
 
+  useImperativeHandle(ref, () => ({
+    clear() {
+      setText("");
+      setImages([]);
+      setSlashMenuOpen(false);
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+    },
+    focus() {
+      textareaRef.current?.focus();
+    },
+  }));
+
+  useEffect(() => {
+    if (!showModeMenu) return;
+    function handleClick(e: MouseEvent) {
+      if (modeMenuRef.current && !modeMenuRef.current.contains(e.target as Node)) {
+        setShowModeMenu(false);
+      }
+    }
+    document.addEventListener("pointerdown", handleClick);
+    return () => document.removeEventListener("pointerdown", handleClick);
+  }, [showModeMenu]);
+
   const selectCommand = useCallback((cmd: CommandItem) => {
     const commandText = `/${cmd.name} `;
     if (slashToken) {
@@ -178,14 +240,19 @@ export function Composer({ sessionId }: { sessionId: string }) {
     const msg = text.trim();
     if (!msg || !isConnected) return;
 
-    sendToSession(sessionId, {
+    if (standalone) {
+      onSendProp?.(msg, [...images]);
+      return;
+    }
+
+    sendToSession(sessionId!, {
       type: "user_message",
       content: msg,
-      session_id: sessionId,
+      session_id: sessionId!,
       images: images.length > 0 ? images.map((img) => ({ media_type: img.mediaType, data: img.base64 })) : undefined,
     });
 
-    useStore.getState().appendMessage(sessionId, {
+    useStore.getState().appendMessage(sessionId!, {
       id: `user-${Date.now()}-${++idCounter}`,
       role: "user",
       content: msg,
@@ -235,7 +302,13 @@ export function Composer({ sessionId }: { sessionId: string }) {
 
     if (e.key === "Tab" && e.shiftKey) {
       e.preventDefault();
-      toggleMode();
+      if (standalone && modesProp && onModeChange) {
+        const idx = modesProp.findIndex((m) => m.value === (modeProp || ""));
+        const next = (idx + 1) % modesProp.length;
+        onModeChange(modesProp[next].value);
+      } else if (!standalone) {
+        toggleMode();
+      }
       return;
     }
     if (e.key === "Enter" && !e.shiftKey) {
@@ -258,6 +331,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
   }
 
   function handleInterrupt() {
+    if (!sessionId) return;
     sendToSession(sessionId, { type: "interrupt" });
   }
 
@@ -296,7 +370,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
   }
 
   function toggleMode() {
-    if (!isConnected) return;
+    if (!isConnected || standalone || !sessionId) return;
     const store = useStore.getState();
     if (!isPlan) {
       store.setPreviousPermissionMode(sessionId, currentMode);
@@ -310,11 +384,11 @@ export function Composer({ sessionId }: { sessionId: string }) {
   }
 
   const sessionStatus = useStore((s) => s.sessionStatus);
-  const isRunning = sessionStatus.get(sessionId) === "running";
+  const isRunning = !standalone && sessionId ? sessionStatus.get(sessionId) === "running" : false;
   const canSend = text.trim().length > 0 && isConnected;
 
   return (
-    <div className="relative z-10 shrink-0 px-3 sm:px-0 pt-0 pb-10 sm:pb-6 bg-transparent">
+    <div className={cn("relative z-10 shrink-0 px-3 sm:px-3 pt-0 pb-4 bg-transparent", classNameProp)}>
       <div className="relative max-w-3xl mx-auto">
         {/* Image thumbnails */}
         {images.length > 0 && (
@@ -402,8 +476,8 @@ export function Composer({ sessionId }: { sessionId: string }) {
             </div>
           )}
 
-          {/* Temporary test override: keep mobile toolbar disabled so all breakpoints use the desktop control layout. */}
-          <div className="hidden items-center gap-1.5 px-3 pt-1.5 pb-0.5 sm:hidden">
+          {/* Mobile toolbar (hidden — desktop layout used on all breakpoints) */}
+          {!standalone && <div className="hidden items-center gap-1.5 px-3 pt-1.5 pb-0.5 sm:hidden">
             <Button
               type="button"
               onClick={toggleMode}
@@ -428,7 +502,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
               <span>{modeLabel}</span>
             </Button>
 
-            <ModelSwitcher sessionId={sessionId} />
+            {sessionId && <ModelSwitcher sessionId={sessionId} />}
 
             <div className="flex-1" />
 
@@ -441,7 +515,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
             >
               <ImageIcon className="size-4" />
             </Button>
-          </div>
+          </div>}
 
           {/* Textarea row */}
           <div className="px-3 sm:px-3 pt-1 sm:pt-2.5">
@@ -454,19 +528,18 @@ export function Composer({ sessionId }: { sessionId: string }) {
               onKeyUp={syncCaret}
               onPaste={handlePaste}
               aria-label="Message input"
-              placeholder={isConnected
+              placeholder={placeholderProp || (isConnected
                 ? "Type a message... (/)"
-                : "Waiting for CLI connection..."}
+                : "Waiting for CLI connection...")}
               disabled={!isConnected}
-              rows={1}
+              rows={standalone ? 4 : 1}
               className="w-full px-1 py-1.5 text-base sm:text-sm bg-transparent resize-none outline-none text-foreground font-sans placeholder:text-muted-foreground disabled:opacity-50 overflow-y-auto"
-              style={{ minHeight: "72px", maxHeight: "200px" }}
+              style={{ minHeight: `${minHeightProp || 72}px`, maxHeight: "200px" }}
             />
           </div>
 
-          {/* Temporary test override: keep mobile action row disabled so all breakpoints use the desktop control layout. */}
-          <div className="hidden items-center justify-end gap-1 px-3 pb-1 sm:hidden">
-            {/* Send/stop */}
+          {/* Mobile action row (hidden — desktop layout used on all breakpoints) */}
+          {!standalone && <div className="hidden items-center justify-end gap-1 px-3 pb-1 sm:hidden">
             {isRunning ? (
               <Button
                 variant="destructive"
@@ -495,9 +568,9 @@ export function Composer({ sessionId }: { sessionId: string }) {
                 <ArrowUp className="size-4" strokeWidth={2.5} />
               </Button>
             )}
-          </div>
+          </div>}
 
-          {/* Temporary test override: render desktop action bar on all breakpoints. */}
+          {/* Desktop action bar */}
           <div className="flex items-center gap-1.5 px-2.5 pb-2">
             {/* + button (image upload) */}
             <Button
@@ -510,39 +583,77 @@ export function Composer({ sessionId }: { sessionId: string }) {
               <Plus className="size-4" />
             </Button>
 
-            {/* Mode toggle */}
-            <Button
-              type="button"
-              onClick={toggleMode}
-              disabled={!isConnected}
-              variant={isPlan ? "secondary" : "outline"}
-              size="sm"
-              className={cn(
-                "text-xs font-semibold select-none shrink-0",
-                !isConnected
-                  ? "text-muted-foreground border-transparent"
-                  : isPlan
-                    ? "text-primary border-primary/30 bg-primary/8 hover:bg-primary/12"
-                    : "text-muted-foreground"
-              )}
-              title="Toggle mode (Shift+Tab)"
-            >
-              {isPlan ? (
-                <Pause className="size-3.5" />
-              ) : (
-                <ChevronsRight className="size-3.5" />
-              )}
-              <span>{modeLabel}</span>
-            </Button>
+            {/* Mode: dropdown in standalone, toggle in session */}
+            {standalone ? (
+              <div className="relative" ref={modeMenuRef}>
+                <Button
+                  type="button"
+                  onClick={() => setShowModeMenu(!showModeMenu)}
+                  aria-expanded={showModeMenu}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs font-semibold select-none shrink-0 text-muted-foreground"
+                >
+                  <ChevronsRight className="size-3.5" />
+                  <span>{modeLabel}</span>
+                  <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3 opacity-50">
+                    <path d="M4 6l4 4 4-4" />
+                  </svg>
+                </Button>
+                {showModeMenu && (
+                  <div className="absolute left-0 bottom-full mb-1 w-40 bg-card border border-border rounded-[10px] shadow-lg z-10 py-1 overflow-hidden">
+                    {effectiveModes.map((m) => (
+                      <Button
+                        key={m.value}
+                        type="button"
+                        onClick={() => { onModeChange?.(m.value); setShowModeMenu(false); }}
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "w-full justify-start text-xs",
+                          m.value === currentMode ? "text-primary font-medium" : "text-foreground"
+                        )}
+                      >
+                        {m.label}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Button
+                type="button"
+                onClick={toggleMode}
+                disabled={!isConnected}
+                variant={isPlan ? "secondary" : "outline"}
+                size="sm"
+                className={cn(
+                  "text-xs font-semibold select-none shrink-0",
+                  !isConnected
+                    ? "text-muted-foreground border-transparent"
+                    : isPlan
+                      ? "text-primary border-primary/30 bg-primary/8 hover:bg-primary/12"
+                      : "text-muted-foreground"
+                )}
+                title="Toggle mode (Shift+Tab)"
+              >
+                {isPlan ? (
+                  <Pause className="size-3.5" />
+                ) : (
+                  <ChevronsRight className="size-3.5" />
+                )}
+                <span>{modeLabel}</span>
+              </Button>
+            )}
 
             {/* Spacer */}
             <div className="flex-1" />
 
-            {/* Model switcher */}
-            <ModelSwitcher sessionId={sessionId} />
+            {/* Model switcher — session mode only */}
+            {!standalone && sessionId && <ModelSwitcher sessionId={sessionId} />}
 
             {/* Send/stop */}
-            {isRunning ? (
+            {!standalone && isRunning ? (
               <Button
                 variant="destructive"
                 size="icon"
@@ -576,4 +687,4 @@ export function Composer({ sessionId }: { sessionId: string }) {
       </div>
     </div>
   );
-}
+});

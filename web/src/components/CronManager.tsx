@@ -252,7 +252,7 @@ export function CronManager({ onClose }: Props) {
 
   if (!onClose) {
     return (
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-28 md:pb-6">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
           {/* Header */}
           <div className="flex items-start justify-between gap-3 mb-2">
             <div className="min-w-0">

@@ -7,6 +7,8 @@ import {
   Check,
   X,
   ListTree,
+  MessageCircle,
+  PenLine,
 } from "lucide-react";
 import { useStore } from "../store.js";
 import { sendToSession } from "../ws.js";
@@ -14,7 +16,6 @@ import type { PermissionRequest } from "../types.js";
 import type { PermissionUpdate, AiValidationInfo } from "../../server/session-types.js";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { DiffViewer } from "./DiffViewer.js";
 
 /** Human-readable label for a permission suggestion */
@@ -69,93 +70,91 @@ export function PermissionBanner({
   const isAskUser = permission.tool_name === "AskUserQuestion";
   const suggestions = permission.permission_suggestions;
 
+  if (isAskUser) {
+    return (
+      <div className="px-2 sm:px-4 py-3 animate-[fadeSlideIn_0.2s_ease-out]">
+        <div className="max-w-3xl mx-auto">
+          <div className="ask-glass-panel">
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="ask-glass-icon">
+                <MessageCircle className="size-4" />
+              </div>
+              <span className="text-xs font-semibold text-primary tracking-wide">Question</span>
+            </div>
+            <AskUserQuestionDisplay
+              input={permission.input}
+              onSelect={(answers) => handleAllow({ ...permission.input, answers })}
+              disabled={loading}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="px-2 sm:px-4 py-3 border-b border-border animate-[fadeSlideIn_0.2s_ease-out]">
+    <div className="px-2 sm:px-4 py-3 animate-[fadeSlideIn_0.2s_ease-out]">
       <div className="max-w-3xl mx-auto">
-        <div className="flex items-start gap-2 sm:gap-3">
+        <div className="card-moku rounded-xl p-3 flex items-start gap-2 sm:gap-3">
           {/* Icon */}
-          <div className={cn(
-            "w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
-            isAskUser
-              ? "bg-primary/10 border border-primary/20"
-              : "bg-warning/10 border border-warning/20"
-          )}>
-            {isAskUser ? (
-              <AlertCircle className="size-4 text-primary" />
-            ) : (
-              <AlertTriangle className="size-4 text-warning" />
-            )}
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 bg-warning/10 border border-warning/20">
+            <AlertTriangle className="size-4 text-warning" />
           </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
-              <span className={cn(
-                "text-xs font-semibold",
-                isAskUser ? "text-primary" : "text-warning"
-              )}>
-                {isAskUser ? "Question" : "Permission Request"}
+              <span className="text-xs font-semibold text-warning">
+                Permission Request
               </span>
-              {!isAskUser && (
-                <span className="text-xs text-muted-foreground font-mono">{permission.tool_name}</span>
-              )}
+              <span className="text-xs text-muted-foreground font-mono">{permission.tool_name}</span>
             </div>
 
-            {isAskUser ? (
-              <AskUserQuestionDisplay
-                input={permission.input}
-                onSelect={(answers) => handleAllow({ ...permission.input, answers })}
-                disabled={loading}
-              />
-            ) : (
-              <ToolInputDisplay toolName={permission.tool_name} input={permission.input} description={permission.description} />
-            )}
+            <ToolInputDisplay toolName={permission.tool_name} input={permission.input} description={permission.description} />
 
             {/* AI validation recommendation (shown for "uncertain" verdicts that fall through to manual) */}
-            {permission.ai_validation && !isAskUser && (
+            {permission.ai_validation && (
               <AiValidationBadge validation={permission.ai_validation} />
             )}
 
-            {/* Actions - only for non-AskUserQuestion tools */}
-            {!isAskUser && (
-              <div className="flex items-center gap-2 mt-3 flex-wrap">
-                <Button
-                  onClick={() => handleAllow()}
-                  disabled={loading}
-                  size="sm"
-                  className="bg-success/90 hover:bg-success text-white border-0"
-                >
-                  <Check className="size-3" />
-                  Allow
-                </Button>
+            {/* Actions */}
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              <Button
+                onClick={() => handleAllow()}
+                disabled={loading}
+                size="sm"
+                className="bg-success/90 hover:bg-success text-white border-0"
+              >
+                <Check className="size-3" />
+                Allow
+              </Button>
 
-                {/* Permission suggestion buttons — only when CLI provides them */}
-                {suggestions?.map((suggestion, i) => (
-                  <Button
-                    key={i}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleAllow(undefined, [suggestion])}
-                    disabled={loading}
-                    title={`${suggestion.type}: ${JSON.stringify(suggestion)}`}
-                    className="text-primary border-primary/20 bg-primary/10 hover:bg-primary/20"
-                  >
-                    <Check className="size-3" />
-                    {suggestionLabel(suggestion)}
-                  </Button>
-                ))}
-
+              {/* Permission suggestion buttons — only when CLI provides them */}
+              {suggestions?.map((suggestion, i) => (
                 <Button
+                  key={i}
                   variant="outline"
                   size="sm"
-                  onClick={handleDeny}
+                  onClick={() => handleAllow(undefined, [suggestion])}
                   disabled={loading}
+                  title={`${suggestion.type}: ${JSON.stringify(suggestion)}`}
+                  className="text-primary border-primary/20 bg-primary/10 hover:bg-primary/20"
                 >
-                  <X className="size-3" />
-                  Deny
+                  <Check className="size-3" />
+                  {suggestionLabel(suggestion)}
                 </Button>
-              </div>
-            )}
+              ))}
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDeny}
+                disabled={loading}
+              >
+                <X className="size-3" />
+                Deny
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -263,7 +262,6 @@ function AskUserQuestionDisplay({
     setSelections((prev) => ({ ...prev, [key]: label }));
     setShowCustom((prev) => ({ ...prev, [key]: false }));
 
-    // Auto-submit if single question
     if (questions.length <= 1) {
       onSelect({ [key]: label });
     }
@@ -320,7 +318,6 @@ function AskUserQuestionDisplay({
   }
 
   if (questions.length === 0) {
-    // Fallback for simple question string
     const question = typeof input.question === "string" ? input.question : "";
     if (question) {
       return (
@@ -333,7 +330,7 @@ function AskUserQuestionDisplay({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {questions.map((q: Record<string, unknown>, i: number) => {
         const header = typeof q.header === "string" ? q.header : "";
         const text = typeof q.question === "string" ? q.question : "";
@@ -343,87 +340,86 @@ function AskUserQuestionDisplay({
         const isCustom = showCustom[key];
 
         return (
-          <div key={i} className="space-y-2">
+          <div key={i} className="space-y-2.5">
             {header && (
-              <Badge variant="secondary" className="text-[10px] text-primary bg-primary/10">
+              <span className="ask-glass-badge">
                 {header}
-              </Badge>
+              </span>
             )}
             {text && (
               <p className="text-sm text-foreground leading-relaxed">{text}</p>
             )}
             {options.length > 0 && (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {options.map((opt: Record<string, unknown>, j: number) => {
                   const label = typeof opt.label === "string" ? opt.label : String(opt);
                   const desc = typeof opt.description === "string" ? opt.description : "";
                   const isSelected = selected === label;
 
                   return (
-                    <Button
+                    <button
                       key={j}
                       type="button"
                       onClick={() => handleOptionClick(i, label)}
                       disabled={disabled}
                       className={cn(
-                        "h-auto w-full justify-start whitespace-normal rounded-lg border px-3 py-2 text-left transition-all",
-                        isSelected
-                          ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-                          : "border-border bg-accent/50 hover:bg-accent hover:border-primary/30"
+                        "ask-glass-option",
+                        isSelected && "ask-glass-option-selected"
                       )}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         <span className={cn(
-                          "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
-                          isSelected ? "border-primary" : "border-muted-foreground/40"
+                          "ask-glass-radio",
+                          isSelected && "ask-glass-radio-active"
                         )}>
-                          {isSelected && <span className="w-2 h-2 rounded-full bg-primary" />}
+                          {isSelected && <span className="ask-glass-radio-dot" />}
                         </span>
-                        <div>
-                          <span className="text-xs font-medium text-foreground">{label}</span>
+                        <div className="min-w-0">
+                          <span className="text-[13px] font-medium text-foreground">{label}</span>
                           {desc && <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{desc}</p>}
                         </div>
                       </div>
-                    </Button>
+                    </button>
                   );
                 })}
 
-                {/* "Other" option */}
-                <Button
+                {/* "Other" custom answer toggle */}
+                <button
                   type="button"
                   onClick={() => handleCustomToggle(i)}
                   disabled={disabled}
                   className={cn(
-                    "h-auto w-full justify-start whitespace-normal rounded-lg border px-3 py-2 text-left transition-all",
-                    isCustom
-                      ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-                      : "border-border bg-accent/50 hover:bg-accent hover:border-primary/30"
+                    "ask-glass-option",
+                    isCustom && "ask-glass-option-selected"
                   )}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <span className={cn(
-                      "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
-                      isCustom ? "border-primary" : "border-muted-foreground/40"
+                      "ask-glass-radio",
+                      isCustom && "ask-glass-radio-active"
                     )}>
-                      {isCustom && <span className="w-2 h-2 rounded-full bg-primary" />}
+                      {isCustom && <span className="ask-glass-radio-dot" />}
                     </span>
-                    <span className="text-xs font-medium text-muted-foreground">Other...</span>
+                    <div className="flex items-center gap-1.5">
+                      <PenLine className="size-3 text-muted-foreground" />
+                      <span className="text-[13px] font-medium text-muted-foreground">Other...</span>
+                    </div>
                   </div>
-                </Button>
+                </button>
 
                 {isCustom && (
-                  <div className="pl-6">
+                  <div className="pl-8 animate-[fadeSlideIn_0.15s_ease-out]">
                     <input
                       type="text"
                       value={customText[key] || ""}
                       onChange={(e) => handleCustomChange(i, e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") handleCustomSubmit(i); }}
                       placeholder="Type your answer..."
-                      className="w-full px-2.5 py-1.5 text-xs input-moku rounded-lg text-foreground placeholder:text-muted-foreground"
+                      className="w-full px-3 py-2 text-[13px] input-moku rounded-[10px] text-foreground placeholder:text-muted-foreground"
                       autoFocus
                     />
                     {questions.length <= 1 && (
-                      <p className="mt-1 text-[10px] text-muted-foreground">Press Enter to submit</p>
+                      <p className="mt-1.5 text-[10px] text-muted-foreground/70">Press Enter to submit</p>
                     )}
                   </div>
                 )}
@@ -435,12 +431,14 @@ function AskUserQuestionDisplay({
 
       {/* Submit all for multi-question */}
       {questions.length > 1 && Object.keys(selections).length > 0 && (
-        <Button
+        <button
+          type="button"
           onClick={handleSubmitAll}
           disabled={disabled}
+          className="ask-glass-submit"
         >
           Submit answers
-        </Button>
+        </button>
       )}
     </div>
   );

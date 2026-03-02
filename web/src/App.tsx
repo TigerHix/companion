@@ -8,7 +8,6 @@ import { Sidebar } from "./components/Sidebar.js";
 import { ChatView } from "./components/ChatView.js";
 import { TopBar } from "./components/TopBar.js";
 import { HomePage } from "./components/HomePage.js";
-import { Navbar } from "./components/Navbar.js";
 import { DiffPanel } from "./components/DiffPanel.js";
 import { SessionLaunchOverlay } from "./components/SessionLaunchOverlay.js";
 import { SessionTerminalDock } from "./components/SessionTerminalDock.js";
@@ -23,7 +22,6 @@ const EnvManager = lazy(() => import("./components/EnvManager.js").then((m) => (
 const DockerBuilderPage = lazy(() => import("./components/DockerBuilderPage.js").then((m) => ({ default: m.DockerBuilderPage })));
 const CronManager = lazy(() => import("./components/CronManager.js").then((m) => ({ default: m.CronManager })));
 const AgentsPage = lazy(() => import("./components/AgentsPage.js").then((m) => ({ default: m.AgentsPage })));
-const TerminalPage = lazy(() => import("./components/TerminalPage.js").then((m) => ({ default: m.TerminalPage })));
 const ProcessPanel = lazy(() => import("./components/ProcessPanel.js").then((m) => ({ default: m.ProcessPanel })));
 
 
@@ -58,7 +56,6 @@ export default function App() {
   const hash = useHash();
   const route = useMemo(() => parseHash(hash), [hash]);
   const isSettingsPage = route.page === "settings";
-  const isTerminalPage = route.page === "terminal";
   const isEnvironmentsPage = route.page === "environments";
   const isDockerBuilderPage = route.page === "docker-builder";
   const isScheduledPage = route.page === "scheduled";
@@ -110,7 +107,7 @@ export default function App() {
         store.setCurrentSession(null);
       }
     }
-    // For other pages (settings, terminal, etc.), preserve currentSessionId
+    // For other pages (settings, environments, etc.), preserve currentSessionId
   }, [route]);
 
   // Keep git changed-files count in sync for the badge regardless of which tab is active.
@@ -158,11 +155,8 @@ export default function App() {
       {/* Sidebar — shadcn sidebar-04 floating variant */}
       <Sidebar />
 
-      {/* App shell — Navbar + main area */}
-      <SidebarInset className="flex flex-row overflow-hidden">
-        {/* Navbar dock — desktop vertical strip, mobile fixed bottom bar */}
-        <Navbar />
-
+      {/* App shell — main area */}
+      <SidebarInset className="flex flex-col overflow-hidden">
         {/* Main area */}
         <div className="flex-1 flex flex-col min-w-0">
         <TopBar />
@@ -170,12 +164,6 @@ export default function App() {
           {isSettingsPage && (
             <div className="absolute inset-0 overflow-y-auto">
               <Suspense fallback={<LazyFallback />}><SettingsPage /></Suspense>
-            </div>
-          )}
-
-          {isTerminalPage && (
-            <div className="absolute inset-0 overflow-y-auto">
-              <Suspense fallback={<LazyFallback />}><TerminalPage /></Suspense>
             </div>
           )}
 

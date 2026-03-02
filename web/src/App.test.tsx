@@ -333,14 +333,6 @@ describe("App", () => {
       });
     });
 
-    it("renders TerminalPage for terminal route", async () => {
-      (parseHash as ReturnType<typeof vi.fn>).mockReturnValue({ page: "terminal" });
-      render(<App />);
-      await waitFor(() => {
-        expect(screen.getByTestId("terminal-page")).toBeInTheDocument();
-      });
-    });
-
     it("renders EnvManager for environments route", async () => {
       (parseHash as ReturnType<typeof vi.fn>).mockReturnValue({ page: "environments" });
       render(<App />);

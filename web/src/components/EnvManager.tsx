@@ -277,7 +277,7 @@ export function EnvManager({ onClose }: Props) {
 
   if (!onClose) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-6 pb-28 md:pb-6 sm:px-6 sm:py-10">
+      <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-10">
           <div className="mb-2 flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 className="text-lg font-semibold text-foreground">Environments</h1>

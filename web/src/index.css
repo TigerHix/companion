@@ -1151,29 +1151,401 @@ select {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   GLASSMORPHISM — Navbar Dock & Mobile Tab Bar
-   Adapted from nemu, using Moku's warm amber palette (hue ~45)
+   LIQUID GLASS — Session workspace tabs (TopBar)
+   Text-only pill tabs using the same frosted-glass material as btn-liquid-glass
    ═══════════════════════════════════════════════════════════════════════════*/
 
-.navbar-dock {
-  background: var(--surface-panel);
-  border-right: 0.5px solid var(--surface-panel-border);
-  box-shadow: var(--surface-panel-shadow);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+.tab-liquid-glass {
+  position: relative;
+  border-radius: 9999px;
+  padding: 4px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.tab-liquid-glass:hover:not(:disabled) {
+  color: var(--foreground);
+  background: oklch(0.94 0.01 45 / 0.5);
+  border-color: oklch(0.5 0.06 45 / 0.1);
+}
+.tab-liquid-glass:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.tab-liquid-glass:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
-.mobile-tab-bar {
-  background: var(--surface-panel);
-  border: 0.5px solid var(--surface-panel-border);
-  box-shadow: var(--surface-panel-shadow);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+.tab-liquid-glass-active {
+  color: var(--primary) !important;
+  background: oklch(from var(--primary) calc(l + 0.24) calc(c * 0.25) h / 0.55) !important;
+  border-color: oklch(from var(--primary) l calc(c * 0.4) h / 0.2) !important;
+  box-shadow:
+    0 0.5px 2px oklch(from var(--primary) l c h / 0.06),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.3),
+    inset 0 -0.5px 0 oklch(0 0 0 / 0.03);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  font-weight: 600;
+}
+
+.dark .tab-liquid-glass:hover:not(:disabled) {
+  color: var(--foreground);
+  background: oklch(0.26 0.012 45 / 0.4);
+  border-color: oklch(1 0 0 / 0.06);
+}
+
+.dark .tab-liquid-glass-active {
+  color: var(--primary) !important;
+  background: oklch(from var(--primary) calc(l - 0.3) calc(c * 0.35) h / 0.35) !important;
+  border-color: oklch(from var(--primary) l calc(c * 0.45) h / 0.18) !important;
+  box-shadow:
+    0 0.5px 2px oklch(from var(--primary) calc(l - 0.1) c h / 0.08),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.04),
+    inset 0 -0.5px 0 oklch(0 0 0 / 0.1) !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MARKDOWN LINKS — Ensure readable contrast on primary-bg user bubbles
    ═══════════════════════════════════════════════════════════════════════════*/
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIDEBAR — Session section
+   Glass cards, accent borders, labeled dividers
+   ═══════════════════════════════════════════════════════════════════════════*/
+
+/* ─── Context menu — glass dropdown ──────────────────────────────────────── */
+
+.sidebar-ctx-menu {
+  background: var(--surface-panel);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 0.5px solid var(--surface-panel-border);
+  box-shadow: var(--surface-panel-shadow);
+}
+
+/* ─── Session item — left accent border for status ───────────────────────── */
+
+.session-item {
+  position: relative;
+}
+.session-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 1px;
+  background: transparent;
+  transition: background 200ms ease, box-shadow 200ms ease, opacity 200ms ease;
+}
+.session-item.session-item-running::before {
+  background: var(--success);
+  box-shadow: 0 0 6px oklch(from var(--success) l c h / 0.4);
+}
+.session-item.session-item-awaiting::before {
+  background: var(--warning);
+  animation: accent-pulse 1.5s ease-in-out infinite;
+}
+.session-item.session-item-idle::before {
+  background: var(--muted-foreground);
+  opacity: 0.18;
+}
+.session-item.session-item-exited::before {
+  background: var(--muted-foreground);
+  opacity: 0.06;
+}
+
+@keyframes accent-pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 6px oklch(from var(--warning) l c h / 0.4);
+  }
+  50% {
+    opacity: 0.45;
+    box-shadow: 0 0 2px oklch(from var(--warning) l c h / 0.1);
+  }
+}
+
+/* ─── Active session — glass treatment ───────────────────────────────────── */
+
+.session-item-active {
+  background: oklch(from var(--primary) calc(l + 0.28) calc(c * 0.12) h / 0.45) !important;
+  border: 0.5px solid oklch(from var(--primary) l calc(c * 0.2) h / 0.1);
+  box-shadow:
+    inset 0 0.5px 0 oklch(1 0 0 / 0.18),
+    0 1px 3px oklch(from var(--primary) l c h / 0.04);
+}
+.session-item-active::before {
+  background: var(--primary) !important;
+  box-shadow: 0 0 8px oklch(from var(--primary) l c h / 0.3) !important;
+  opacity: 1 !important;
+}
+.dark .session-item-active {
+  background: oklch(from var(--primary) calc(l - 0.38) calc(c * 0.18) h / 0.35) !important;
+  border-color: oklch(from var(--primary) l calc(c * 0.25) h / 0.12);
+  box-shadow:
+    inset 0 0.5px 0 oklch(1 0 0 / 0.04),
+    0 1px 4px oklch(0 0 0 / 0.15);
+}
+
+/* ─── Glass card — session group container ───────────────────────────────── */
+
+.session-group-card {
+  background: oklch(0 0 0 / 0.02);
+  border: 0.5px solid oklch(0 0 0 / 0.05);
+  border-radius: calc(var(--radius-lg) + 2px);
+}
+.dark .session-group-card {
+  background: oklch(1 0 0 / 0.025);
+  border-color: oklch(1 0 0 / 0.06);
+}
+
+/* ─── Section toggle — labeled divider ───────────────────────────────────── */
+
+.session-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: oklch(from var(--muted-foreground) l c h / 0.4);
+  transition: color 150ms ease;
+}
+.session-section-toggle:hover {
+  color: oklch(from var(--muted-foreground) l c h / 0.7);
+}
+.session-section-toggle span:not(.session-section-line) {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.session-section-line {
+  flex: 1;
+  height: 0.5px;
+  background: currentColor;
+  opacity: 0.4;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLASSMORPHISM — AskUserQuestion Panel
+   Frosted glass question cards with warm copper accents
+   ═══════════════════════════════════════════════════════════════════════════*/
+
+.ask-glass-panel {
+  background: oklch(0.97 0.01 45 / 0.6);
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  border: 0.5px solid oklch(from var(--primary) calc(l + 0.2) calc(c * 0.3) h / 0.2);
+  border-radius: 16px;
+  box-shadow:
+    0 4px 24px oklch(from var(--primary) l c h / 0.06),
+    0 1px 3px oklch(0 0 0 / 0.04),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.6);
+  padding: 16px;
+}
+.dark .ask-glass-panel {
+  background: oklch(0.18 0.01 45 / 0.55);
+  border-color: oklch(from var(--primary) l calc(c * 0.35) h / 0.18);
+  box-shadow:
+    0 4px 24px oklch(0 0 0 / 0.35),
+    0 1px 3px oklch(0 0 0 / 0.25),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.05);
+}
+
+.ask-glass-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: oklch(from var(--primary) calc(l + 0.28) calc(c * 0.2) h / 0.6);
+  border: 0.5px solid oklch(from var(--primary) l calc(c * 0.3) h / 0.2);
+  box-shadow:
+    0 1px 3px oklch(from var(--primary) l c h / 0.08),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.4);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.dark .ask-glass-icon {
+  background: oklch(from var(--primary) calc(l - 0.3) calc(c * 0.3) h / 0.4);
+  border-color: oklch(from var(--primary) l calc(c * 0.4) h / 0.2);
+  box-shadow:
+    0 1px 3px oklch(0 0 0 / 0.3),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.06);
+}
+
+.ask-glass-option {
+  position: relative;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  background: oklch(0.98 0.005 45 / 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 0.5px solid oklch(0.5 0.06 45 / 0.1);
+  box-shadow:
+    0 1px 3px oklch(0 0 0 / 0.03),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.5);
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.ask-glass-option:hover:not(:disabled) {
+  background: oklch(0.96 0.012 45 / 0.7);
+  border-color: oklch(from var(--primary) l calc(c * 0.3) h / 0.2);
+  box-shadow:
+    0 2px 8px oklch(from var(--primary) l c h / 0.06),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.55);
+  transform: translateY(-0.5px);
+}
+.ask-glass-option:active:not(:disabled) {
+  transform: translateY(0) scale(0.995);
+}
+
+.dark .ask-glass-option {
+  background: oklch(0.22 0.008 45 / 0.4);
+  border-color: oklch(1 0 0 / 0.08);
+  box-shadow:
+    0 1px 3px oklch(0 0 0 / 0.2),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.04);
+}
+.dark .ask-glass-option:hover:not(:disabled) {
+  background: oklch(0.26 0.012 45 / 0.5);
+  border-color: oklch(from var(--primary) l calc(c * 0.35) h / 0.2);
+  box-shadow:
+    0 2px 8px oklch(from var(--primary) l c h / 0.06),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.06);
+}
+
+.ask-glass-option-selected {
+  background: oklch(from var(--primary) calc(l + 0.26) calc(c * 0.18) h / 0.65) !important;
+  border-color: oklch(from var(--primary) l calc(c * 0.5) h / 0.25) !important;
+  box-shadow:
+    0 2px 12px oklch(from var(--primary) l c h / 0.1),
+    0 0 0 1px oklch(from var(--primary) l calc(c * 0.3) h / 0.1),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.45) !important;
+}
+.dark .ask-glass-option-selected {
+  background: oklch(from var(--primary) calc(l - 0.32) calc(c * 0.3) h / 0.45) !important;
+  border-color: oklch(from var(--primary) l calc(c * 0.5) h / 0.25) !important;
+  box-shadow:
+    0 2px 12px oklch(from var(--primary) l c h / 0.08),
+    0 0 0 1px oklch(from var(--primary) l calc(c * 0.25) h / 0.08),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.06) !important;
+}
+
+.ask-glass-radio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid oklch(0.5 0.04 45 / 0.3);
+  background: oklch(1 0 0 / 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 200ms ease;
+  box-shadow: inset 0 1px 2px oklch(0 0 0 / 0.04);
+}
+.dark .ask-glass-radio {
+  border-color: oklch(1 0 0 / 0.15);
+  background: oklch(1 0 0 / 0.06);
+  box-shadow: inset 0 1px 2px oklch(0 0 0 / 0.15);
+}
+.ask-glass-radio-active {
+  border-color: var(--primary) !important;
+  background: oklch(from var(--primary) calc(l + 0.2) calc(c * 0.3) h / 0.4) !important;
+  box-shadow:
+    0 0 6px oklch(from var(--primary) l c h / 0.2),
+    inset 0 0 0 0 transparent !important;
+}
+.dark .ask-glass-radio-active {
+  background: oklch(from var(--primary) calc(l - 0.15) calc(c * 0.5) h / 0.35) !important;
+  box-shadow:
+    0 0 8px oklch(from var(--primary) l c h / 0.25),
+    inset 0 0 0 0 transparent !important;
+}
+
+.ask-glass-radio-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 4px oklch(from var(--primary) l c h / 0.4);
+  animation: ask-radio-pop 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes ask-radio-pop {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.ask-glass-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  background: oklch(from var(--primary) calc(l + 0.3) calc(c * 0.15) h / 0.5);
+  color: var(--primary);
+  border: 0.5px solid oklch(from var(--primary) l calc(c * 0.25) h / 0.12);
+  box-shadow: inset 0 0.5px 0 oklch(1 0 0 / 0.3);
+}
+.dark .ask-glass-badge {
+  background: oklch(from var(--primary) calc(l - 0.32) calc(c * 0.25) h / 0.4);
+  border-color: oklch(from var(--primary) l calc(c * 0.35) h / 0.15);
+  box-shadow: inset 0 0.5px 0 oklch(1 0 0 / 0.04);
+}
+
+.ask-glass-submit {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: 0.5px solid oklch(from var(--primary) calc(l + 0.1) c h / 0.3);
+  border-radius: 10px;
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow:
+    0 2px 8px oklch(from var(--primary) calc(l - 0.2) c h / 0.2),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.2);
+  transition: all 180ms ease;
+}
+.ask-glass-submit:hover:not(:disabled) {
+  background: oklch(from var(--primary) calc(l + 0.05) c h);
+  box-shadow:
+    0 4px 14px oklch(from var(--primary) calc(l - 0.15) c h / 0.3),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.25);
+  transform: translateY(-0.5px);
+}
+.ask-glass-submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+.ask-glass-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.dark .ask-glass-submit {
+  box-shadow:
+    0 2px 10px oklch(0 0 0 / 0.35),
+    inset 0 0.5px 0 oklch(1 0 0 / 0.1);
+}
 
 .bg-primary .markdown-body a {
   color: var(--primary-foreground);

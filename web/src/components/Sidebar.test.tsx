@@ -1575,4 +1575,60 @@ describe("Sidebar", () => {
 
     expect(screen.getByText(/3 archived sessions/)).toBeInTheDocument();
   });
+
+  // ─── App-level navigation items ──────────────────────────────────────────
+
+  it("renders app-level nav items: Home, Agents, Environments, Settings", () => {
+    // Verifies that the sidebar renders the four app-level navigation items
+    // above the session list for navigating between app pages.
+    renderSidebar();
+    expect(screen.getByTestId("sidebar-nav-home")).toBeInTheDocument();
+    expect(screen.getByTestId("sidebar-nav-agents")).toBeInTheDocument();
+    expect(screen.getByTestId("sidebar-nav-environments")).toBeInTheDocument();
+    expect(screen.getByTestId("sidebar-nav-settings")).toBeInTheDocument();
+  });
+
+  it("clicking Settings nav item navigates to #/settings", () => {
+    // Verifies that clicking the Settings sidebar nav item sets the correct hash route.
+    renderSidebar();
+    fireEvent.click(screen.getByTestId("sidebar-nav-settings"));
+    expect(window.location.hash).toBe("#/settings");
+  });
+
+  it("clicking Agents nav item navigates to #/agents", () => {
+    // Verifies that clicking the Agents sidebar nav item sets the correct hash route.
+    renderSidebar();
+    fireEvent.click(screen.getByTestId("sidebar-nav-agents"));
+    expect(window.location.hash).toBe("#/agents");
+  });
+
+  it("clicking Environments nav item navigates to #/environments", () => {
+    renderSidebar();
+    fireEvent.click(screen.getByTestId("sidebar-nav-environments"));
+    expect(window.location.hash).toBe("#/environments");
+  });
+
+  it("clicking Home nav item navigates home and creates new session", () => {
+    // Verifies that clicking Home calls navigateHome() and newSession().
+    renderSidebar();
+    fireEvent.click(screen.getByTestId("sidebar-nav-home"));
+    expect(window.location.hash).toBe("");
+    expect(mockState.newSession).toHaveBeenCalled();
+  });
+
+  it("Settings nav item shows active state when on settings page", () => {
+    // Verifies that the Settings nav item reflects active state based on current route.
+    // SidebarMenuButton sets data-active="" (present but empty) for truthy isActive.
+    window.location.hash = "#/settings";
+    renderSidebar();
+    const settingsBtn = screen.getByTestId("sidebar-nav-settings");
+    expect(settingsBtn).toHaveAttribute("data-active");
+  });
+
+  it("Agents nav item shows active state when on agents page", () => {
+    window.location.hash = "#/agents";
+    renderSidebar();
+    const agentsBtn = screen.getByTestId("sidebar-nav-agents");
+    expect(agentsBtn).toHaveAttribute("data-active");
+  });
 });

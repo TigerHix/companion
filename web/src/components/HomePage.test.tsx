@@ -21,6 +21,7 @@ const { mockApi, createSessionStreamMock, mockStoreState, mockStoreGetState } = 
     getImageStatus: vi.fn(),
     pullImage: vi.fn(),
     gitPull: vi.fn(),
+    getClaudeConfig: vi.fn(),
   },
   createSessionStreamMock: vi.fn(),
   mockStoreState: {
@@ -113,6 +114,10 @@ describe("HomePage", () => {
     mockApi.listSessions.mockResolvedValue([]);
     mockApi.discoverClaudeSessions.mockResolvedValue({ sessions: [] });
     mockApi.gitFetch.mockResolvedValue({ ok: true });
+    mockApi.getClaudeConfig.mockResolvedValue({
+      project: { root: "/repo", claudeMd: [], settings: null, settingsLocal: null, commands: [] },
+      user: { root: "/home/ubuntu/.claude", claudeMd: null, skills: [], agents: [], settings: null, commands: [] },
+    });
   });
 
   it("passes axe accessibility checks", async () => {
@@ -823,7 +828,7 @@ describe("HomePage", () => {
     render(<HomePage />);
     await screen.findByPlaceholderText("Fix a bug, build a feature, refactor code...");
 
-    const uploadButton = screen.getByTitle("Upload image");
+    const uploadButton = screen.getByTitle("Attach image");
     expect(uploadButton).toBeInTheDocument();
 
     // There should also be a hidden file input for image selection
