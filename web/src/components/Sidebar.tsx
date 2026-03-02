@@ -111,6 +111,7 @@ function SessionSubItem({
   const label = sessionName || s.model || shortId;
   const isEditing = editingSessionId === s.id;
   const [menuOpen, setMenuOpen] = useState(false);
+  const suppressMenuFinalFocusRef = useRef(false);
 
   const derivedStatus = archived ? ("exited" as DerivedStatus) : deriveStatus(s);
 
@@ -175,9 +176,26 @@ function SessionSubItem({
         >
           <MoreVertical className="!size-3.5" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" sideOffset={4} className="w-36 sidebar-ctx-menu">
+        <DropdownMenuContent
+          align="end"
+          sideOffset={4}
+          className="w-36 sidebar-ctx-menu"
+          finalFocus={() => {
+            if (suppressMenuFinalFocusRef.current) {
+              suppressMenuFinalFocusRef.current = false;
+              return false;
+            }
+            return true;
+          }}
+        >
           {!archived && (
-            <DropdownMenuItem className="text-xs" onClick={() => onStartRename(s.id, label)}>
+            <DropdownMenuItem
+              className="text-xs"
+              onClick={() => {
+                suppressMenuFinalFocusRef.current = true;
+                onStartRename(s.id, label);
+              }}
+            >
               Rename
             </DropdownMenuItem>
           )}
@@ -221,7 +239,7 @@ export function Sidebar() {
   const editInputRef = useRef<HTMLInputElement>(null);
   const sessions = useStore((s) => s.sessions);
   const sdkSessions = useStore((s) => s.sdkSessions);
-  const currentSessionId = useStore((s) => s.currentSessionId);
+  const lastSessionId = useStore((s) => s.lastSessionId);
   const cliConnected = useStore((s) => s.cliConnected);
   const sessionStatus = useStore((s) => s.sessionStatus);
   const removeSession = useStore((s) => s.removeSession);
@@ -235,6 +253,7 @@ export function Sidebar() {
   const setSidebarOpen = useStore((s) => s.setSidebarOpen);
   const hash = useHash();
   const route = useMemo(() => parseHash(hash), [hash]);
+  const selectedSessionId = route.page === "session" ? route.sessionId : null;
 
   // Poll for SDK sessions on mount
   useEffect(() => {
@@ -321,11 +340,11 @@ export function Sidebar() {
     } catch {
       // best-effort
     }
-    if (useStore.getState().currentSessionId === sessionId) {
+    if (selectedSessionId === sessionId) {
       navigateHome();
     }
     removeSession(sessionId);
-  }, [removeSession]);
+  }, [removeSession, selectedSessionId]);
 
   const confirmDelete = useCallback(() => {
     if (confirmDeleteId) {
@@ -361,6 +380,27 @@ export function Sidebar() {
     setConfirmDeleteAll(false);
   }, []);
 
+  const doArchive = useCallback(async (sessionId: string, force?: boolean) => {
+    try {
+      disconnectSession(sessionId);
+      await api.archiveSession(sessionId, force ? { force: true } : undefined);
+    } catch {
+      // best-effort
+    }
+    if (selectedSessionId === sessionId) {
+      navigateHome();
+      useStore.getState().newSession();
+    } else if (lastSessionId === sessionId) {
+      useStore.getState().setLastSessionId(null);
+    }
+    try {
+      const list = await api.listSessions();
+      useStore.getState().setSdkSessions(list);
+    } catch {
+      // best-effort
+    }
+  }, [lastSessionId, selectedSessionId]);
+
   const handleArchiveSession = useCallback((e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();
     const sdkInfo = sdkSessions.find((s) => s.sessionId === sessionId);
@@ -371,26 +411,7 @@ export function Sidebar() {
       return;
     }
     doArchive(sessionId);
-  }, [sdkSessions, sessions]);
-
-  const doArchive = useCallback(async (sessionId: string, force?: boolean) => {
-    try {
-      disconnectSession(sessionId);
-      await api.archiveSession(sessionId, force ? { force: true } : undefined);
-    } catch {
-      // best-effort
-    }
-    if (useStore.getState().currentSessionId === sessionId) {
-      navigateHome();
-      useStore.getState().newSession();
-    }
-    try {
-      const list = await api.listSessions();
-      useStore.getState().setSdkSessions(list);
-    } catch {
-      // best-effort
-    }
-  }, []);
+  }, [doArchive, sdkSessions, sessions]);
 
   const confirmArchive = useCallback(() => {
     if (confirmArchiveId) {
@@ -455,8 +476,8 @@ export function Sidebar() {
   const cronSessions = allSessionList.filter((s) => !s.archived && !!s.cronJobId);
   const agentSessions = allSessionList.filter((s) => !s.archived && !!s.agentId);
   const archivedSessions = allSessionList.filter((s) => s.archived);
-  const currentSession = currentSessionId ? allSessionList.find((s) => s.id === currentSessionId) : null;
-  const logoSrc = currentSession?.backendType === "codex" ? "/logo-codex.svg" : "/logo.svg";
+  const selectedSession = selectedSessionId ? allSessionList.find((s) => s.id === selectedSessionId) : null;
+  const logoSrc = selectedSession?.backendType === "codex" ? "/logo-codex.svg" : "/logo.svg";
   const [showCronSessions, setShowCronSessions] = useState(true);
   const [showAgentSessions, setShowAgentSessions] = useState(true);
 
@@ -509,7 +530,7 @@ export function Sidebar() {
         <SidebarMenu>
           {APP_NAV_ITEMS.map((item) => {
             const isActive = item.id === "home"
-              ? (route.page === "home" && !currentSessionId)
+              ? route.page === "home"
               : item.id === "agents"
                 ? (route.page === "agents" || route.page === "agent-detail")
                 : route.page === item.id;
@@ -602,7 +623,7 @@ export function Sidebar() {
                           <SessionSubItem
                             key={s.id}
                             session={s}
-                            isActive={currentSessionId === s.id}
+                            isActive={selectedSessionId === s.id}
                             sessionName={sessionNames.get(s.id)}
                             permCount={pendingPermissions.get(s.id)?.size ?? 0}
                             isRecentlyRenamed={recentlyRenamed.has(s.id)}
@@ -636,7 +657,7 @@ export function Sidebar() {
                         <SessionSubItem
                           key={s.id}
                           session={s}
-                          isActive={currentSessionId === s.id}
+                          isActive={selectedSessionId === s.id}
                           sessionName={sessionNames.get(s.id)}
                           permCount={pendingPermissions.get(s.id)?.size ?? 0}
                           isRecentlyRenamed={recentlyRenamed.has(s.id)}
@@ -669,7 +690,7 @@ export function Sidebar() {
                         <SessionSubItem
                           key={s.id}
                           session={s}
-                          isActive={currentSessionId === s.id}
+                          isActive={selectedSessionId === s.id}
                           sessionName={sessionNames.get(s.id)}
                           permCount={pendingPermissions.get(s.id)?.size ?? 0}
                           isRecentlyRenamed={recentlyRenamed.has(s.id)}
@@ -713,7 +734,7 @@ export function Sidebar() {
                         <SessionSubItem
                           key={s.id}
                           session={s}
-                          isActive={currentSessionId === s.id}
+                          isActive={selectedSessionId === s.id}
                           isArchived
                           sessionName={sessionNames.get(s.id)}
                           permCount={pendingPermissions.get(s.id)?.size ?? 0}

@@ -9,7 +9,6 @@ vi.mock("./TerminalView.js", () => ({
 }));
 
 interface MockStoreState {
-  currentSessionId: string | null;
   quickTerminalOpen: boolean;
   quickTerminalTabs: { id: string; label: string; cwd: string; containerId?: string }[];
   activeQuickTerminalTabId: string | null;
@@ -26,7 +25,6 @@ let storeState: MockStoreState;
 
 function resetStore(overrides: Partial<MockStoreState> = {}) {
   storeState = {
-    currentSessionId: "s1",
     quickTerminalOpen: true,
     quickTerminalTabs: [{ id: "t1", label: "Terminal", cwd: "/repo" }],
     activeQuickTerminalTabId: "t1",

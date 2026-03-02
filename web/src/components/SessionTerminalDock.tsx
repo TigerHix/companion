@@ -46,7 +46,6 @@ export function SessionTerminalDock({
   onClosePanel,
   suppressPanel = false,
 }: SessionTerminalDockProps) {
-  const currentSessionId = useStore((s) => s.currentSessionId);
   const quickTerminalOpen = useStore((s) => s.quickTerminalOpen);
   const quickTerminalTabs = useStore((s) => s.quickTerminalTabs);
   const activeQuickTerminalTabId = useStore((s) => s.activeQuickTerminalTabId);
@@ -57,22 +56,22 @@ export function SessionTerminalDock({
   const setActiveQuickTerminalTabId = useStore((s) => s.setActiveQuickTerminalTabId);
 
   const cwd = useStore((s) => {
-    if (!currentSessionId) return null;
+    if (!sessionId) return null;
     return (
-      s.sessions.get(currentSessionId)?.cwd
-      || s.sdkSessions.find((sdk) => sdk.sessionId === currentSessionId)?.cwd
+      s.sessions.get(sessionId)?.cwd
+      || s.sdkSessions.find((sdk) => sdk.sessionId === sessionId)?.cwd
       || null
     );
   });
   const sdkSession = useStore((s) => {
-    if (!currentSessionId) return null;
-    return s.sdkSessions.find((sdk) => sdk.sessionId === currentSessionId) || null;
+    if (!sessionId) return null;
+    return s.sdkSessions.find((sdk) => sdk.sessionId === sessionId) || null;
   });
   const defaultNewTerminalOpts = sdkSession?.containerId
     ? { target: "docker" as const, cwd: "/workspace", containerId: sdkSession.containerId }
     : (cwd ? { target: "host" as const, cwd } : null);
 
-  const hasPanel = currentSessionId === sessionId && quickTerminalOpen && quickTerminalTabs.length > 0;
+  const hasPanel = quickTerminalOpen && quickTerminalTabs.length > 0;
   const layout = useMemo(
     () => placementLayout(quickTerminalPlacement),
     [quickTerminalPlacement],

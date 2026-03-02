@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import type { SessionState, SdkSessionInfo } from "../types.js";
 
@@ -48,7 +49,7 @@ vi.mock("../api.js", () => ({
 interface MockStoreState {
   sessions: Map<string, SessionState>;
   sdkSessions: SdkSessionInfo[];
-  currentSessionId: string | null;
+  lastSessionId: string | null;
   cliConnected: Map<string, boolean>;
   sessionStatus: Map<string, "idle" | "running" | "compacting" | null>;
   sessionNames: Map<string, string>;
@@ -56,7 +57,7 @@ interface MockStoreState {
   pendingPermissions: Map<string, Map<string, unknown>>;
   linkedLinearIssues: Map<string, unknown>;
   collapsedProjects: Set<string>;
-  setCurrentSession: ReturnType<typeof vi.fn>;
+  setLastSessionId: ReturnType<typeof vi.fn>;
   toggleProjectCollapse: ReturnType<typeof vi.fn>;
   removeSession: ReturnType<typeof vi.fn>;
   newSession: ReturnType<typeof vi.fn>;
@@ -113,7 +114,7 @@ function createMockState(overrides: Partial<MockStoreState> = {}): MockStoreStat
   return {
     sessions: new Map(),
     sdkSessions: [],
-    currentSessionId: null,
+    lastSessionId: null,
     cliConnected: new Map(),
     sessionStatus: new Map(),
     sessionNames: new Map(),
@@ -121,7 +122,7 @@ function createMockState(overrides: Partial<MockStoreState> = {}): MockStoreStat
     pendingPermissions: new Map(),
     linkedLinearIssues: new Map(),
     collapsedProjects: new Set(),
-    setCurrentSession: vi.fn(),
+    setLastSessionId: vi.fn(),
     toggleProjectCollapse: vi.fn(),
     removeSession: vi.fn(),
     newSession: vi.fn(),
@@ -289,12 +290,12 @@ describe("Sidebar", () => {
   it("active session has highlighted styling (data-active attribute)", () => {
     // The redesigned sidebar uses SidebarMenuButton with isActive prop which
     // sets a data-active attribute instead of CSS classes like session-item-active.
+    window.location.hash = "#/session/s1";
     const session = makeSession("s1");
     const sdk = makeSdkSession("s1");
     mockState = createMockState({
       sessions: new Map([["s1", session]]),
       sdkSessions: [sdk],
-      currentSessionId: "s1",
     });
 
     renderSidebar();
@@ -304,13 +305,12 @@ describe("Sidebar", () => {
 
   it("clicking a session navigates to the session hash", () => {
     // Sidebar now delegates to URL-based routing: it sets the hash to #/session/{id}
-    // and App.tsx's hash effect handles setCurrentSession + connectSession
+    // and App.tsx's hash effect remembers that session from the route.
     const session = makeSession("s1");
     const sdk = makeSdkSession("s1");
     mockState = createMockState({
       sessions: new Map([["s1", session]]),
       sdkSessions: [sdk],
-      currentSessionId: null,
     });
 
     renderSidebar();
@@ -1018,10 +1018,10 @@ describe("Sidebar", () => {
   it("delete navigates home when the deleted session is the current one", async () => {
     // Verifies that deleting the currently active session navigates the user
     // back to the home page.
+    window.location.hash = "#/session/s1";
     const sdk = makeSdkSession("s1", { archived: true, model: "current-one" });
     mockState = createMockState({
       sdkSessions: [sdk],
-      currentSessionId: "s1",
     });
 
     renderSidebar();
@@ -1239,12 +1239,12 @@ describe("Sidebar", () => {
   it("archiving the current session navigates home and creates a new session", async () => {
     // Verifies that when the currently selected session is archived, the user
     // is redirected to the home page and a new session is started.
+    window.location.hash = "#/session/s1";
     const session = makeSession("s1", { is_containerized: false });
     const sdk = makeSdkSession("s1");
     mockState = createMockState({
       sessions: new Map([["s1", session]]),
       sdkSessions: [sdk],
-      currentSessionId: "s1",
     });
 
     renderSidebar();
@@ -1459,13 +1459,13 @@ describe("Sidebar", () => {
 
   // ─── Logo source based on backend type ─────────────────────────────────────
 
-  it("shows codex logo when current session uses codex backend", () => {
+  it("shows codex logo when the selected route session uses codex backend", () => {
     // Verifies that the sidebar header logo changes to the Codex logo when
-    // the currently selected session has backendType "codex".
+    // the currently selected route session has backendType "codex".
+    window.location.hash = "#/session/s1";
     const sdk = makeSdkSession("s1", { backendType: "codex" });
     mockState = createMockState({
       sdkSessions: [sdk],
-      currentSessionId: "s1",
     });
 
     const { container } = renderSidebar();
@@ -1473,13 +1473,13 @@ describe("Sidebar", () => {
     expect(logo).toBeTruthy();
   });
 
-  it("shows default logo when current session uses claude backend", () => {
+  it("shows default logo when the selected route session uses claude backend", () => {
     // Verifies that the sidebar header logo is the default when the currently
-    // selected session has backendType "claude".
+    // selected route session has backendType "claude".
+    window.location.hash = "#/session/s1";
     const sdk = makeSdkSession("s1", { backendType: "claude" });
     mockState = createMockState({
       sdkSessions: [sdk],
-      currentSessionId: "s1",
     });
 
     const { container } = renderSidebar();
@@ -1512,9 +1512,9 @@ describe("Sidebar", () => {
 
   // ─── Rename via context menu ───────────────────────────────────────────────
 
-  it("clicking Rename in context menu enters edit mode", () => {
-    // Verifies that clicking "Rename" from the session context menu enters
-    // the rename/edit mode for that session.
+  it("clicking Rename in context menu keeps the inline editor focused and editable", async () => {
+    // Verifies that clicking "Rename" from the session context menu does not
+    // immediately blur the editor before the user can type.
     const session = makeSession("s1");
     const sdk = makeSdkSession("s1");
     mockState = createMockState({
@@ -1522,6 +1522,7 @@ describe("Sidebar", () => {
       sdkSessions: [sdk],
     });
 
+    const user = userEvent.setup();
     renderSidebar();
     fireEvent.click(screen.getByTitle("Session actions"));
     fireEvent.click(screen.getByText("Rename"));
@@ -1530,6 +1531,10 @@ describe("Sidebar", () => {
     const input = screen.getByDisplayValue("claude-sonnet-4-6");
     expect(input).toBeInTheDocument();
     expect(input.tagName).toBe("INPUT");
+    expect(input).toHaveFocus();
+
+    await user.type(input, " updated");
+    expect(screen.getByDisplayValue("claude-sonnet-4-6 updated")).toBeInTheDocument();
   });
 
   // ─── Rename calls api.renameSession ────────────────────────────────────────
@@ -1637,10 +1642,41 @@ describe("Sidebar", () => {
     expect(settingsBtn).toHaveAttribute("data-active");
   });
 
+  it("does not keep a remembered session highlighted on settings", () => {
+    window.location.hash = "#/settings";
+    const session = makeSession("s1");
+    const sdk = makeSdkSession("s1");
+    mockState = createMockState({
+      sessions: new Map([["s1", session]]),
+      sdkSessions: [sdk],
+      lastSessionId: "s1",
+    });
+
+    renderSidebar();
+    const sessionButton = screen.getByText("claude-sonnet-4-6").closest("button");
+    expect(sessionButton).not.toHaveAttribute("data-active");
+    expect(screen.getByTestId("sidebar-nav-settings")).toHaveAttribute("data-active");
+  });
+
   it("Agents nav item shows active state when on agents page", () => {
     window.location.hash = "#/agents";
     renderSidebar();
     const agentsBtn = screen.getByTestId("sidebar-nav-agents");
     expect(agentsBtn).toHaveAttribute("data-active");
+  });
+
+  it("home route clears session highlighting even when a last session is remembered", () => {
+    const session = makeSession("s1");
+    const sdk = makeSdkSession("s1");
+    mockState = createMockState({
+      sessions: new Map([["s1", session]]),
+      sdkSessions: [sdk],
+      lastSessionId: "s1",
+    });
+
+    renderSidebar();
+    const sessionButton = screen.getByText("claude-sonnet-4-6").closest("button");
+    expect(sessionButton).not.toHaveAttribute("data-active");
+    expect(screen.getByTestId("sidebar-nav-home")).toHaveAttribute("data-active");
   });
 });

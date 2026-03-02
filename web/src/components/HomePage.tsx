@@ -148,7 +148,7 @@ export function HomePage() {
   const modelDropdownRef = useRef<HTMLDivElement>(null);
   const envDropdownRef = useRef<HTMLDivElement>(null);
 
-  const currentSessionId = useStore((s) => s.currentSessionId);
+  const lastSessionId = useStore((s) => s.lastSessionId);
 
   // Auto-focus composer (desktop only — on mobile it triggers the keyboard immediately)
   useEffect(() => {
@@ -437,9 +437,9 @@ export function HomePage() {
     store.setSessionCreating(true, backend as "claude" | "codex");
 
     try {
-      // Disconnect current session if any
-      if (currentSessionId) {
-        disconnectSession(currentSessionId);
+      // Disconnect the previously remembered session before starting a new one.
+      if (lastSessionId) {
+        disconnectSession(lastSessionId);
       }
 
       const effectiveResumeSessionAt = launchOverride?.resumeSessionAt

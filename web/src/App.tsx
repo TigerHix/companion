@@ -43,7 +43,6 @@ function useHash() {
 export default function App() {
   const isAuthenticated = useStore((s) => s.isAuthenticated);
   const darkMode = useStore((s) => s.darkMode);
-  const currentSessionId = useStore((s) => s.currentSessionId);
   const sidebarOpen = useStore((s) => s.sidebarOpen);
   const homeResetKey = useStore((s) => s.homeResetKey);
   const activeTab = useStore((s) => s.activeTab);
@@ -60,7 +59,8 @@ export default function App() {
   const isDockerBuilderPage = route.page === "docker-builder";
   const isScheduledPage = route.page === "scheduled";
   const isAgentsPage = route.page === "agents" || route.page === "agent-detail";
-  const isSessionView = route.page === "session" || route.page === "home";
+  const isSessionWorkspace = route.page === "session" || route.page === "home";
+  const selectedSessionId = route.page === "session" ? route.sessionId : null;
   const themeColor = darkMode ? "#1b1714" : "#f8f4ef";
 
   useEffect(() => {
@@ -81,13 +81,13 @@ export default function App() {
     }
   }, [activeTab, setActiveTab]);
 
-  // Capture the localStorage-restored session ID during render (before any effects run)
-  // so the mount logic can use it even if the hash-sync branch would clear it.
-  const restoredIdRef = useRef(useStore.getState().currentSessionId);
+  // Capture the remembered session during render so first-mount restoration can
+  // redirect to the session route before we drop the ref.
+  const restoredIdRef = useRef(useStore.getState().lastSessionId);
 
-  // Sync hash → store. On mount, restore a localStorage session into the URL first.
+  // Sync hash → remembered-session state. On mount, restore the remembered
+  // session into the URL first when loading the bare home route.
   useEffect(() => {
-    // On first mount with no session hash, restore from localStorage
     if (restoredIdRef.current !== null && route.page === "home") {
       navigateToSession(restoredIdRef.current, true);
       restoredIdRef.current = null;
@@ -97,41 +97,38 @@ export default function App() {
 
     if (route.page === "session") {
       const store = useStore.getState();
-      if (store.currentSessionId !== route.sessionId) {
-        store.setCurrentSession(route.sessionId);
+      if (store.lastSessionId !== route.sessionId) {
+        store.setLastSessionId(route.sessionId);
       }
       connectSession(route.sessionId);
-    } else if (route.page === "home") {
-      const store = useStore.getState();
-      if (store.currentSessionId !== null) {
-        store.setCurrentSession(null);
-      }
     }
-    // For other pages (settings, environments, etc.), preserve currentSessionId
+    // Home means "no selected session", but we keep the remembered session
+    // unless the user explicitly started a fresh session flow.
+    // Other pages preserve the remembered session for restore/back-navigation.
   }, [route]);
 
   // Keep git changed-files count in sync for the badge regardless of which tab is active.
   // DiffPanel does the same when mounted; this covers the case where the diff tab is closed.
-  const changedFilesTick = useStore((s) => currentSessionId ? s.changedFilesTick.get(currentSessionId) ?? 0 : 0);
+  const changedFilesTick = useStore((s) => selectedSessionId ? s.changedFilesTick.get(selectedSessionId) ?? 0 : 0);
   const diffBase = useStore((s) => s.diffBase);
   const setGitChangedFilesCount = useStore((s) => s.setGitChangedFilesCount);
   const sessionCwd = useStore((s) => {
-    if (!currentSessionId) return null;
-    return s.sessions.get(currentSessionId)?.cwd
-      || s.sdkSessions.find((sdk) => sdk.sessionId === currentSessionId)?.cwd
+    if (!selectedSessionId) return null;
+    return s.sessions.get(selectedSessionId)?.cwd
+      || s.sdkSessions.find((sdk) => sdk.sessionId === selectedSessionId)?.cwd
       || null;
   });
   useEffect(() => {
-    if (!currentSessionId || !sessionCwd) return;
+    if (!selectedSessionId || !sessionCwd) return;
     let cancelled = false;
     api.getChangedFiles(sessionCwd, diffBase).then(({ files }) => {
       if (cancelled) return;
       const prefix = `${sessionCwd}/`;
       const count = files.filter((f) => f.path === sessionCwd || f.path.startsWith(prefix)).length;
-      setGitChangedFilesCount(currentSessionId, count);
+      setGitChangedFilesCount(selectedSessionId, count);
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [currentSessionId, sessionCwd, diffBase, changedFilesTick, setGitChangedFilesCount]);
+  }, [selectedSessionId, sessionCwd, diffBase, changedFilesTick, setGitChangedFilesCount]);
 
   // Auth gate: show login page when not authenticated
   if (!isAuthenticated) {
@@ -191,27 +188,27 @@ export default function App() {
             </div>
           )}
 
-          {isSessionView && (
+          {isSessionWorkspace && (
             <>
               <div className="absolute inset-0">
-                {currentSessionId ? (
+                {selectedSessionId ? (
                   activeTab === "terminal"
                     ? (
                       <SessionTerminalDock
-                        sessionId={currentSessionId}
+                        sessionId={selectedSessionId}
                         terminalOnly
                         onClosePanel={() => useStore.getState().setActiveTab("chat")}
                       />
                     )
                     : activeTab === "processes"
-                      ? <Suspense fallback={<LazyFallback />}><ProcessPanel sessionId={currentSessionId} /></Suspense>
+                      ? <Suspense fallback={<LazyFallback />}><ProcessPanel sessionId={selectedSessionId} /></Suspense>
                       : activeTab === "editor"
-                        ? <SessionEditorPane sessionId={currentSessionId} />
+                        ? <SessionEditorPane sessionId={selectedSessionId} />
                         : (
-                        <SessionTerminalDock sessionId={currentSessionId} suppressPanel>
+                        <SessionTerminalDock sessionId={selectedSessionId} suppressPanel>
                           {activeTab === "diff"
-                            ? <DiffPanel sessionId={currentSessionId} />
-                            : <ChatView sessionId={currentSessionId} />}
+                            ? <DiffPanel sessionId={selectedSessionId} />
+                            : <ChatView sessionId={selectedSessionId} />}
                         </SessionTerminalDock>
                       )
                 ) : (

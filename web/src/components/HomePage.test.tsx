@@ -25,8 +25,8 @@ const { mockApi, createSessionStreamMock, mockStoreState, mockStoreGetState } = 
   },
   createSessionStreamMock: vi.fn(),
   mockStoreState: {
-    setCurrentSession: vi.fn(),
-    currentSessionId: null as string | null,
+    setLastSessionId: vi.fn(),
+    lastSessionId: null as string | null,
   },
   mockStoreGetState: vi.fn(() => ({})),
 }));
@@ -978,11 +978,11 @@ describe("HomePage", () => {
 
   // ─── Disconnect current session on new creation ──────────────────────────────
 
-  it("disconnects existing session when creating a new one", async () => {
-    // If there is a currentSessionId in the store, creating a new session
+  it("disconnects the remembered session when creating a new one", async () => {
+    // If there is a remembered lastSessionId in the store, creating a new session
     // should first disconnect the existing one.
     const { disconnectSession } = await import("../ws.js");
-    mockStoreState.currentSessionId = "old-session-id";
+    mockStoreState.lastSessionId = "old-session-id";
     createSessionStreamMock.mockResolvedValue({
       sessionId: "new-session-id",
       state: "starting",
@@ -999,7 +999,7 @@ describe("HomePage", () => {
     });
 
     // Cleanup
-    mockStoreState.currentSessionId = null;
+    mockStoreState.lastSessionId = null;
   });
 
   // ─── No sessions detected message ──────────────────────────────────────────

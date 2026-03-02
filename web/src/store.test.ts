@@ -19,7 +19,7 @@ vi.hoisted(() => {
   });
 
   // Node.js 22+ native localStorage may be broken (invalid --localstorage-file).
-  // Polyfill before store.ts import triggers getInitialSessionId().
+  // Polyfill before store.ts import triggers getInitialLastSessionId().
   if (
     typeof globalThis.localStorage === "undefined" ||
     typeof globalThis.localStorage.getItem !== "function"
@@ -165,10 +165,10 @@ describe("Session management", () => {
     expect(after.size).toBe(before.size);
   });
 
-  it("removeSession: cleans all maps and clears currentSessionId if removed was current", () => {
+  it("removeSession: cleans all maps and clears lastSessionId if removed was remembered", () => {
     const session = makeSession("s1");
     useStore.getState().addSession(session);
-    useStore.getState().setCurrentSession("s1");
+    useStore.getState().setLastSessionId("s1");
     useStore.getState().appendMessage("s1", makeMessage());
     useStore.getState().setStreaming("s1", "partial text");
     useStore.getState().setStreamingStats("s1", { startedAt: 100, outputTokens: 50 });
@@ -195,7 +195,7 @@ describe("Session management", () => {
     expect(state.cliConnected.has("s1")).toBe(false);
     expect(state.sessionStatus.has("s1")).toBe(false);
     expect(state.previousPermissionMode.has("s1")).toBe(false);
-    expect(state.currentSessionId).toBeNull();
+    expect(state.lastSessionId).toBeNull();
   });
 
   it("removeSession: filters sdkSessions by sessionId", () => {
@@ -220,26 +220,26 @@ describe("Session management", () => {
     expect(state.sdkSessions[0].sessionId).toBe("s2");
   });
 
-  it("removeSession: does not clear currentSessionId if a different session is removed", () => {
+  it("removeSession: does not clear lastSessionId if a different session is removed", () => {
     useStore.getState().addSession(makeSession("s1"));
     useStore.getState().addSession(makeSession("s2"));
-    useStore.getState().setCurrentSession("s1");
+    useStore.getState().setLastSessionId("s1");
 
     useStore.getState().removeSession("s2");
-    expect(useStore.getState().currentSessionId).toBe("s1");
+    expect(useStore.getState().lastSessionId).toBe("s1");
   });
 
-  it("setCurrentSession: persists to localStorage", () => {
-    useStore.getState().setCurrentSession("s1");
-    expect(useStore.getState().currentSessionId).toBe("s1");
-    expect(localStorage.getItem("cc-current-session")).toBe("s1");
+  it("setLastSessionId: persists to localStorage", () => {
+    useStore.getState().setLastSessionId("s1");
+    expect(useStore.getState().lastSessionId).toBe("s1");
+    expect(localStorage.getItem("cc-last-session")).toBe("s1");
   });
 
-  it("setCurrentSession(null): removes from localStorage", () => {
-    useStore.getState().setCurrentSession("s1");
-    useStore.getState().setCurrentSession(null);
-    expect(useStore.getState().currentSessionId).toBeNull();
-    expect(localStorage.getItem("cc-current-session")).toBeNull();
+  it("setLastSessionId(null): removes from localStorage", () => {
+    useStore.getState().setLastSessionId("s1");
+    useStore.getState().setLastSessionId(null);
+    expect(useStore.getState().lastSessionId).toBeNull();
+    expect(localStorage.getItem("cc-last-session")).toBeNull();
   });
 });
 
@@ -564,15 +564,15 @@ describe("UI state", () => {
     expect(localStorage.getItem("cc-dark-mode")).toBe(String(initial));
   });
 
-  it("newSession: clears currentSessionId and increments homeResetKey", () => {
-    useStore.getState().setCurrentSession("s1");
+  it("newSession: clears lastSessionId and increments homeResetKey", () => {
+    useStore.getState().setLastSessionId("s1");
     const keyBefore = useStore.getState().homeResetKey;
 
     useStore.getState().newSession();
 
-    expect(useStore.getState().currentSessionId).toBeNull();
+    expect(useStore.getState().lastSessionId).toBeNull();
     expect(useStore.getState().homeResetKey).toBe(keyBefore + 1);
-    expect(localStorage.getItem("cc-current-session")).toBeNull();
+    expect(localStorage.getItem("cc-last-session")).toBeNull();
   });
 
   it("openQuickTerminal with reuseIfExists focuses existing tab instead of creating a new one", () => {
@@ -607,7 +607,7 @@ describe("reset", () => {
   it("clears all maps and resets state", () => {
     // Populate many fields
     useStore.getState().addSession(makeSession("s1"));
-    useStore.getState().setCurrentSession("s1");
+    useStore.getState().setLastSessionId("s1");
     useStore.getState().appendMessage("s1", makeMessage());
     useStore.getState().setStreaming("s1", "text");
     useStore.getState().setStreamingStats("s1", { startedAt: 1, outputTokens: 2 });
@@ -628,7 +628,7 @@ describe("reset", () => {
 
     expect(state.sessions.size).toBe(0);
     expect(state.sdkSessions).toEqual([]);
-    expect(state.currentSessionId).toBeNull();
+    expect(state.lastSessionId).toBeNull();
     expect(state.messages.size).toBe(0);
     expect(state.streaming.size).toBe(0);
     expect(state.streamingStartedAt.size).toBe(0);
@@ -1322,7 +1322,7 @@ describe("Terminal actions", () => {
 describe("removeSession: comprehensive cleanup", () => {
   it("cleans up all session-related maps including chatTabReentry, diffPanelSelectedFile, toolProgress, prStatus", () => {
     useStore.getState().addSession(makeSession("s1"));
-    useStore.getState().setCurrentSession("s1");
+    useStore.getState().setLastSessionId("s1");
     useStore.getState().markChatTabReentry("s1");
     useStore.getState().setDiffPanelSelectedFile("s1", "file.ts");
     useStore.getState().setToolProgress("s1", "t1", { toolName: "Bash", elapsedSeconds: 1 });
@@ -1345,7 +1345,7 @@ describe("removeSession: comprehensive cleanup", () => {
     expect(state.changedFilesTick.has("s1")).toBe(false);
     expect(state.gitChangedFilesCount.has("s1")).toBe(false);
     expect(state.sdkSessions).toHaveLength(0);
-    expect(state.currentSessionId).toBeNull();
+    expect(state.lastSessionId).toBeNull();
   });
 });
 

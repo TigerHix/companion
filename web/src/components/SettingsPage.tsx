@@ -7,7 +7,60 @@ import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { ChevronRight, KeyRound, QrCode } from "lucide-react";
+import { QrCode } from "lucide-react";
+
+/** Labeled input field with consistent spacing. */
+function SettingField({
+  label,
+  description,
+  hint,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  description?: string;
+  hint?: string;
+  htmlFor?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      <div>
+        <label className="text-sm font-medium" htmlFor={htmlFor}>
+          {label}
+        </label>
+        {description && (
+          <p className="text-xs text-muted-foreground">{description}</p>
+        )}
+      </div>
+      {children}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+/** Row with label/description on the left and a control on the right. */
+function SettingRow({
+  label,
+  description,
+  children,
+}: {
+  label: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium">{label}</p>
+        {description && (
+          <p className="text-xs text-muted-foreground">{description}</p>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
 
 export function SettingsPage() {
   const [anthropicApiKey, setAnthropicApiKey] = useState("");
@@ -93,10 +146,7 @@ export function SettingsPage() {
         {/* Authentication */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <KeyRound className="size-5" />
-              Authentication
-            </CardTitle>
+            <CardTitle>Authentication</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
@@ -104,8 +154,7 @@ export function SettingsPage() {
             </p>
 
             {/* Token display */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Auth Token</label>
+            <SettingField label="Auth Token">
               <div className="flex items-center gap-2">
                 <div className="flex-1 px-3 py-2.5 text-sm rounded-lg border bg-muted/50 font-mono select-all break-all flex items-center min-h-9">
                   {authToken
@@ -141,14 +190,10 @@ export function SettingsPage() {
                   {tokenCopied ? "Copied" : "Copy"}
                 </Button>
               </div>
-            </div>
+            </SettingField>
 
             {/* QR code */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <QrCode className="size-4" />
-                Mobile Login QR
-              </label>
+            <SettingField label="Mobile Login QR">
               {qrCodes && qrCodes.length > 0 ? (
                 <div className="space-y-3">
                   {qrCodes.length > 1 && (
@@ -207,19 +252,21 @@ export function SettingsPage() {
                       <Spinner className="size-4" />
                       Generating...
                     </>
-                  ) : "Show QR Code"}
+                  ) : (
+                    <>
+                      <QrCode className="size-4" />
+                      Show QR Code
+                    </>
+                  )}
                 </Button>
               )}
-            </div>
+            </SettingField>
 
             {/* Regenerate token */}
-            <div className="flex items-center justify-between pt-2">
-              <div>
-                <p className="text-sm font-medium">Regenerate Token</p>
-                <p className="text-xs text-muted-foreground">
-                  Creates a new token. All other signed-in devices will need to re-authenticate.
-                </p>
-              </div>
+            <SettingRow
+              label="Regenerate Token"
+              description="Creates a new token. All other signed-in devices will need to re-authenticate."
+            >
               <Button
                 type="button"
                 onClick={async () => {
@@ -242,7 +289,7 @@ export function SettingsPage() {
               >
                 {regenerating ? <Spinner className="size-4" /> : "Regenerate"}
               </Button>
-            </div>
+            </SettingRow>
           </CardContent>
         </Card>
 
@@ -275,27 +322,20 @@ export function SettingsPage() {
             <CardTitle>General</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Editor tab (CodeMirror)</p>
-                <p className="text-xs text-muted-foreground">
-                  Shows a simple in-app file editor in the session tabs.
-                </p>
-              </div>
+            {/* moku: not used in moku
+            <SettingRow
+              label="Editor tab (CodeMirror)"
+              description="Shows a simple in-app file editor in the session tabs."
+            >
               <Switch
                 checked={editorTabEnabled}
                 onCheckedChange={setEditorTabEnabled}
                 aria-label="Enable Editor tab (CodeMirror)"
               />
-            </div>
+            </SettingRow>
+            */}
 
-            <div className="space-y-2">
-              <div>
-                <p className="text-sm font-medium">Diff compare against</p>
-                <p className="text-xs text-muted-foreground">
-                  Last commit shows only uncommitted changes. Default branch shows all changes since diverging from main.
-                </p>
-              </div>
+            <SettingField label="Diff compare against" description="Last commit shows only uncommitted changes. Default branch shows all changes since diverging from main.">
               <Tabs
                 value={diffBase}
                 onValueChange={(value) => {
@@ -309,7 +349,7 @@ export function SettingsPage() {
                   <TabsTrigger value="default-branch">Default branch</TabsTrigger>
                 </TabsList>
               </Tabs>
-            </div>
+            </SettingField>
           </CardContent>
         </Card>
 
@@ -319,17 +359,15 @@ export function SettingsPage() {
             <CardTitle>Notifications</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Sound</p>
+            <SettingRow label="Sound">
               <Switch
                 checked={notificationSound}
                 onCheckedChange={toggleNotificationSound}
                 aria-label="Sound"
               />
-            </div>
+            </SettingRow>
             {notificationApiAvailable && (
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Desktop Alerts</p>
+              <SettingRow label="Desktop Alerts">
                 <Switch
                   checked={notificationDesktop}
                   onCheckedChange={async (checked) => {
@@ -345,7 +383,7 @@ export function SettingsPage() {
                   }}
                   aria-label="Desktop Alerts"
                 />
-              </div>
+              </SettingRow>
             )}
           </CardContent>
         </Card>
@@ -357,10 +395,11 @@ export function SettingsPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={onSave} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium" htmlFor="anthropic-key">
-                  API Key
-                </label>
+              <SettingField
+                label="API Key"
+                htmlFor="anthropic-key"
+                hint="Auto-renaming is disabled until this key is configured."
+              >
                 <Input
                   id="anthropic-key"
                   type="password"
@@ -370,15 +409,9 @@ export function SettingsPage() {
                   onBlur={() => setApiKeyFocused(false)}
                   placeholder={configured ? "Enter a new key to replace" : "sk-ant-..."}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Auto-renaming is disabled until this key is configured.
-                </p>
-              </div>
+              </SettingField>
 
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium" htmlFor="anthropic-model">
-                  Model
-                </label>
+              <SettingField label="Model" htmlFor="anthropic-model">
                 <Input
                   id="anthropic-model"
                   type="text"
@@ -386,7 +419,7 @@ export function SettingsPage() {
                   onChange={(e) => setAnthropicModel(e.target.value)}
                   placeholder="claude-sonnet-4-20250514"
                 />
-              </div>
+              </SettingField>
 
               {error && (
                 <div className="px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
@@ -409,28 +442,6 @@ export function SettingsPage() {
                 </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-
-        {/* Environments link */}
-        <Card
-          className="!py-0 cursor-pointer hover:bg-accent/50 transition-colors"
-          onClick={() => { window.location.hash = "#/environments"; }}
-        >
-          <CardContent className="flex items-center gap-3 px-6 py-3">
-            <span className="flex-1 font-medium text-sm">Environments</span>
-            <ChevronRight className="size-4 text-muted-foreground" />
-          </CardContent>
-        </Card>
-
-        {/* Agents link */}
-        <Card
-          className="!py-0 cursor-pointer hover:bg-accent/50 transition-colors"
-          onClick={() => { window.location.hash = "#/agents"; }}
-        >
-          <CardContent className="flex items-center gap-3 px-6 py-3">
-            <span className="flex-1 font-medium text-sm">Agents</span>
-            <ChevronRight className="size-4 text-muted-foreground" />
           </CardContent>
         </Card>
     </div>

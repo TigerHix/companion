@@ -29,7 +29,7 @@ const { mockStoreState, mockGetState } = vi.hoisted(() => {
   const mockStoreState: Record<string, unknown> = {
     isAuthenticated: false,
     darkMode: false,
-    currentSessionId: null,
+    lastSessionId: null,
     sidebarOpen: false,
     homeResetKey: 0,
     activeTab: "chat" as string,
@@ -44,7 +44,7 @@ const { mockStoreState, mockGetState } = vi.hoisted(() => {
     setGitChangedFilesCount: vi.fn(),
     sessions: new Map(),
     sdkSessions: [],
-    setCurrentSession: vi.fn(),
+    setLastSessionId: vi.fn(),
     setSidebarOpen: vi.fn(),
     clearCreation: vi.fn(),
     markChatTabReentry: vi.fn(),
@@ -195,7 +195,7 @@ beforeEach(() => {
   Object.assign(mockStoreState, {
     isAuthenticated: false,
     darkMode: false,
-    currentSessionId: null,
+    lastSessionId: null,
     sidebarOpen: false,
     homeResetKey: 0,
     activeTab: "chat",
@@ -210,7 +210,7 @@ beforeEach(() => {
     setGitChangedFilesCount: vi.fn(),
     sessions: new Map(),
     sdkSessions: [],
-    setCurrentSession: vi.fn(),
+    setLastSessionId: vi.fn(),
     setSidebarOpen: vi.fn(),
     clearCreation: vi.fn(),
     markChatTabReentry: vi.fn(),
@@ -256,11 +256,10 @@ describe("App", () => {
       expect(screen.getByTestId("home-page")).toBeInTheDocument();
     });
 
-    it("renders ChatView inside SessionTerminalDock when a session is active", () => {
-      // When currentSessionId is set and route is session, the chat tab should show
+    it("renders ChatView inside SessionTerminalDock when the route selects a session", () => {
+      // When the URL is a session route, the chat tab should show
       // ChatView wrapped in SessionTerminalDock.
       (parseHash as ReturnType<typeof vi.fn>).mockReturnValue({ page: "session", sessionId: "s1" });
-      setStoreValues({ currentSessionId: "s1" });
       render(<App />);
 
       expect(screen.getByTestId("session-terminal-dock")).toBeInTheDocument();
@@ -272,7 +271,7 @@ describe("App", () => {
       // With a session active and activeTab set to "diff", the DiffPanel should render
       // inside the terminal dock instead of ChatView.
       (parseHash as ReturnType<typeof vi.fn>).mockReturnValue({ page: "session", sessionId: "s1" });
-      setStoreValues({ currentSessionId: "s1", activeTab: "diff" });
+      setStoreValues({ activeTab: "diff" });
       render(<App />);
 
       expect(screen.getByTestId("diff-panel")).toBeInTheDocument();
@@ -281,7 +280,7 @@ describe("App", () => {
     it("renders SessionEditorPane when activeTab is editor", () => {
       // Editor tab should replace the chat view with the editor pane.
       (parseHash as ReturnType<typeof vi.fn>).mockReturnValue({ page: "session", sessionId: "s1" });
-      setStoreValues({ currentSessionId: "s1", activeTab: "editor" });
+      setStoreValues({ activeTab: "editor" });
       render(<App />);
 
       expect(screen.getByTestId("session-editor-pane")).toBeInTheDocument();
@@ -290,7 +289,7 @@ describe("App", () => {
     it("renders SessionTerminalDock in terminal-only mode when activeTab is terminal", () => {
       // Terminal tab renders the dock without chat children.
       (parseHash as ReturnType<typeof vi.fn>).mockReturnValue({ page: "session", sessionId: "s1" });
-      setStoreValues({ currentSessionId: "s1", activeTab: "terminal" });
+      setStoreValues({ activeTab: "terminal" });
       render(<App />);
 
       expect(screen.getByTestId("session-terminal-dock")).toBeInTheDocument();
@@ -299,7 +298,7 @@ describe("App", () => {
     it("renders ProcessPanel when activeTab is processes", async () => {
       // Processes tab should render the lazy-loaded ProcessPanel.
       (parseHash as ReturnType<typeof vi.fn>).mockReturnValue({ page: "session", sessionId: "s1" });
-      setStoreValues({ currentSessionId: "s1", activeTab: "processes" });
+      setStoreValues({ activeTab: "processes" });
       render(<App />);
 
       await waitFor(() => {

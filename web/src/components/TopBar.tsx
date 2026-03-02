@@ -36,10 +36,7 @@ function useHash() {
 export function TopBar() {
   const hash = useHash();
   const route = useMemo(() => parseHash(hash), [hash]);
-  const isSessionView = route.page === "session" || route.page === "home";
-  const currentSessionId = useStore((s) => s.currentSessionId);
-  const sessionNames = useStore((s) => s.sessionNames);
-  const sdkSessions = useStore((s) => s.sdkSessions);
+  const selectedSessionId = route.page === "session" ? route.sessionId : null;
   const { toggleSidebar } = useSidebar();
 
   const activeTab = useStore((s) => s.activeTab);
@@ -52,21 +49,21 @@ export function TopBar() {
   const resetQuickTerminal = useStore((s) => s.resetQuickTerminal);
 
   const changedFilesCount = useStore((s) =>
-    currentSessionId ? (s.gitChangedFilesCount.get(currentSessionId) ?? 0) : 0,
+    selectedSessionId ? (s.gitChangedFilesCount.get(selectedSessionId) ?? 0) : 0,
   );
 
   const cwd = useStore((s) => {
-    if (!currentSessionId) return null;
+    if (!selectedSessionId) return null;
     return (
-      s.sessions.get(currentSessionId)?.cwd ||
-      s.sdkSessions.find((sdk) => sdk.sessionId === currentSessionId)?.cwd ||
+      s.sessions.get(selectedSessionId)?.cwd ||
+      s.sdkSessions.find((sdk) => sdk.sessionId === selectedSessionId)?.cwd ||
       null
     );
   });
 
   const sdkSession = useStore((s) => {
-    if (!currentSessionId) return null;
-    return s.sdkSessions.find((sdk) => sdk.sessionId === currentSessionId) || null;
+    if (!selectedSessionId) return null;
+    return s.sdkSessions.find((sdk) => sdk.sessionId === selectedSessionId) || null;
   });
 
   const defaultTerminalOpts = useMemo(() => {
@@ -77,20 +74,15 @@ export function TopBar() {
   }, [cwd, sdkSession?.containerId]);
 
   useEffect(() => {
-    if (!currentSessionId) {
+    if (route.page === "home") {
       resetQuickTerminal();
     }
-  }, [currentSessionId, resetQuickTerminal]);
+  }, [route.page, resetQuickTerminal]);
 
-  const sessionName = currentSessionId
-    ? (sessionNames?.get(currentSessionId) ||
-      sdkSessions.find((s) => s.sessionId === currentSessionId)?.name ||
-      `Session ${currentSessionId.slice(0, 8)}`)
-    : null;
-  const showSessionInfo = !!(currentSessionId && isSessionView);
+  const showSessionInfo = selectedSessionId !== null;
 
   const getActiveId = (): NavId | null => {
-    if (isSessionView && currentSessionId) {
+    if (selectedSessionId) {
       if (activeTab === "chat" || activeTab === "processes") return "chat";
       if (activeTab === "diff") return "diff";
       if (activeTab === "terminal") return "terminal";
@@ -106,7 +98,7 @@ export function TopBar() {
   });
 
   const activateItem = (id: NavId) => {
-    if (!currentSessionId) return;
+    if (!selectedSessionId) return;
 
     if (id === "terminal") {
       if (!cwd) return;
@@ -128,8 +120,8 @@ export function TopBar() {
       return;
     }
 
-    if (activeTab !== "chat" && currentSessionId) {
-      markChatTabReentry(currentSessionId);
+    if (activeTab !== "chat" && selectedSessionId) {
+      markChatTabReentry(selectedSessionId);
     }
     setActiveTab("chat");
   };
@@ -149,7 +141,7 @@ export function TopBar() {
       }
       event.preventDefault();
 
-      if (!currentSessionId || !isSessionView) return;
+      if (!selectedSessionId) return;
 
       const cyclable = visibleItems.filter((item) => !isDisabled(item));
       if (cyclable.length === 0) return;
@@ -175,7 +167,7 @@ export function TopBar() {
         <PanelLeftIcon className="size-4" />
       </LiquidGlassButton>
 
-      {/* Center: session tabs when active, session name when on non-session page */}
+      {/* Center: session tabs when a session route is active */}
       {showSessionInfo ? (
         <nav
           className="flex-1 flex items-center justify-center gap-1 min-w-0"
@@ -212,8 +204,8 @@ export function TopBar() {
 
       {/* Right: Info popover */}
       <div className="flex items-center gap-0.5 shrink-0">
-        {showSessionInfo && currentSessionId && (
-          <InfoPopover sessionId={currentSessionId} />
+        {showSessionInfo && selectedSessionId && (
+          <InfoPopover sessionId={selectedSessionId} />
         )}
       </div>
     </header>

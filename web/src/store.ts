@@ -30,6 +30,8 @@ export type QuickTerminalPlacement = "top" | "right" | "bottom" | "left";
 export type DiffBase = "last-commit" | "default-branch";
 
 const AUTH_STORAGE_KEY = "moku_auth_token";
+const LAST_SESSION_STORAGE_KEY = "cc-last-session";
+const LEGACY_CURRENT_SESSION_STORAGE_KEY = "cc-current-session";
 
 interface AppState {
   // Auth
@@ -39,7 +41,7 @@ interface AppState {
   // Sessions
   sessions: Map<string, SessionState>;
   sdkSessions: SdkSessionInfo[];
-  currentSessionId: string | null;
+  lastSessionId: string | null;
 
   // Messages per session
   messages: Map<string, ChatMessage[]>;
@@ -139,7 +141,7 @@ interface AppState {
   newSession: () => void;
 
   // Session actions
-  setCurrentSession: (id: string | null) => void;
+  setLastSessionId: (id: string | null) => void;
   addSession: (session: SessionState) => void;
   updateSession: (sessionId: string, updates: Partial<SessionState>) => void;
   removeSession: (sessionId: string) => void;
@@ -250,9 +252,26 @@ function getInitialSessionNames(): Map<string, string> {
   }
 }
 
-function getInitialSessionId(): string | null {
+function persistLastSessionId(id: string | null): void {
+  if (typeof window === "undefined") return;
+  if (id) {
+    localStorage.setItem(LAST_SESSION_STORAGE_KEY, id);
+  } else {
+    localStorage.removeItem(LAST_SESSION_STORAGE_KEY);
+  }
+  localStorage.removeItem(LEGACY_CURRENT_SESSION_STORAGE_KEY);
+}
+
+function getInitialLastSessionId(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("cc-current-session") || null;
+  const remembered = localStorage.getItem(LAST_SESSION_STORAGE_KEY);
+  if (remembered) return remembered;
+
+  const legacy = localStorage.getItem(LEGACY_CURRENT_SESSION_STORAGE_KEY);
+  if (!legacy) return null;
+
+  persistLastSessionId(legacy);
+  return legacy;
 }
 
 function getInitialDarkMode(): boolean {
@@ -310,7 +329,7 @@ export const useStore = create<AppState>((set) => ({
   isAuthenticated: getInitialAuthToken() !== null,
   sessions: new Map(),
   sdkSessions: [],
-  currentSessionId: getInitialSessionId(),
+  lastSessionId: getInitialLastSessionId(),
   messages: new Map(),
   streaming: new Map(),
   streamingStartedAt: new Map(),
@@ -412,17 +431,13 @@ export const useStore = create<AppState>((set) => ({
   setSidebarOpen: (v) => set({ sidebarOpen: v }),
   setInfoPanelOpen: (open) => set({ infoPanelOpen: open }),
   newSession: () => {
-    localStorage.removeItem("cc-current-session");
-    set((s) => ({ currentSessionId: null, homeResetKey: s.homeResetKey + 1 }));
+    persistLastSessionId(null);
+    set((s) => ({ lastSessionId: null, homeResetKey: s.homeResetKey + 1 }));
   },
 
-  setCurrentSession: (id) => {
-    if (id) {
-      localStorage.setItem("cc-current-session", id);
-    } else {
-      localStorage.removeItem("cc-current-session");
-    }
-    set({ currentSessionId: id });
+  setLastSessionId: (id) => {
+    persistLastSessionId(id);
+    set({ lastSessionId: id });
   },
 
   addSession: (session) =>
@@ -446,9 +461,7 @@ export const useStore = create<AppState>((set) => ({
     set((s) => {
       const sessionNames = deleteFromMap(s.sessionNames, sessionId);
       localStorage.setItem("cc-session-names", JSON.stringify(Array.from(sessionNames.entries())));
-      if (s.currentSessionId === sessionId) {
-        localStorage.removeItem("cc-current-session");
-      }
+      if (s.lastSessionId === sessionId) persistLastSessionId(null);
       return {
         sessions: deleteFromMap(s.sessions, sessionId),
         messages: deleteFromMap(s.messages, sessionId),
@@ -473,7 +486,7 @@ export const useStore = create<AppState>((set) => ({
         prStatus: deleteFromMap(s.prStatus, sessionId),
         chatTabReentryTickBySession: deleteFromMap(s.chatTabReentryTickBySession, sessionId),
         sdkSessions: s.sdkSessions.filter((sdk) => sdk.sessionId !== sessionId),
-        currentSessionId: s.currentSessionId === sessionId ? null : s.currentSessionId,
+        lastSessionId: s.lastSessionId === sessionId ? null : s.lastSessionId,
       };
     }),
 
@@ -871,7 +884,7 @@ export const useStore = create<AppState>((set) => ({
     set({
       sessions: new Map(),
       sdkSessions: [],
-      currentSessionId: null,
+      lastSessionId: null,
       messages: new Map(),
       streaming: new Map(),
       streamingStartedAt: new Map(),

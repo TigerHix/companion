@@ -589,13 +589,13 @@ export function Playground() {
             <p className="text-xs text-muted-foreground mt-0.5">Visual catalog of all UI components</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button
-              type="button"
-              onClick={() => {
-                const sessionId = useStore.getState().currentSessionId;
-                if (sessionId) {
-                  navigateToSession(sessionId);
-                } else {
+              <Button
+                type="button"
+                onClick={() => {
+                  const sessionId = useStore.getState().lastSessionId;
+                  if (sessionId) {
+                    navigateToSession(sessionId);
+                  } else {
                   navigateHome();
                 }
               }}

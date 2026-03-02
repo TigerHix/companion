@@ -186,19 +186,18 @@ describe("SettingsPage", () => {
     });
   });
 
-  // Editor tab toggle is in the General card; toggling it updates local state,
-  // which is then included in the Anthropic form's save payload.
-  it("saves editor tab toggle in settings payload", async () => {
+  // moku: Editor tab toggle is hidden in the UI but editorTabEnabled is still
+  // sent in the save payload (defaults to false).
+  it("saves editorTabEnabled=false in settings payload by default", async () => {
     render(<SettingsPage />);
     await screen.findByText("Anthropic key configured");
 
-    fireEvent.click(screen.getByRole("switch", { name: /Enable Editor tab \(CodeMirror\)/i }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => {
       expect(mockApi.updateSettings).toHaveBeenCalledWith({
         anthropicModel: "claude-sonnet-4.6",
-        editorTabEnabled: true,
+        editorTabEnabled: false,
       });
     });
   });
@@ -275,23 +274,8 @@ describe("SettingsPage", () => {
     expect(mockState.setDarkMode).toHaveBeenCalledWith(true);
   });
 
-  // Clicking the "Environments" link card navigates to the environments page.
-  it("navigates to environments page from settings", async () => {
-    render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
-
-    fireEvent.click(screen.getByText("Environments"));
-    expect(window.location.hash).toBe("#/environments");
-  });
-
-  // Clicking the "Agents" link card navigates to the agents page.
-  it("navigates to agents page from settings", async () => {
-    render(<SettingsPage />);
-    await screen.findByText("Anthropic key configured");
-
-    fireEvent.click(screen.getByText("Agents"));
-    expect(window.location.hash).toBe("#/agents");
-  });
+  // moku: Environments and Agents link cards were removed from SettingsPage —
+  // they are accessible from the sidebar instead.
 
   it("requests desktop permission before enabling desktop alerts", async () => {
     const requestPermission = vi.fn().mockResolvedValue("granted");
@@ -321,8 +305,6 @@ describe("SettingsPage", () => {
     expect(screen.getByText("General")).toBeInTheDocument();
     expect(screen.getByText("Notifications")).toBeInTheDocument();
     expect(screen.getByText("Anthropic")).toBeInTheDocument();
-    expect(screen.getByText("Environments")).toBeInTheDocument();
-    expect(screen.getByText("Agents")).toBeInTheDocument();
   });
 
   // ─── Authentication section tests ──────────────────────────────────

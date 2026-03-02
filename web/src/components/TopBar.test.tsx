@@ -39,7 +39,6 @@ vi.mock("@/components/ui/sidebar", () => ({
 }));
 
 interface MockStoreState {
-  currentSessionId: string | null;
   activeTab: "chat" | "diff" | "terminal" | "processes" | "editor";
   setActiveTab: ReturnType<typeof vi.fn>;
   markChatTabReentry: ReturnType<typeof vi.fn>;
@@ -60,7 +59,6 @@ let storeState: MockStoreState;
 
 function resetStore(overrides: Partial<MockStoreState> = {}) {
   storeState = {
-    currentSessionId: "s1",
     activeTab: "chat",
     setActiveTab: vi.fn(),
     markChatTabReentry: vi.fn(),
@@ -123,7 +121,7 @@ describe("TopBar", () => {
 
   /** No session info or InfoPopover when no session is selected */
   it("hides session info and InfoPopover when no session", () => {
-    resetStore({ currentSessionId: null });
+    resetStore();
     window.location.hash = "#/home";
     render(<TopBar />);
     expect(screen.queryByTestId("info-popover-stub")).not.toBeInTheDocument();
@@ -147,7 +145,7 @@ describe("TopBar", () => {
 
   /** Tabs hidden when no session is selected */
   it("hides tabs when no session is selected", () => {
-    resetStore({ currentSessionId: null });
+    resetStore();
     window.location.hash = "#/home";
     render(<TopBar />);
     expect(screen.queryByTestId("nav-chat")).not.toBeInTheDocument();
@@ -286,7 +284,7 @@ describe("TopBar", () => {
 
   /** Shortcut ignored when no session */
   it("Cmd+J does not fire when no session", () => {
-    resetStore({ currentSessionId: null });
+    resetStore();
     window.location.hash = "#/home";
     render(<TopBar />);
     fireEvent.keyDown(window, { key: "j", metaKey: true });
@@ -304,7 +302,7 @@ describe("TopBar", () => {
 
   /** Resets quick terminal when session becomes null */
   it("resets quick terminal when no session", () => {
-    resetStore({ currentSessionId: null });
+    resetStore();
     window.location.hash = "#/home";
     render(<TopBar />);
     expect(storeState.resetQuickTerminal).toHaveBeenCalled();
