@@ -14,6 +14,7 @@ import { java } from "@codemirror/lang-java";
 import { sql } from "@codemirror/lang-sql";
 import { xml } from "@codemirror/lang-xml";
 import { yaml } from "@codemirror/lang-yaml";
+import { ChevronLeft, RefreshCw } from "lucide-react";
 import { api, type TreeNode } from "../api.js";
 import { useStore } from "../store.js";
 import { Button } from "@/components/ui/button";
@@ -325,11 +326,11 @@ export function FilesPanel({ sessionId }: FilesPanelProps) {
           onClick={handleRefresh}
           disabled={loadingTree}
           variant="ghost"
-          size="xs"
-          className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+          size="icon-sm"
+          className="text-muted-foreground hover:text-foreground disabled:opacity-50"
           aria-label="Refresh file tree"
         >
-          {loadingTree ? "..." : "Refresh"}
+          <RefreshCw className={`w-3.5 h-3.5${loadingTree ? " animate-spin" : ""}`} />
         </Button>
       </div>
       <div className="flex-1 min-h-0 overflow-auto p-1.5">
@@ -377,9 +378,7 @@ export function FilesPanel({ sessionId }: FilesPanelProps) {
           className="sm:hidden shrink-0 text-muted-foreground hover:text-foreground hover:bg-accent"
           aria-label="Back to file tree"
         >
-          <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-            <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
-          </svg>
+          <ChevronLeft className="w-4 h-4" />
         </Button>
         <p className="text-xs text-muted-foreground truncate min-w-0">{relPath(cwd, selectedFilePath)}</p>
       </div>

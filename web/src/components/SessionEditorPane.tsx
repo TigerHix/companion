@@ -15,6 +15,7 @@ import { sql } from "@codemirror/lang-sql";
 import { xml } from "@codemirror/lang-xml";
 import { yaml } from "@codemirror/lang-yaml";
 import { Fzf } from "fzf";
+import { RefreshCw, Search } from "lucide-react";
 import { api, type TreeNode } from "../api.js";
 import { useStore } from "../store.js";
 import { Button } from "@/components/ui/button";
@@ -498,9 +499,7 @@ export function SessionEditorPane({ sessionId }: SessionEditorPaneProps) {
             aria-label="Search files"
             title="Search files (Ctrl+P)"
           >
-            <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3">
-              <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.156a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z" />
-            </svg>
+            <Search className="w-3 h-3" />
           </Button>
           <Button
             type="button"
@@ -512,9 +511,7 @@ export function SessionEditorPane({ sessionId }: SessionEditorPaneProps) {
             aria-label="Refresh file tree"
             title="Refresh file tree"
           >
-            <svg viewBox="0 0 16 16" fill="currentColor" className={`w-3 h-3 ${loadingTree ? "animate-spin" : ""}`}>
-              <path d="M13.65 2.35a1 1 0 0 0-1.3 0L11 3.7A5.99 5.99 0 0 0 2 8a1 1 0 1 0 2 0 4 4 0 0 1 6.29-3.29L8.65 6.35a1 1 0 0 0 .7 1.7H13a1 1 0 0 0 1-1V3.4a1 1 0 0 0-.35-.7z M14 8a1 1 0 1 0-2 0 4 4 0 0 1-6.29 3.29l1.64-1.64a1 1 0 0 0-.7-1.7H3.05a1 1 0 0 0-1 1v3.65a1 1 0 0 0 1.7.7L5 11.7A5.99 5.99 0 0 0 14 8z" />
-            </svg>
+            <RefreshCw className={`w-3 h-3${loadingTree ? " animate-spin" : ""}`} />
           </Button>
         </div>
       </div>

@@ -38,7 +38,14 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
               ))}
             </div>
           )}
-          <div className="text-base sm:text-sm leading-relaxed break-words">
+          <div
+            className="text-base sm:text-sm leading-relaxed break-words"
+            style={{
+              "--foreground": "var(--primary-foreground)",
+              "--muted-foreground": "oklch(1 0 0 / 0.7)",
+              "--primary": "var(--primary-foreground)",
+            } as React.CSSProperties}
+          >
             <MarkdownContent text={message.content} />
           </div>
         </div>

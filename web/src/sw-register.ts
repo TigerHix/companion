@@ -16,19 +16,54 @@
  */
 import { registerSW } from "virtual:pwa-register";
 
-const updateSW = registerSW({
-  onRegisteredSW(swUrl: string, registration: ServiceWorkerRegistration | undefined) {
-    if (registration) {
-      // Check for SW updates every 60 minutes while the app is open.
-      // Catches deployments that happen while a user has the app open.
-      setInterval(() => {
-        registration.update();
-      }, 60 * 60 * 1000);
-    }
-  },
-  onOfflineReady() {
-    console.log("[SW] Offline-ready: all assets precached");
-  },
-});
+export const SW_UPDATE_INTERVAL_MS = 5 * 60 * 1000;
 
-export { updateSW };
+export function attachServiceWorkerUpdateChecks(
+  registration: Pick<ServiceWorkerRegistration, "update">,
+  win: Pick<Window, "addEventListener" | "clearInterval" | "removeEventListener" | "setInterval"> = window,
+  doc: Pick<Document, "addEventListener" | "removeEventListener" | "visibilityState"> = document,
+) {
+  const updateRegistration = () => {
+    void Promise.resolve(registration.update()).catch(() => {});
+  };
+
+  updateRegistration();
+
+  const intervalId = win.setInterval(updateRegistration, SW_UPDATE_INTERVAL_MS);
+  const onVisibilityChange = () => {
+    if (doc.visibilityState === "visible") {
+      updateRegistration();
+    }
+  };
+
+  win.addEventListener("focus", updateRegistration);
+  doc.addEventListener("visibilitychange", onVisibilityChange);
+
+  return () => {
+    win.clearInterval(intervalId);
+    win.removeEventListener("focus", updateRegistration);
+    doc.removeEventListener("visibilitychange", onVisibilityChange);
+  };
+}
+
+let stopUpdateChecks: (() => void) | null = null;
+
+export function registerAppServiceWorker() {
+  return registerSW({
+    immediate: true,
+    onRegisteredSW(_swUrl: string, registration: ServiceWorkerRegistration | undefined) {
+      if (!registration) {
+        return;
+      }
+
+      stopUpdateChecks?.();
+      stopUpdateChecks = attachServiceWorkerUpdateChecks(registration);
+    },
+    onOfflineReady() {
+      console.log("[SW] Offline-ready: app shell cached");
+    },
+    onRegisterError(error: unknown) {
+      console.error("[SW] Registration failed", error);
+    },
+  });
+}

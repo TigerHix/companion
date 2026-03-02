@@ -21,9 +21,9 @@
   --popover: oklch(0.995 0.003 45);
   --popover-foreground: oklch(0.18 0.015 45);
 
-  /* Primary — evolved from #d97757 into warm copper */
-  --primary: oklch(0.65 0.16 40);
-  --primary-foreground: oklch(0.98 0.01 40);
+  /* Primary — deep warm copper, WCAG AA contrast with white text */
+  --primary: oklch(0.56 0.17 40);
+  --primary-foreground: oklch(1 0 0);
 
   /* Secondary */
   --secondary: oklch(0.94 0.012 45);
@@ -43,7 +43,7 @@
   /* Border / Input / Ring */
   --border: oklch(0.91 0.01 45);
   --input: oklch(0.93 0.008 45);
-  --ring: oklch(0.65 0.16 40);
+  --ring: oklch(0.56 0.17 40);
 
   /* Success / Warning (semantic) */
   --success: oklch(0.55 0.16 145);
@@ -59,12 +59,12 @@
   /* Sidebar */
   --sidebar: oklch(0.975 0.006 45);
   --sidebar-foreground: oklch(0.18 0.015 45);
-  --sidebar-primary: oklch(0.65 0.16 40);
-  --sidebar-primary-foreground: oklch(0.98 0.01 40);
+  --sidebar-primary: oklch(0.56 0.17 40);
+  --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.93 0.015 45);
   --sidebar-accent-foreground: oklch(0.35 0.04 45);
   --sidebar-border: oklch(0.91 0.01 45);
-  --sidebar-ring: oklch(0.65 0.16 40);
+  --sidebar-ring: oklch(0.56 0.17 40);
 
   /* Code blocks */
   --code-bg: oklch(0.96 0.006 45);
@@ -146,9 +146,9 @@
   --popover: oklch(0.19 0.01 45);
   --popover-foreground: oklch(0.93 0.008 45);
 
-  /* Primary — brighter for dark mode visibility */
-  --primary: oklch(0.70 0.15 40);
-  --primary-foreground: oklch(0.98 0.01 40);
+  /* Primary — deep warm copper, WCAG AA 4.8:1 with white text */
+  --primary: oklch(0.56 0.17 40);
+  --primary-foreground: oklch(1 0 0);
 
   /* Secondary */
   --secondary: oklch(0.22 0.008 45);
@@ -168,7 +168,7 @@
   /* Border / Input / Ring */
   --border: oklch(0.40 0.015 45 / 18%);
   --input: oklch(0.40 0.015 45 / 22%);
-  --ring: oklch(0.70 0.15 40);
+  --ring: oklch(0.56 0.17 40);
 
   /* Success / Warning */
   --success: oklch(0.65 0.16 145);
@@ -184,12 +184,12 @@
   /* Sidebar */
   --sidebar: oklch(0.155 0.007 45);
   --sidebar-foreground: oklch(0.93 0.008 45);
-  --sidebar-primary: oklch(0.70 0.15 40);
-  --sidebar-primary-foreground: oklch(0.98 0.01 40);
+  --sidebar-primary: oklch(0.56 0.17 40);
+  --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.24 0.01 45);
   --sidebar-accent-foreground: oklch(0.85 0.015 45);
   --sidebar-border: oklch(0.40 0.015 45 / 15%);
-  --sidebar-ring: oklch(0.60 0.14 40);
+  --sidebar-ring: oklch(0.56 0.17 40);
 
   /* Code blocks */
   --code-bg: oklch(0.17 0.006 45);
@@ -1231,112 +1231,29 @@ select {
   box-shadow: var(--surface-panel-shadow);
 }
 
-/* ─── Session item — left accent border for status ───────────────────────── */
+/* ─── Session status dots ────────────────────────────────────────────────── */
 
-.session-item {
-  position: relative;
+.session-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
-.session-item::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 2px;
-  border-radius: 1px;
-  background: transparent;
-  transition: background 200ms ease, box-shadow 200ms ease, opacity 200ms ease;
-}
-.session-item.session-item-running::before {
+
+.session-status-running {
   background: var(--success);
-  box-shadow: 0 0 6px oklch(from var(--success) l c h / 0.4);
+  box-shadow: 0 0 4px oklch(from var(--success) l c h / 0.5);
+  animation: status-pulse 2s ease-in-out infinite;
 }
-.session-item.session-item-awaiting::before {
+
+.session-status-awaiting {
   background: var(--warning);
-  animation: accent-pulse 1.5s ease-in-out infinite;
-}
-.session-item.session-item-idle::before {
-  background: var(--muted-foreground);
-  opacity: 0.18;
-}
-.session-item.session-item-exited::before {
-  background: var(--muted-foreground);
-  opacity: 0.06;
+  animation: status-pulse 1.5s ease-in-out infinite;
 }
 
-@keyframes accent-pulse {
-  0%, 100% {
-    opacity: 1;
-    box-shadow: 0 0 6px oklch(from var(--warning) l c h / 0.4);
-  }
-  50% {
-    opacity: 0.45;
-    box-shadow: 0 0 2px oklch(from var(--warning) l c h / 0.1);
-  }
-}
-
-/* ─── Active session — glass treatment ───────────────────────────────────── */
-
-.session-item-active {
-  background: oklch(from var(--primary) calc(l + 0.28) calc(c * 0.12) h / 0.45) !important;
-  border: 0.5px solid oklch(from var(--primary) l calc(c * 0.2) h / 0.1);
-  box-shadow:
-    inset 0 0.5px 0 oklch(1 0 0 / 0.18),
-    0 1px 3px oklch(from var(--primary) l c h / 0.04);
-}
-.session-item-active::before {
-  background: var(--primary) !important;
-  box-shadow: 0 0 8px oklch(from var(--primary) l c h / 0.3) !important;
-  opacity: 1 !important;
-}
-.dark .session-item-active {
-  background: oklch(from var(--primary) calc(l - 0.38) calc(c * 0.18) h / 0.35) !important;
-  border-color: oklch(from var(--primary) l calc(c * 0.25) h / 0.12);
-  box-shadow:
-    inset 0 0.5px 0 oklch(1 0 0 / 0.04),
-    0 1px 4px oklch(0 0 0 / 0.15);
-}
-
-/* ─── Glass card — session group container ───────────────────────────────── */
-
-.session-group-card {
-  background: oklch(0 0 0 / 0.02);
-  border: 0.5px solid oklch(0 0 0 / 0.05);
-  border-radius: calc(var(--radius-lg) + 2px);
-}
-.dark .session-group-card {
-  background: oklch(1 0 0 / 0.025);
-  border-color: oklch(1 0 0 / 0.06);
-}
-
-/* ─── Section toggle — labeled divider ───────────────────────────────────── */
-
-.session-section-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 10px 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: oklch(from var(--muted-foreground) l c h / 0.4);
-  transition: color 150ms ease;
-}
-.session-section-toggle:hover {
-  color: oklch(from var(--muted-foreground) l c h / 0.7);
-}
-.session-section-toggle span:not(.session-section-line) {
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-.session-section-line {
-  flex: 1;
-  height: 0.5px;
-  background: currentColor;
-  opacity: 0.4;
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

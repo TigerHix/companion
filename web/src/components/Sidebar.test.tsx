@@ -218,8 +218,9 @@ describe("Sidebar", () => {
     expect(screen.getByText("abcdef12")).toBeInTheDocument();
   });
 
-  it("session items show project name in group header and full cwd path in session row", () => {
-    // "myapp" appears in the project group header, full cwd path appears in the session row
+  it("session items show project name in group header but no cwd path in session row", () => {
+    // "myapp" appears in the project group header. The cwd path was intentionally
+    // removed from session rows in the minimal sidebar redesign.
     const session = makeSession("s1", { cwd: "/home/user/projects/myapp" });
     const sdk = makeSdkSession("s1");
     mockState = createMockState({
@@ -228,11 +229,11 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    // Group header shows "myapp"
-    const matches = screen.getAllByText("myapp");
+    // Group header shows "myapp (1)" as a single inline string inside a SidebarMenuButton
+    const matches = screen.getAllByText(/myapp/);
     expect(matches.length).toBeGreaterThanOrEqual(1);
-    // Session row shows the full cwd path
-    expect(screen.getByText("/home/user/projects/myapp")).toBeInTheDocument();
+    // Session row no longer shows the full cwd path (removed for minimal design)
+    expect(screen.queryByText("/home/user/projects/myapp")).not.toBeInTheDocument();
   });
 
   it("session items do not show git branch (removed in redesign)", () => {
@@ -249,7 +250,9 @@ describe("Sidebar", () => {
     expect(screen.queryByText("feature/awesome")).not.toBeInTheDocument();
   });
 
-  it("session items show container badge when is_containerized is true", () => {
+  it("session items do not show container badge (removed in redesign)", () => {
+    // The redesigned session row no longer renders any Docker/container badge.
+    // The is_containerized flag is still tracked internally but not displayed.
     const session = makeSession("s1", { git_branch: "feature/docker", is_containerized: true });
     const sdk = makeSdkSession("s1", { containerId: "abc123" });
     mockState = createMockState({
@@ -258,10 +261,8 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    const badge = screen.getByTitle("Docker");
-    expect(badge).toBeInTheDocument();
-    const dockerLogo = badge.querySelector('img[src="/logo-docker.svg"]');
-    expect(dockerLogo).toBeInTheDocument();
+    const dockerLogo = document.querySelector('img[src="/logo-docker.svg"]');
+    expect(dockerLogo).not.toBeInTheDocument();
   });
 
   it("session items do not show git stats (removed in redesign)", () => {
@@ -285,7 +286,9 @@ describe("Sidebar", () => {
     expect(screen.queryByText("-7")).not.toBeInTheDocument();
   });
 
-  it("active session has highlighted styling (bg-accent class)", () => {
+  it("active session has highlighted styling (data-active attribute)", () => {
+    // The redesigned sidebar uses SidebarMenuButton with isActive prop which
+    // sets a data-active attribute instead of CSS classes like session-item-active.
     const session = makeSession("s1");
     const sdk = makeSdkSession("s1");
     mockState = createMockState({
@@ -295,9 +298,8 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    // Find the session button element
     const sessionButton = screen.getByText("claude-sonnet-4-6").closest("button");
-    expect(sessionButton).toHaveClass("bg-accent");
+    expect(sessionButton).toHaveAttribute("data-active");
   });
 
   it("clicking a session navigates to the session hash", () => {
@@ -376,7 +378,9 @@ describe("Sidebar", () => {
     expect(screen.getByText("Rename")).toBeInTheDocument();
   });
 
-  it("session actions menu button is visible by default on mobile and hover-only on desktop", () => {
+  it("session actions menu button is hidden by default and visible on row hover", () => {
+    // The redesigned sidebar uses per-row hover (group/row) to show the
+    // menu button only on the hovered session row, not all rows at once.
     const session = makeSession("s1");
     const sdk = makeSdkSession("s1");
     mockState = createMockState({
@@ -387,12 +391,14 @@ describe("Sidebar", () => {
     renderSidebar();
     const menuButton = screen.getByTitle("Session actions");
 
-    expect(menuButton).toHaveClass("opacity-100");
-    expect(menuButton).toHaveClass("sm:opacity-0");
-    expect(menuButton).toHaveClass("sm:group-hover:opacity-100");
+    expect(menuButton).toHaveClass("opacity-0");
+    expect(menuButton).toHaveClass("sm:group-hover/row:opacity-100");
   });
 
-  it("pending permissions render a yellow awaiting status dot", () => {
+  it("pending permissions render data-status='awaiting' and StatusDot on the row", () => {
+    // The redesigned sidebar communicates "awaiting" status via a data-status
+    // attribute on the SidebarMenuButton and a StatusDot component with
+    // session-status-awaiting class.
     const session = makeSession("s1");
     const sdk = makeSdkSession("s1");
     mockState = createMockState({
@@ -403,11 +409,14 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    const awaitingDot = document.querySelector(".bg-warning.animate-\\[ring-pulse_1\\.5s_ease-out_infinite\\]");
-    expect(awaitingDot).toBeTruthy();
+    const sessionButton = screen.getByText("claude-sonnet-4-6").closest("button");
+    expect(sessionButton).toHaveAttribute("data-status", "awaiting");
+    expect(document.querySelector(".session-status-awaiting")).toBeInTheDocument();
   });
 
   it("archived sessions section shows count", () => {
+    // The redesigned sidebar renders "Archived (2)" as a single inline string
+    // inside a span within a SidebarMenuButton.
     const sdk1 = makeSdkSession("s1", { archived: false });
     const sdk2 = makeSdkSession("s2", { archived: true });
     const sdk3 = makeSdkSession("s3", { archived: true });
@@ -417,7 +426,6 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    // The component renders "Archived (2)"
     expect(screen.getByText(/Archived \(2\)/)).toBeInTheDocument();
   });
 
@@ -434,8 +442,8 @@ describe("Sidebar", () => {
     // Archived sessions should not be visible initially
     expect(screen.queryByText("archived-model")).not.toBeInTheDocument();
 
-    // Click the archived toggle button
-    const toggleButton = screen.getByText(/Archived \(1\)/);
+    // Click the archived toggle button (single inline string "Archived (1)")
+    const toggleButton = screen.getByText(/Archived/);
     fireEvent.click(toggleButton);
 
     // Now the archived session should be visible
@@ -539,6 +547,8 @@ describe("Sidebar", () => {
   });
 
   it("session keeps awaiting state with multiple pending permissions", () => {
+    // With multiple pending permissions, the session row should still have
+    // data-status="awaiting" (status derived from permCount > 0).
     const session = makeSession("s1");
     const sdk = makeSdkSession("s1");
     const permMap = new Map<string, unknown>([
@@ -553,8 +563,8 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    const awaitingDot = document.querySelector(".bg-warning.animate-\\[ring-pulse_1\\.5s_ease-out_infinite\\]");
-    expect(awaitingDot).toBeTruthy();
+    const sessionButton = screen.getByText("claude-sonnet-4-6").closest("button");
+    expect(sessionButton).toHaveAttribute("data-status", "awaiting");
   });
 
   it("archived session row is clickable after opening archived section", () => {
@@ -564,7 +574,7 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    fireEvent.click(screen.getByText(/Archived \(1\)/));
+    fireEvent.click(screen.getByText(/Archived/));
 
     const archivedRowButton = screen.getByText("archived-clickable").closest("button");
     expect(archivedRowButton).toBeInTheDocument();
@@ -595,10 +605,10 @@ describe("Sidebar", () => {
     expect(screen.queryByText("-20")).not.toBeInTheDocument();
   });
 
-  it("codex session shows CX badge when bridgeState is missing", () => {
+  it("codex session shows Codex icon when bridgeState is missing", () => {
     // Only sdkInfo available (no WS session_init received yet).
-    // The redesigned session item uses text badges ("CC" / "CX") instead
-    // of colored dots with title attributes.
+    // The redesigned session item uses inline SVG icons with aria-label
+    // instead of text badges ("CC" / "CX").
     const sdk = makeSdkSession("s1", { backendType: "codex" });
     mockState = createMockState({
       sessions: new Map(),
@@ -606,12 +616,12 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    expect(screen.getByText("CX")).toBeInTheDocument();
+    expect(screen.getByLabelText("Codex")).toBeInTheDocument();
   });
 
-  it("session shows correct backend badge based on backendType", () => {
-    // The redesigned session item uses "CC" for Claude and "CX" for Codex
-    // as small pill badges instead of colored dots.
+  it("session shows correct backend icon based on backendType", () => {
+    // The redesigned session item uses inline SVG icons (BackendIcon) with
+    // aria-labels "Claude" and "Codex" instead of text badges.
     const session1 = makeSession("s1", { backend_type: "claude" });
     const session2 = makeSession("s2", { backend_type: "codex" });
     const sdk1 = makeSdkSession("s1", { backendType: "claude" });
@@ -622,8 +632,8 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    expect(screen.getAllByText("CC").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("CX").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByLabelText("Claude").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByLabelText("Codex").length).toBeGreaterThanOrEqual(1);
   });
 
   it("sessions are grouped by project directory", () => {
@@ -639,12 +649,14 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    // Project group headers should be visible (also appears as dirName in session items)
-    expect(screen.getAllByText("project-a").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("project-b").length).toBeGreaterThanOrEqual(1);
+    // Project group headers show "project-a (2)" and "project-b (1)" as single inline strings
+    expect(screen.getAllByText(/project-a/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/project-b/).length).toBeGreaterThanOrEqual(1);
   });
 
-  it("project group header shows running status dot and session count", () => {
+  it("project group header shows running status pip and session count", () => {
+    // The redesigned sidebar shows count in "(N)" format and running status
+    // as a tiny 1px pip dot (bg-success/70) inside the group header.
     const session1 = makeSession("s1", { cwd: "/home/user/myapp" });
     const session2 = makeSession("s2", { cwd: "/home/user/myapp" });
     const sdk1 = makeSdkSession("s1", { cwd: "/home/user/myapp" });
@@ -656,13 +668,15 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    // Status dot with title "2 running" should be present
+    // Status pip with title "2 running" should be present
     expect(screen.getByTitle("2 running")).toBeInTheDocument();
-    // Session count badge should show "2"
-    expect(screen.getByText("2")).toBeInTheDocument();
+    // Session count as part of inline label "myapp (2)"
+    expect(screen.getByText(/myapp \(2\)/)).toBeInTheDocument();
   });
 
-  it("collapsing a project group hides its session items but shows a preview", () => {
+  it("collapsing a project group hides its session items completely", () => {
+    // The redesigned sidebar removes the collapsed preview text entirely.
+    // When a folder is collapsed, its sessions are simply hidden.
     const session = makeSession("s1", { cwd: "/home/user/myapp", model: "hidden-model" });
     const sdk = makeSdkSession("s1", { cwd: "/home/user/myapp" });
     mockState = createMockState({
@@ -672,18 +686,10 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    // Group header should still be visible
-    expect(screen.getByText("myapp")).toBeInTheDocument();
-    // The session button itself should not be present (no clickable session row)
-    const sessionButtons = screen.getAllByRole("button");
-    const sessionRowButton = sessionButtons.find((btn) =>
-      btn.textContent?.includes("hidden-model") && btn.classList.contains("rounded-lg"),
-    );
-    expect(sessionRowButton).toBeUndefined();
-    // But a collapsed preview text should appear with the session name
-    const previewElement = screen.getByText("hidden-model");
-    expect(previewElement).toBeInTheDocument();
-    expect(previewElement.className).toContain("text-muted-foreground/70");
+    // Group header should still be visible (label includes count: "myapp (1)")
+    expect(screen.getByText(/myapp/)).toBeInTheDocument();
+    // The session should not be visible at all — no button, no preview
+    expect(screen.queryByText("hidden-model")).not.toBeInTheDocument();
   });
 
   it("context menu shows restore and delete for archived sessions", () => {
@@ -696,8 +702,8 @@ describe("Sidebar", () => {
 
     renderSidebar();
 
-    // Expand the archived section first
-    const toggleButton = screen.getByText(/Archived \(1\)/);
+    // Expand the archived section first (single inline string "Archived (1)")
+    const toggleButton = screen.getByText(/Archived/);
     fireEvent.click(toggleButton);
 
     // Find the session actions menu for the archived session
@@ -728,6 +734,8 @@ describe("Sidebar", () => {
   });
 
   it("session item has minimum touch target height", () => {
+    // The redesigned sidebar uses SidebarMenuButton with default h-8 sizing
+    // for a compact, dense layout.
     const session = makeSession("s1");
     const sdk = makeSdkSession("s1");
     mockState = createMockState({
@@ -737,8 +745,7 @@ describe("Sidebar", () => {
 
     renderSidebar();
     const sessionButton = screen.getByText("claude-sonnet-4-6").closest("button");
-    // The button should have min-h-[44px] class for touch accessibility
-    expect(sessionButton).toHaveClass("min-h-[44px]");
+    expect(sessionButton).toHaveClass("h-8");
   });
 
   it("Enter confirms rename in edit mode", () => {
@@ -786,6 +793,9 @@ describe("Sidebar", () => {
 
   it("long session names are truncated with the truncate class", () => {
     // Verifies that a very long session name does not cause horizontal overflow.
+    // SidebarMenuButton has [&>span:last-child]:truncate in its CVA definition,
+    // so the truncate class is applied to the outer button wrapper, not the
+    // session name span directly.
     const longName = "A".repeat(200);
     const session = makeSession("s1", { model: longName });
     const sdk = makeSdkSession("s1");
@@ -796,8 +806,9 @@ describe("Sidebar", () => {
 
     renderSidebar();
     const nameEl = screen.getByText(longName);
-    // The name should use the truncate utility class to prevent overflow
-    expect(nameEl).toHaveClass("truncate");
+    // The button wrapper applies truncate via [&>span:last-child]:truncate
+    const button = nameEl.closest("button");
+    expect(button).toHaveClass("[&>span:last-child]:truncate");
   });
 
   it("passes axe accessibility checks", async () => {
@@ -912,8 +923,8 @@ describe("Sidebar", () => {
 
     renderSidebar();
 
-    // Expand archived section
-    fireEvent.click(screen.getByText(/Archived \(1\)/));
+    // Expand archived section (single inline string "Archived (1)")
+    fireEvent.click(screen.getByText(/Archived/));
 
     // Open context menu and click Delete
     const menuButton = screen.getByTitle("Session actions");
@@ -936,7 +947,7 @@ describe("Sidebar", () => {
     renderSidebar();
 
     // Expand archived, open menu, click Delete
-    fireEvent.click(screen.getByText(/Archived \(1\)/));
+    fireEvent.click(screen.getByText(/Archived/));
     fireEvent.click(screen.getByTitle("Session actions"));
     fireEvent.click(screen.getByText("Delete"));
 
@@ -965,7 +976,7 @@ describe("Sidebar", () => {
     renderSidebar();
 
     // Expand archived, open menu, click Delete
-    fireEvent.click(screen.getByText(/Archived \(1\)/));
+    fireEvent.click(screen.getByText(/Archived/));
     fireEvent.click(screen.getByTitle("Session actions"));
     fireEvent.click(screen.getByText("Delete"));
 
@@ -992,7 +1003,7 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    fireEvent.click(screen.getByText(/Archived \(1\)/));
+    fireEvent.click(screen.getByText(/Archived/));
     fireEvent.click(screen.getByTitle("Session actions"));
     fireEvent.click(screen.getByText("Delete"));
 
@@ -1014,7 +1025,7 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    fireEvent.click(screen.getByText(/Archived \(1\)/));
+    fireEvent.click(screen.getByText(/Archived/));
     fireEvent.click(screen.getByTitle("Session actions"));
     fireEvent.click(screen.getByText("Delete"));
 
@@ -1033,9 +1044,9 @@ describe("Sidebar", () => {
 
   // ─── Delete all archived flow ──────────────────────────────────────────────
 
-  it("shows 'Delete all' button when archived section is expanded with multiple sessions", () => {
-    // Verifies that the "Delete all" button appears only when there are 2+
-    // archived sessions and the archived section is expanded.
+  it("shows delete-all icon button when archived section has sessions", () => {
+    // The redesigned sidebar shows a trash icon (with title "Delete all archived sessions")
+    // on hover of the archive folder header, instead of a "Delete all" text button.
     const sdk1 = makeSdkSession("s1", { archived: true });
     const sdk2 = makeSdkSession("s2", { archived: true });
     mockState = createMockState({
@@ -1044,18 +1055,13 @@ describe("Sidebar", () => {
 
     renderSidebar();
 
-    // Before expanding, "Delete all" should not be visible
-    expect(screen.queryByText("Delete all")).not.toBeInTheDocument();
-
-    // Expand archived section
-    fireEvent.click(screen.getByText(/Archived \(2\)/));
-
-    // Now "Delete all" button should be visible
-    expect(screen.getByText("Delete all")).toBeInTheDocument();
+    // The delete-all icon button should be in the DOM (hidden via CSS opacity)
+    const deleteAllBtn = screen.getByTitle("Delete all archived sessions");
+    expect(deleteAllBtn).toBeInTheDocument();
   });
 
-  it("clicking 'Delete all' shows confirmation modal for all archived sessions", async () => {
-    // Verifies that clicking "Delete all" triggers the bulk delete confirmation
+  it("clicking delete-all icon shows confirmation modal for all archived sessions", async () => {
+    // Verifies that clicking the trash icon triggers the bulk delete confirmation
     // modal with the correct count of archived sessions.
     const sdk1 = makeSdkSession("s1", { archived: true });
     const sdk2 = makeSdkSession("s2", { archived: true });
@@ -1065,8 +1071,7 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    fireEvent.click(screen.getByText(/Archived \(2\)/));
-    fireEvent.click(screen.getByText("Delete all"));
+    fireEvent.click(screen.getByTitle("Delete all archived sessions"));
 
     await vi.waitFor(() => {
       expect(screen.getByText("Delete all archived?")).toBeInTheDocument();
@@ -1085,8 +1090,7 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    fireEvent.click(screen.getByText(/Archived \(2\)/));
-    fireEvent.click(screen.getByText("Delete all"));
+    fireEvent.click(screen.getByTitle("Delete all archived sessions"));
 
     // Click "Delete all" in the confirmation modal
     // The dialog is rendered via a portal; find the button inside the dialog role element
@@ -1115,8 +1119,7 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    fireEvent.click(screen.getByText(/Archived \(2\)/));
-    fireEvent.click(screen.getByText("Delete all"));
+    fireEvent.click(screen.getByTitle("Delete all archived sessions"));
 
     // Cancel the modal
     const cancelBtn = screen.getAllByText("Cancel").find(
@@ -1316,7 +1319,7 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    fireEvent.click(screen.getByText(/Archived \(1\)/));
+    fireEvent.click(screen.getByText(/Archived/));
 
     // Open context menu on the archived session
     fireEvent.click(screen.getByTitle("Session actions"));
@@ -1331,9 +1334,9 @@ describe("Sidebar", () => {
 
   // ─── Cron sessions section ─────────────────────────────────────────────────
 
-  it("renders Scheduled Runs section when cron sessions exist", () => {
+  it("renders Scheduled section when cron sessions exist", () => {
     // Verifies that sessions with cronJobId are displayed in a separate
-    // "Scheduled Runs" section with the correct count.
+    // "Scheduled" section with the correct count.
     const sdk1 = makeSdkSession("s1");
     const sdk2 = makeSdkSession("s2", { cronJobId: "cron-1", cronJobName: "Daily Build" });
     mockState = createMockState({
@@ -1341,12 +1344,13 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    expect(screen.getByText(/Scheduled Runs \(1\)/)).toBeInTheDocument();
+    // Label is "Scheduled (1)" as a single inline string
+    expect(screen.getByText(/Scheduled \(1\)/)).toBeInTheDocument();
   });
 
   it("cron sessions are not shown in the active sessions list", () => {
     // Verifies that sessions with a cronJobId are excluded from the main
-    // active sessions list and only appear under "Scheduled Runs".
+    // active sessions list and only appear under "Scheduled".
     const sdk1 = makeSdkSession("s1", { model: "regular-session" });
     const sdk2 = makeSdkSession("s2", { model: "cron-session", cronJobId: "cron-1" });
     mockState = createMockState({
@@ -1356,12 +1360,12 @@ describe("Sidebar", () => {
     renderSidebar();
     // regular-session should be in the main list
     expect(screen.getByText("regular-session")).toBeInTheDocument();
-    // cron-session should appear under Scheduled Runs, not in main list
-    expect(screen.getByText(/Scheduled Runs \(1\)/)).toBeInTheDocument();
+    // cron-session should appear under Scheduled, not in main list
+    expect(screen.getByText(/Scheduled \(1\)/)).toBeInTheDocument();
   });
 
-  it("toggling Scheduled Runs section hides/shows cron sessions", () => {
-    // Verifies that the Scheduled Runs section can be collapsed and expanded
+  it("toggling Scheduled section hides/shows cron sessions", () => {
+    // Verifies that the Scheduled section can be collapsed and expanded
     // via its toggle button.
     const sdk = makeSdkSession("s1", { model: "cron-model", cronJobId: "cron-1" });
     mockState = createMockState({
@@ -1372,14 +1376,14 @@ describe("Sidebar", () => {
     // Initially expanded (showCronSessions defaults to true)
     expect(screen.getByText("cron-model")).toBeInTheDocument();
 
-    // Click to collapse
-    fireEvent.click(screen.getByText(/Scheduled Runs \(1\)/));
+    // Click to collapse (label is "Scheduled (1)" as a single inline string)
+    fireEvent.click(screen.getByText(/Scheduled/));
 
     // Session should be hidden
     expect(screen.queryByText("cron-model")).not.toBeInTheDocument();
 
     // Click again to expand
-    fireEvent.click(screen.getByText(/Scheduled Runs \(1\)/));
+    fireEvent.click(screen.getByText(/Scheduled/));
     expect(screen.getByText("cron-model")).toBeInTheDocument();
   });
 
@@ -1387,7 +1391,8 @@ describe("Sidebar", () => {
 
   it("renders Agent Runs section when agent sessions exist", () => {
     // Verifies that sessions with agentId are displayed in a separate
-    // "Agent Runs" section with the correct count.
+    // "Agents" section folder. The section label is "Agents (1)" as a
+    // single inline string. The nav item "Agents" is separate.
     const sdk1 = makeSdkSession("s1");
     const sdk2 = makeSdkSession("s2", { agentId: "agent-1", agentName: "Code Reviewer" });
     mockState = createMockState({
@@ -1395,7 +1400,8 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    expect(screen.getByText(/Agent Runs \(1\)/)).toBeInTheDocument();
+    // Nav "Agents" text + section "Agents (1)" text
+    expect(screen.getByText(/Agents \(1\)/)).toBeInTheDocument();
   });
 
   it("agent sessions are separate from active sessions", () => {
@@ -1409,13 +1415,16 @@ describe("Sidebar", () => {
 
     renderSidebar();
     expect(screen.getByText("normal")).toBeInTheDocument();
-    expect(screen.getByText(/Agent Runs \(1\)/)).toBeInTheDocument();
+    // Section label "Agents (1)" as a single inline string
+    expect(screen.getByText(/Agents \(1\)/)).toBeInTheDocument();
   });
 
   it("toggling Agent Runs section hides/shows agent sessions", () => {
     // Verifies that the Agent Runs section can be collapsed and expanded.
     // Note: we need at least one active session to prevent the "No sessions yet."
     // empty state from hiding the agent sessions section entirely.
+    // The section label is "Agents (1)" as a single inline string, distinct
+    // from the nav item "Agents".
     const sdkActive = makeSdkSession("s-active", { model: "active-model" });
     const sdk = makeSdkSession("s1", { model: "agent-model", agentId: "agent-1" });
     mockState = createMockState({
@@ -1426,12 +1435,15 @@ describe("Sidebar", () => {
     // Initially expanded
     expect(screen.getByText("agent-model")).toBeInTheDocument();
 
+    // The section toggle is "Agents (1)" (distinct from nav item "Agents")
+    const agentsSectionToggle = screen.getByText(/Agents \(1\)/);
+
     // Collapse
-    fireEvent.click(screen.getByText(/Agent Runs \(1\)/));
+    fireEvent.click(agentsSectionToggle);
     expect(screen.queryByText("agent-model")).not.toBeInTheDocument();
 
     // Expand again
-    fireEvent.click(screen.getByText(/Agent Runs \(1\)/));
+    fireEvent.click(screen.getByText(/Agents \(1\)/));
     expect(screen.getByText("agent-model")).toBeInTheDocument();
   });
 
@@ -1486,7 +1498,7 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    fireEvent.click(screen.getByText(/Archived \(1\)/));
+    fireEvent.click(screen.getByText(/Archived/));
     fireEvent.click(screen.getByTitle("Session actions"));
     fireEvent.click(screen.getByText("Delete"));
 
@@ -1545,15 +1557,16 @@ describe("Sidebar", () => {
 
   // ─── Session with cron badge ───────────────────────────────────────────────
 
-  it("session with cronJobId shows Scheduled badge", () => {
-    // Verifies that a session with a cron job ID displays the scheduled clock badge.
+  it("session with cronJobId appears in Scheduled section", () => {
+    // Verifies that a session with a cron job ID appears under the Scheduled
+    // section header. The section label is "Scheduled (1)" as a single inline string.
     const sdk = makeSdkSession("s1", { cronJobId: "cron-1" });
     mockState = createMockState({
       sdkSessions: [sdk],
     });
 
     renderSidebar();
-    expect(screen.getByTitle("Scheduled")).toBeInTheDocument();
+    expect(screen.getByText(/Scheduled \(1\)/)).toBeInTheDocument();
   });
 
   // ─── Delete all singular text ──────────────────────────────────────────────
@@ -1570,8 +1583,7 @@ describe("Sidebar", () => {
     });
 
     renderSidebar();
-    fireEvent.click(screen.getByText(/Archived \(3\)/));
-    fireEvent.click(screen.getByText("Delete all"));
+    fireEvent.click(screen.getByTitle("Delete all archived sessions"));
 
     expect(screen.getByText(/3 archived sessions/)).toBeInTheDocument();
   });

@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { BackendBadge } from "./backend-badge";
+import { BackendBadge, BackendIcon } from "./backend-badge";
 
 describe("BackendBadge", () => {
   it("renders the default backend label", () => {
@@ -26,6 +26,39 @@ describe("BackendBadge", () => {
   it("passes axe accessibility checks", async () => {
     const { axe } = await import("vitest-axe");
     const { container } = render(<BackendBadge backend="codex" />);
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  }, 10_000);
+});
+
+describe("BackendIcon", () => {
+  it("renders Claude SVG icon with aria-label", () => {
+    // BackendIcon renders an inline SVG with aria-label for accessibility.
+    // Icons inherit text color from parent (no hardcoded color class).
+    render(<BackendIcon backend="claude" />);
+    const icon = screen.getByLabelText("Claude");
+    expect(icon).toBeInTheDocument();
+    expect(icon.tagName.toLowerCase()).toBe("svg");
+  });
+
+  it("renders Codex SVG icon with aria-label", () => {
+    render(<BackendIcon backend="codex" />);
+    const icon = screen.getByLabelText("Codex");
+    expect(icon).toBeInTheDocument();
+    expect(icon.tagName.toLowerCase()).toBe("svg");
+  });
+
+  it("applies custom className", () => {
+    render(<BackendIcon backend="claude" className="w-5 h-5" />);
+    const icon = screen.getByLabelText("Claude");
+    const cls = icon.getAttribute("class") ?? "";
+    expect(cls).toContain("w-5");
+    expect(cls).toContain("h-5");
+  });
+
+  it("passes axe accessibility checks", async () => {
+    const { axe } = await import("vitest-axe");
+    const { container } = render(<BackendIcon backend="codex" />);
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   }, 10_000);

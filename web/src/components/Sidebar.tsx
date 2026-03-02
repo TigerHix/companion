@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo, useSyncExternalStore } from "react";
-import { Plus, ChevronRight, AlertTriangle, Trash2, Clock, Archive as ArchiveIcon, MoreVertical, Home, Bot, Box, Settings } from "lucide-react";
+import { Plus, ChevronRight, AlertTriangle, Trash2, Clock, MoreVertical, Home, Bot, Box, Settings } from "lucide-react";
 import { useStore } from "../store.js";
 import { api } from "../api.js";
 import { connectSession, connectAllSessions, disconnectSession } from "../ws.js";
@@ -29,13 +29,10 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { useSidebar } from "@/components/ui/sidebar";
-import { Badge } from "@/components/ui/badge";
-import { BackendBadge } from "@/components/ui/backend-badge";
+import { BackendIcon } from "@/components/ui/backend-badge";
 import { groupSessionsByProject, type SessionItem as SessionItemType } from "../utils/project-grouping.js";
 
 function useHash() {
@@ -56,29 +53,18 @@ function deriveStatus(s: SessionItemType): DerivedStatus {
   return "exited";
 }
 
+/** Small colored dot — only rendered for running/awaiting states */
 function StatusDot({ status }: { status: DerivedStatus }) {
-  switch (status) {
-    case "running":
-      return (
-        <span className="relative shrink-0 w-1.5 h-1.5">
-          <span className="absolute inset-0 rounded-full bg-success animate-[pulse-dot_1.5s_ease-in-out_infinite]" />
-          <span className="w-1.5 h-1.5 rounded-full bg-success block" />
-        </span>
-      );
-    case "awaiting":
-      return (
-        <span className="relative shrink-0 w-1.5 h-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-warning block animate-[ring-pulse_1.5s_ease-out_infinite]" />
-        </span>
-      );
-    case "idle":
-      return <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />;
-    case "exited":
-      return <span className="w-1.5 h-1.5 rounded-full border border-muted-foreground/25 shrink-0" />;
+  if (status === "running") {
+    return <span className="session-status-dot session-status-running" title="Running" />;
   }
+  if (status === "awaiting") {
+    return <span className="session-status-dot session-status-awaiting" title="Awaiting permission" />;
+  }
+  return null;
 }
 
-// ─── Session sub-item (used inside project groups and standalone sections) ───
+// ─── Session row — uses SidebarMenuButton, same structure as nav items ───────
 
 interface SessionSubItemProps {
   session: SessionItemType;
@@ -127,12 +113,11 @@ function SessionSubItem({
   const [menuOpen, setMenuOpen] = useState(false);
 
   const derivedStatus = archived ? ("exited" as DerivedStatus) : deriveStatus(s);
-  const cwdTail = s.cwd || "";
 
   if (isEditing) {
     return (
-      <SidebarMenuSubItem>
-        <div className="w-full flex items-center gap-2 py-2 pl-5 pr-12 min-h-[44px] rounded-lg">
+      <SidebarMenuItem>
+        <div className="flex items-center px-2 py-1">
           <input
             ref={editInputRef}
             value={editingName}
@@ -150,92 +135,45 @@ function SessionSubItem({
             onBlur={onConfirmRename}
             onClick={(e) => e.stopPropagation()}
             onDoubleClick={(e) => e.stopPropagation()}
-            className="input-moku text-sm font-medium flex-1 min-w-0 rounded-md px-2 py-1"
+            className="input-moku text-sm flex-1 min-w-0 rounded-md px-2 py-1"
           />
         </div>
-      </SidebarMenuSubItem>
+      </SidebarMenuItem>
     );
   }
 
   return (
-    <SidebarMenuSubItem className="relative group">
-      <button
-        type="button"
+    <SidebarMenuItem className="group/row">
+      <SidebarMenuButton
         onClick={() => onSelect(s.id)}
-        onDoubleClick={(e) => {
+        onDoubleClick={(e: React.MouseEvent) => {
           e.preventDefault();
           onStartRename(s.id, label);
         }}
-        className={`session-item session-item-${derivedStatus} relative w-full min-h-[44px] h-auto flex items-center gap-2 rounded-lg py-2 pl-5 pr-12 transition-all duration-150 text-left ${
-          isActive ? "bg-accent session-item-active" : "hover:bg-sidebar-accent/50"
-        }`}
+        isActive={isActive}
+        className="gap-2 pr-7"
+        data-status={derivedStatus}
       >
-        <StatusDot status={derivedStatus} />
-        <div className="flex-1 min-w-0">
-          <span
-            className={`text-[13px] font-medium truncate text-foreground leading-snug block ${
-              isRecentlyRenamed ? "animate-name-appear" : ""
-            }`}
-            onAnimationEnd={() => onClearRecentlyRenamed(s.id)}
-          >
-            {label}
-          </span>
-          {cwdTail && (
-            <span className="text-[10px] text-muted-foreground/45 truncate block leading-tight">
-              {cwdTail}
-            </span>
-          )}
-        </div>
-
-        <span className="flex items-center gap-1 shrink-0">
-          <BackendBadge backend={s.backendType} compact />
-          {s.isContainerized && (
-            <Badge
-              variant="secondary"
-              className="h-auto rounded-md px-1 py-0.5"
-              title="Docker"
-            >
-              <img src="/logo-docker.svg" alt="Docker logo" className="w-3 h-3" />
-            </Badge>
-          )}
-          {s.cronJobId && (
-            <Badge
-              variant="secondary"
-              className="status-chip status-chip-primary h-auto rounded-md px-1 py-0.5"
-              title="Scheduled"
-            >
-              <Clock className="w-2.5 h-2.5 text-primary" />
-            </Badge>
-          )}
-        </span>
-      </button>
-
-      {/* Archive button — hover reveal (desktop), always visible (mobile) */}
-      {!archived && !menuOpen && (
-        <Button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onArchive(e, s.id);
-          }}
-          variant="ghost"
-          size="icon-xs"
-          className="absolute right-7 top-1/2 -translate-y-1/2 opacity-0 pointer-events-none sm:group-hover:opacity-100 sm:group-hover:pointer-events-auto text-muted-foreground hover:text-foreground transition-all"
-          title="Archive"
-          aria-label="Archive session"
+        <BackendIcon backend={s.backendType} className="size-4" />
+        <span
+          className={isRecentlyRenamed ? "animate-name-appear" : undefined}
+          onAnimationEnd={() => onClearRecentlyRenamed(s.id)}
         >
-          <ArchiveIcon className="w-3 h-3" />
-        </Button>
-      )}
+          {label}
+        </span>
+        <StatusDot status={derivedStatus} />
+      </SidebarMenuButton>
 
-      {/* Three-dot menu — shadcn DropdownMenu (portaled, no z-index issues) */}
+      {/* Context menu — per-row hover only */}
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger
-          className="absolute right-1 top-1/2 -translate-y-1/2 opacity-100 pointer-events-auto sm:opacity-0 sm:pointer-events-none sm:group-hover:opacity-100 sm:group-hover:pointer-events-auto text-muted-foreground hover:text-foreground transition-all size-6 flex items-center justify-center rounded-md"
+          className={`absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground transition-opacity size-6 flex items-center justify-center rounded-md ${
+            menuOpen ? "opacity-100" : "opacity-0 sm:group-hover/row:opacity-100"
+          }`}
           title="Session actions"
           aria-label="Session actions"
         >
-          <MoreVertical className="w-3.5 h-3.5" />
+          <MoreVertical className="!size-3.5" />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" sideOffset={4} className="w-36 sidebar-ctx-menu">
           {!archived && (
@@ -260,7 +198,7 @@ function SessionSubItem({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-    </SidebarMenuSubItem>
+    </SidebarMenuItem>
   );
 }
 
@@ -546,7 +484,7 @@ export function Sidebar() {
 
   return (
     <ShadcnSidebar variant="floating">
-      {/* Header — logo + new session button (sidebar-04 SidebarHeader pattern) */}
+      {/* Header — logo + new session button */}
       <SidebarHeader>
         <div className="flex items-center gap-2 px-1">
           <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -612,27 +550,15 @@ export function Sidebar() {
                 Archiving will <strong>remove the container</strong> and any uncommitted changes.
               </p>
               <div className="flex gap-2 mt-2">
-                <Button
-                  onClick={cancelArchive}
-                  variant="secondary"
-                  size="xs"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={confirmArchive}
-                  variant="destructive"
-                  size="xs"
-                >
-                  Archive
-                </Button>
+                <Button onClick={cancelArchive} variant="secondary" size="xs">Cancel</Button>
+                <Button onClick={confirmArchive} variant="destructive" size="xs">Archive</Button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Session list — sidebar-04 pattern: SidebarContent > SidebarGroup > SidebarMenu */}
+      {/* Session list */}
       <SidebarContent>
         {activeSessions.length === 0 && cronSessions.length === 0 && archivedSessions.length === 0 ? (
           <SidebarGroup>
@@ -646,81 +572,66 @@ export function Sidebar() {
             </div>
           </SidebarGroup>
         ) : (
-          <>
-            {/* Active sessions — grouped by project (sidebar-04 nav group pattern) */}
-            <SidebarGroup>
-              <SidebarMenu className="gap-2">
-                {projectGroups.map((group) => (
+          <SidebarGroup className="px-2">
+            <SidebarMenu>
+              {/* Active sessions — grouped by project */}
+              {projectGroups.map((group) => {
+                const isCollapsed = collapsedProjects.has(group.key);
+                return (
                   <SidebarMenuItem key={group.key}>
                     <SidebarMenuButton
                       onClick={() => toggleProjectCollapse(group.key)}
-                      className="font-medium text-[11px] text-foreground/65 gap-2 transition-colors duration-150 hover:text-foreground"
+                      size="sm"
+                      className="gap-1.5 text-muted-foreground/60 hover:text-foreground/80"
                     >
                       <ChevronRight
-                        className={`w-3 h-3 text-muted-foreground/40 transition-transform duration-200 ${collapsedProjects.has(group.key) ? "" : "rotate-90"}`}
+                        className={`!size-3 transition-transform duration-150 ${isCollapsed ? "" : "rotate-90"}`}
                       />
-                      <span className="truncate">{group.label}</span>
-                      <span className="flex items-center gap-1.5 ml-auto shrink-0">
-                        {group.runningCount > 0 && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-success" title={`${group.runningCount} running`} />
-                        )}
-                        {group.permCount > 0 && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-warning" title={`${group.permCount} waiting`} />
-                        )}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground/50 tabular-nums shrink-0">
-                        {group.sessions.length}
-                      </span>
+                      <span>{group.label} ({group.sessions.length})</span>
+                      {group.runningCount > 0 && (
+                        <span className="session-status-dot session-status-running ml-auto" title={`${group.runningCount} running`} />
+                      )}
+                      {group.permCount > 0 && (
+                        <span className="session-status-dot session-status-awaiting" title={`${group.permCount} waiting`} />
+                      )}
                     </SidebarMenuButton>
 
-                    {/* Collapsed preview */}
-                    {collapsedProjects.has(group.key) && (
-                      <div className="text-[10px] text-muted-foreground/70 truncate pl-8 pb-1.5">
-                        {group.sessions
-                          .slice(0, 2)
-                          .map((s) => sessionNames.get(s.id) || s.model || s.id.slice(0, 8))
-                          .join(", ") + (group.sessions.length > 2 ? ", ..." : "")}
-                      </div>
-                    )}
-
-                    {!collapsedProjects.has(group.key) && (
-                      <div className="session-group-card mt-1">
-                        <SidebarMenuSub className="ml-0 border-l-0 px-0.5 py-0.5">
-                          {group.sessions.map((s) => (
-                            <SessionSubItem
-                              key={s.id}
-                              session={s}
-                              isActive={currentSessionId === s.id}
-                              sessionName={sessionNames.get(s.id)}
-                              permCount={pendingPermissions.get(s.id)?.size ?? 0}
-                              isRecentlyRenamed={recentlyRenamed.has(s.id)}
-                              {...sessionItemProps}
-                            />
-                          ))}
-                        </SidebarMenuSub>
-                      </div>
+                    {!isCollapsed && (
+                      <SidebarMenu className="mt-0.5">
+                        {group.sessions.map((s) => (
+                          <SessionSubItem
+                            key={s.id}
+                            session={s}
+                            isActive={currentSessionId === s.id}
+                            sessionName={sessionNames.get(s.id)}
+                            permCount={pendingPermissions.get(s.id)?.size ?? 0}
+                            isRecentlyRenamed={recentlyRenamed.has(s.id)}
+                            {...sessionItemProps}
+                          />
+                        ))}
+                      </SidebarMenu>
                     )}
                   </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroup>
+                );
+              })}
 
-            {/* Cron (Scheduled Runs) section */}
-            {cronSessions.length > 0 && (
-              <SidebarGroup className="px-3 py-0">
-                <button
-                  type="button"
-                  onClick={() => setShowCronSessions(!showCronSessions)}
-                  className="session-section-toggle"
-                >
-                  <span className="session-section-line" />
-                  <Clock className="w-2.5 h-2.5" />
-                  <span>Scheduled Runs ({cronSessions.length})</span>
-                  <span className="session-section-line" />
-                </button>
-                {showCronSessions && (
-                  <div className="session-group-card">
-                    <SidebarMenuSub className="ml-0 border-l-0 px-0.5 py-0.5">
+              {/* Scheduled section */}
+              {cronSessions.length > 0 && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => setShowCronSessions(!showCronSessions)}
+                    size="sm"
+                    className="gap-1.5 text-muted-foreground/60 hover:text-foreground/80"
+                  >
+                    <ChevronRight
+                      className={`!size-3 transition-transform duration-150 ${showCronSessions ? "rotate-90" : ""}`}
+                    />
+                    <Clock className="!size-3.5" />
+                    <span>Scheduled ({cronSessions.length})</span>
+                  </SidebarMenuButton>
+
+                  {showCronSessions && (
+                    <SidebarMenu className="mt-0.5">
                       {cronSessions.map((s) => (
                         <SessionSubItem
                           key={s.id}
@@ -732,28 +643,28 @@ export function Sidebar() {
                           {...sessionItemProps}
                         />
                       ))}
-                    </SidebarMenuSub>
-                  </div>
-                )}
-              </SidebarGroup>
-            )}
+                    </SidebarMenu>
+                  )}
+                </SidebarMenuItem>
+              )}
 
-            {/* Agent Runs section */}
-            {agentSessions.length > 0 && (
-              <SidebarGroup className="px-3 py-0">
-                <button
-                  type="button"
-                  onClick={() => setShowAgentSessions(!showAgentSessions)}
-                  className="session-section-toggle"
-                >
-                  <span className="session-section-line" />
-                  <Bot className="w-2.5 h-2.5" />
-                  <span>Agent Runs ({agentSessions.length})</span>
-                  <span className="session-section-line" />
-                </button>
-                {showAgentSessions && (
-                  <div className="session-group-card">
-                    <SidebarMenuSub className="ml-0 border-l-0 px-0.5 py-0.5">
+              {/* Agent Runs section */}
+              {agentSessions.length > 0 && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => setShowAgentSessions(!showAgentSessions)}
+                    size="sm"
+                    className="gap-1.5 text-muted-foreground/60 hover:text-foreground/80"
+                  >
+                    <ChevronRight
+                      className={`!size-3 transition-transform duration-150 ${showAgentSessions ? "rotate-90" : ""}`}
+                    />
+                    <Bot className="!size-3.5" />
+                    <span>Agents ({agentSessions.length})</span>
+                  </SidebarMenuButton>
+
+                  {showAgentSessions && (
+                    <SidebarMenu className="mt-0.5">
                       {agentSessions.map((s) => (
                         <SessionSubItem
                           key={s.id}
@@ -765,41 +676,39 @@ export function Sidebar() {
                           {...sessionItemProps}
                         />
                       ))}
-                    </SidebarMenuSub>
-                  </div>
-                )}
-              </SidebarGroup>
-            )}
-
-            {/* Archived section */}
-            {archivedSessions.length > 0 && (
-              <SidebarGroup className="px-3 py-0">
-                <div className="flex items-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowArchived(!showArchived)}
-                    className="session-section-toggle flex-1"
-                  >
-                    <span className="session-section-line" />
-                    <ArchiveIcon className="w-2.5 h-2.5" />
-                    <span>Archived ({archivedSessions.length})</span>
-                    <span className="session-section-line" />
-                  </button>
-                  {showArchived && archivedSessions.length > 1 && (
-                    <Button
-                      onClick={handleDeleteAllArchived}
-                      variant="ghost"
-                      size="xs"
-                      className="text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors duration-150 shrink-0"
-                      title="Delete all archived sessions"
-                    >
-                      Delete all
-                    </Button>
+                    </SidebarMenu>
                   )}
-                </div>
-                {showArchived && (
-                  <div className="session-group-card">
-                    <SidebarMenuSub className="ml-0 border-l-0 px-0.5 py-0.5">
+                </SidebarMenuItem>
+              )}
+
+              {/* Archived section */}
+              {archivedSessions.length > 0 && (
+                <SidebarMenuItem className="group/archive">
+                  <SidebarMenuButton
+                    onClick={() => setShowArchived(!showArchived)}
+                    size="sm"
+                    className="gap-1.5 text-muted-foreground/60 hover:text-foreground/80"
+                  >
+                    <ChevronRight
+                      className={`!size-3 transition-transform duration-150 ${showArchived ? "rotate-90" : ""}`}
+                    />
+                    <span>Archived ({archivedSessions.length})</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteAllArchived();
+                      }}
+                      className="ml-auto opacity-0 group-hover/archive:opacity-100 transition-opacity text-muted-foreground/30 hover:text-destructive"
+                      title="Delete all archived sessions"
+                      aria-label="Delete all archived sessions"
+                    >
+                      <Trash2 className="!size-3" />
+                    </button>
+                  </SidebarMenuButton>
+
+                  {showArchived && (
+                    <SidebarMenu className="mt-0.5">
                       {archivedSessions.map((s) => (
                         <SessionSubItem
                           key={s.id}
@@ -812,12 +721,12 @@ export function Sidebar() {
                           {...sessionItemProps}
                         />
                       ))}
-                    </SidebarMenuSub>
-                  </div>
-                )}
-              </SidebarGroup>
-            )}
-          </>
+                    </SidebarMenu>
+                  )}
+                </SidebarMenuItem>
+              )}
+            </SidebarMenu>
+          </SidebarGroup>
         )}
       </SidebarContent>
 
