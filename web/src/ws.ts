@@ -1,4 +1,5 @@
 import { useStore } from "./store.js";
+import { getBrowserWebSocketUrl } from "./connection.js";
 import type { BrowserIncomingMessage, BrowserOutgoingMessage, ContentBlock, ChatMessage, TaskItem, ProcessItem, ProcessStatus, SdkSessionInfo, McpServerConfig } from "./types.js";
 import { generateUniqueSessionName } from "./utils/names.js";
 import { playNotificationSound } from "./utils/notification-sound.js";
@@ -324,9 +325,7 @@ const IDEMPOTENT_OUTGOING_TYPES = new Set<BrowserOutgoingMessage["type"]>([
 ]);
 
 function getWsUrl(sessionId: string): string {
-  const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  const token = localStorage.getItem("moku_auth_token") || "";
-  return `${proto}//${location.host}/ws/browser/${sessionId}?token=${encodeURIComponent(token)}`;
+  return getBrowserWebSocketUrl(sessionId);
 }
 
 function getLastSeqStorageKey(sessionId: string): string {

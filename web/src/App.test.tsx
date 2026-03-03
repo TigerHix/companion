@@ -84,6 +84,7 @@ vi.mock("./analytics.js", () => ({
 
 vi.mock("./utils/routing.js", () => ({
   parseHash: vi.fn().mockReturnValue({ page: "home" }),
+  navigateToConnect: vi.fn(),
   navigateToSession: vi.fn(),
   navigateHome: vi.fn(),
 }));

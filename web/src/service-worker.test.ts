@@ -17,7 +17,7 @@ describe("service-worker bootstrap", () => {
     ];
     const cacheStorage = {
       delete: vi.fn().mockResolvedValue(true),
-      keys: vi.fn().mockResolvedValue(["workbox-precache-v1", "companion-navigation"]),
+      keys: vi.fn().mockResolvedValue(["workbox-precache-v1", "moku-navigation"]),
     };
 
     const { cleanupDevOfflineState } = await import("./service-worker.js");

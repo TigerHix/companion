@@ -13,8 +13,8 @@ import type { AgentConfig, AgentConfigCreateInput } from "./agent-types.js";
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
-const COMPANION_DIR = join(homedir(), ".companion");
-const AGENTS_DIR = join(COMPANION_DIR, "agents");
+const MOKU_DIR = join(homedir(), ".moku");
+const AGENTS_DIR = join(MOKU_DIR, "agents");
 
 function ensureDir(): void {
   mkdirSync(AGENTS_DIR, { recursive: true });

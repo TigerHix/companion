@@ -21,7 +21,6 @@ export interface CompanionSettings {
   linearArchiveTransition: boolean;
   linearArchiveTransitionStateId: string;
   linearArchiveTransitionStateName: string;
-  editorTabEnabled: boolean;
   aiValidationEnabled: boolean;
   aiValidationAutoApprove: boolean;
   aiValidationAutoDeny: boolean;
@@ -29,7 +28,7 @@ export interface CompanionSettings {
   updatedAt: number;
 }
 
-const DEFAULT_PATH = join(homedir(), ".companion", "settings.json");
+const DEFAULT_PATH = join(homedir(), ".moku", "settings.json");
 
 let loaded = false;
 let filePath = DEFAULT_PATH;
@@ -43,7 +42,6 @@ let settings: CompanionSettings = {
   linearArchiveTransition: false,
   linearArchiveTransitionStateId: "",
   linearArchiveTransitionStateName: "",
-  editorTabEnabled: false,
   aiValidationEnabled: false,
   aiValidationAutoApprove: true,
   aiValidationAutoDeny: true,
@@ -65,7 +63,6 @@ function normalize(raw: Partial<CompanionSettings> | null | undefined): Companio
     linearArchiveTransition: typeof raw?.linearArchiveTransition === "boolean" ? raw.linearArchiveTransition : false,
     linearArchiveTransitionStateId: typeof raw?.linearArchiveTransitionStateId === "string" ? raw.linearArchiveTransitionStateId : "",
     linearArchiveTransitionStateName: typeof raw?.linearArchiveTransitionStateName === "string" ? raw.linearArchiveTransitionStateName : "",
-    editorTabEnabled: typeof raw?.editorTabEnabled === "boolean" ? raw.editorTabEnabled : false,
     aiValidationEnabled: typeof raw?.aiValidationEnabled === "boolean" ? raw.aiValidationEnabled : false,
     aiValidationAutoApprove: typeof raw?.aiValidationAutoApprove === "boolean" ? raw.aiValidationAutoApprove : true,
     aiValidationAutoDeny: typeof raw?.aiValidationAutoDeny === "boolean" ? raw.aiValidationAutoDeny : true,
@@ -98,7 +95,7 @@ export function getSettings(): CompanionSettings {
 }
 
 export function updateSettings(
-  patch: Partial<Pick<CompanionSettings, "anthropicApiKey" | "anthropicModel" | "linearApiKey" | "linearAutoTransition" | "linearAutoTransitionStateId" | "linearAutoTransitionStateName" | "linearArchiveTransition" | "linearArchiveTransitionStateId" | "linearArchiveTransitionStateName" | "editorTabEnabled" | "aiValidationEnabled" | "aiValidationAutoApprove" | "aiValidationAutoDeny" | "updateChannel">>,
+  patch: Partial<Pick<CompanionSettings, "anthropicApiKey" | "anthropicModel" | "linearApiKey" | "linearAutoTransition" | "linearAutoTransitionStateId" | "linearAutoTransitionStateName" | "linearArchiveTransition" | "linearArchiveTransitionStateId" | "linearArchiveTransitionStateName" | "aiValidationEnabled" | "aiValidationAutoApprove" | "aiValidationAutoDeny" | "updateChannel">>,
 ): CompanionSettings {
   ensureLoaded();
   settings = normalize({
@@ -111,7 +108,6 @@ export function updateSettings(
     linearArchiveTransition: patch.linearArchiveTransition ?? settings.linearArchiveTransition,
     linearArchiveTransitionStateId: patch.linearArchiveTransitionStateId ?? settings.linearArchiveTransitionStateId,
     linearArchiveTransitionStateName: patch.linearArchiveTransitionStateName ?? settings.linearArchiveTransitionStateName,
-    editorTabEnabled: patch.editorTabEnabled ?? settings.editorTabEnabled,
     aiValidationEnabled: patch.aiValidationEnabled ?? settings.aiValidationEnabled,
     aiValidationAutoApprove: patch.aiValidationAutoApprove ?? settings.aiValidationAutoApprove,
     aiValidationAutoDeny: patch.aiValidationAutoDeny ?? settings.aiValidationAutoDeny,

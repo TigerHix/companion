@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useStore } from "../store.js";
 import { api } from "../api.js";
+import { canShowBrowserLocalLinks } from "../connection.js";
 import type { ProcessItem, SystemProcess } from "../types.js";
 import { Button } from "@/components/ui/button";
 
@@ -318,6 +319,7 @@ function SystemProcessRow({
   const showCommandPreview = commandPreview && commandPreview !== title;
   const uptime = proc.startedAt ? formatDuration(Math.max(0, now - proc.startedAt)) : null;
   const startedLabel = proc.startedAt ? formatStartTime(proc.startedAt) : null;
+  const showLocalhostLinks = canShowBrowserLocalLinks();
 
   useEffect(() => {
     if (!proc.startedAt) return;
@@ -356,19 +358,28 @@ function SystemProcessRow({
             {uptime && <span>Up {uptime}</span>}
             {startedLabel && <span>Started {startedLabel}</span>}
             {proc.ports.map((port) => (
-              <a
-                key={port}
-                href={`http://localhost:${port}`}
-                target="_blank"
-                rel="noreferrer"
-                aria-label={`Open http://localhost:${port}`}
-                className="inline-flex items-center gap-0.5 text-[9px] rounded px-1 py-0.5 bg-primary/10 text-primary hover:bg-primary/20 transition-colors tabular-nums font-mono underline decoration-primary/30 underline-offset-2"
-              >
-                localhost:{port}
-                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-2.5 h-2.5 shrink-0" aria-hidden="true">
-                  <path d="M4.5 2.5h-2v7h7v-2M7 2.5h2.5V5M5.5 6.5l4-4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </a>
+              showLocalhostLinks ? (
+                <a
+                  key={port}
+                  href={`http://localhost:${port}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={`Open http://localhost:${port}`}
+                  className="inline-flex items-center gap-0.5 text-[9px] rounded px-1 py-0.5 bg-primary/10 text-primary hover:bg-primary/20 transition-colors tabular-nums font-mono underline decoration-primary/30 underline-offset-2"
+                >
+                  localhost:{port}
+                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-2.5 h-2.5 shrink-0" aria-hidden="true">
+                    <path d="M4.5 2.5h-2v7h7v-2M7 2.5h2.5V5M5.5 6.5l4-4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </a>
+              ) : (
+                <span
+                  key={port}
+                  className="inline-flex items-center rounded px-1 py-0.5 bg-accent/70 text-[9px] text-foreground/80 tabular-nums font-mono"
+                >
+                  port:{port}
+                </span>
+              )
             ))}
           </div>
 

@@ -14,7 +14,7 @@
 
 ## Quick start
 
-**Requirements:** [Bun](https://bun.sh) + [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and/or [Codex](https://github.com/openai/codex) CLI.
+**Requirements:** [Bun](https://bun.sh), [Tailscale](https://tailscale.com/), and [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and/or [Codex](https://github.com/openai/codex) CLI.
 
 ### Try it instantly
 
@@ -22,7 +22,15 @@
 bunx moku
 ```
 
-Open [http://localhost:3456](http://localhost:3456).
+Moku starts the backend locally, reconciles `tailscale serve`, and prints:
+
+- Hosted frontend URL
+- Backend Tailscale URL
+- Auth token
+- Connect URL
+- A terminal QR code for that connect URL
+
+Open the printed connect URL, or open [https://moku.sh](https://moku.sh) and enter the backend URL plus auth token.
 
 ### Install globally
 
@@ -36,7 +44,38 @@ moku install
 moku start
 ```
 
-Open [http://localhost:3456](http://localhost:3456). The server runs in the background and survives reboots.
+The server runs in the background and survives reboots. Use the printed connect URL or [https://moku.sh](https://moku.sh) to connect.
+
+## Deploy the frontend on Vercel
+
+This repo now includes a root-level [`vercel.json`](vercel.json) that builds the Vite app from `web/` and publishes `web/dist` as a static site.
+
+Recommended Vercel setup:
+
+```bash
+vercel
+```
+
+Or import the repo in the Vercel dashboard and keep the default root directory at the repository root. The checked-in config will:
+
+- run `bun install`
+- run `bun run build`
+- publish `web/dist`
+
+After you have a stable frontend URL, point the backend at it:
+
+```bash
+MOKU_FRONTEND_URL="https://your-app.vercel.app" bunx moku
+```
+
+For a background service, set the same environment variable in the service environment before starting Moku.
+
+Important:
+
+- `MOKU_FRONTEND_URL` should be the exact production origin you want Moku to print in the connect URL.
+- Browser origins are exact-match checked. If you want to allow multiple Vercel domains, set `MOKU_ALLOWED_WEB_ORIGINS` to a comma-separated list of exact origins.
+- Vercel preview URLs are not automatically allowed unless you add them to `MOKU_ALLOWED_WEB_ORIGINS`.
+- If you keep using `https://moku.sh`, you do not need to set either variable.
 
 ## CLI commands
 
@@ -68,8 +107,9 @@ Open [http://localhost:3456](http://localhost:3456). The server runs in the back
 
 ## Architecture (simple)
 ```text
-Browser (React)
-  <-> ws://localhost:3456/ws/browser/:session
+Browser / PWA (https://moku.sh)
+  <-> https://<machine>.<tailnet>.ts.net/api
+  <-> wss://<machine>.<tailnet>.ts.net/ws/browser/:session
 Moku server (Bun + Hono)
   <-> ws://localhost:3456/ws/cli/:session
 Claude Code / Codex CLI
@@ -95,6 +135,8 @@ Or set a token via environment variable (takes priority over the file):
 MOKU_AUTH_TOKEN="my-secret-token" bunx moku
 ```
 
+The token is used by the hosted frontend connect flow. `GET /api/public/info` stays unauthenticated so the frontend can discover backend capabilities before login; all other API routes require the bearer token.
+
 ## Development
 ```bash
 make dev
@@ -113,6 +155,8 @@ cd web
 bun run typecheck
 bun run test
 ```
+
+For local frontend development, use the Vite app on [http://localhost:5174](http://localhost:5174). It connects to the backend on port `3456` using the same saved backend URL + token model as the hosted frontend.
 
 ## Docs
 - Protocol reverse engineering: [`WEBSOCKET_PROTOCOL_REVERSED.md`](WEBSOCKET_PROTOCOL_REVERSED.md)

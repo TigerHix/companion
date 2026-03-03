@@ -1,29 +1,45 @@
 // @vitest-environment jsdom
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
-// ---- Mock API ----
 const mockVerifyAuthToken = vi.fn().mockResolvedValue(true);
-const mockAutoAuth = vi.fn().mockResolvedValue(null);
+const mockGetPublicInfo = vi.fn().mockResolvedValue({
+  name: "Moku",
+  backendVersion: "0.69.0",
+  authMode: "bearer_token",
+  deploymentMode: "tailscale-hosted-frontend",
+  frontendUrl: "https://moku.sh",
+  canonicalBackendUrl: "https://backend.example.ts.net",
+  allowedWebOrigins: ["https://moku.sh"],
+  capabilities: {
+    clientQrBootstrap: true,
+    inAppEditor: true,
+    hostedFrontendOnly: true,
+  },
+});
 
 vi.mock("../api.js", () => ({
+  api: {
+    getPublicInfo: (...args: unknown[]) => mockGetPublicInfo(...args),
+  },
   verifyAuthToken: (...args: unknown[]) => mockVerifyAuthToken(...args),
-  autoAuth: () => mockAutoAuth(),
 }));
 
-// ---- Mock Store ----
 interface MockStoreState {
-  setAuthToken: ReturnType<typeof vi.fn>;
+  setConnection: ReturnType<typeof vi.fn>;
 }
 
 let mockState: MockStoreState;
 
 function resetStore(overrides: Partial<MockStoreState> = {}) {
   mockState = {
-    setAuthToken: vi.fn(),
+    setConnection: vi.fn(),
     ...overrides,
   };
 }
+
+const mockNavigateHome = vi.fn();
+const mockNavigateToConnect = vi.fn();
 
 vi.mock("../store.js", () => ({
   useStore: Object.assign(
@@ -32,211 +48,136 @@ vi.mock("../store.js", () => ({
   ),
 }));
 
+vi.mock("../utils/routing.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../utils/routing.js")>();
+  return {
+    ...actual,
+    navigateHome: (...args: unknown[]) => mockNavigateHome(...args),
+    navigateToConnect: (...args: unknown[]) => mockNavigateToConnect(...args),
+  };
+});
+
 import { LoginPage } from "./LoginPage.js";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   resetStore();
-  // Clear any URL params between tests
-  window.history.replaceState({}, "", window.location.pathname);
 });
 
 describe("LoginPage", () => {
-  it("renders the login form with title, input, and submit button", () => {
-    // The login page should display the app title, a token input field,
-    // a submit button, and help text about scanning QR with native camera
+  it("renders the connect form with backend and token inputs", () => {
     render(<LoginPage />);
 
     expect(screen.getByText("Moku")).toBeInTheDocument();
+    expect(screen.getByLabelText("Backend URL")).toBeInTheDocument();
     expect(screen.getByLabelText("Auth Token")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("Paste your token here")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Login" })).toBeInTheDocument();
-    expect(screen.getByText(/Scan the QR code/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
   });
 
-  it("disables submit button when input is empty", () => {
-    // The Login button should be disabled when no token is entered
+  it("prefills the backend URL from remembered local state", () => {
+    localStorage.setItem("moku_last_server_url", "https://remembered.example.ts.net");
+
     render(<LoginPage />);
-    expect(screen.getByRole("button", { name: "Login" })).toBeDisabled();
+
+    expect(screen.getByDisplayValue("https://remembered.example.ts.net")).toBeInTheDocument();
   });
 
-  it("enables submit button when token is entered", () => {
-    // Typing a token should enable the Login button
+  it("verifies the backend and stores the connection on successful submit", async () => {
     render(<LoginPage />);
 
-    fireEvent.change(screen.getByLabelText("Auth Token"), {
-      target: { value: "test-token-123" },
+    fireEvent.change(screen.getByLabelText("Backend URL"), {
+      target: { value: "https://backend.example.ts.net/" },
     });
-
-    expect(screen.getByRole("button", { name: "Login" })).toBeEnabled();
-  });
-
-  it("calls verifyAuthToken and setAuthToken on successful submit", async () => {
-    // Submitting a valid token should verify it via API and then store it
-    mockVerifyAuthToken.mockResolvedValue(true);
-    render(<LoginPage />);
-
     fireEvent.change(screen.getByLabelText("Auth Token"), {
       target: { value: "valid-token" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Login" }));
+    fireEvent.click(screen.getByRole("button", { name: "Connect" }));
 
     await waitFor(() => {
-      expect(mockVerifyAuthToken).toHaveBeenCalledWith("valid-token");
-      expect(mockState.setAuthToken).toHaveBeenCalledWith("valid-token");
+      expect(mockGetPublicInfo).toHaveBeenCalledWith("https://backend.example.ts.net");
+      expect(mockVerifyAuthToken).toHaveBeenCalledWith(
+        "https://backend.example.ts.net",
+        "valid-token",
+      );
+      expect(mockState.setConnection).toHaveBeenCalledWith({
+        serverUrl: "https://backend.example.ts.net",
+        authToken: "valid-token",
+      });
+      expect(mockNavigateHome).toHaveBeenCalledWith(true);
     });
   });
 
-  it("shows error message when token verification fails", async () => {
-    // An invalid token should display an error and not call setAuthToken
-    mockVerifyAuthToken.mockResolvedValue(false);
+  it("shows an error when token verification fails", async () => {
+    mockVerifyAuthToken.mockResolvedValueOnce(false);
     render(<LoginPage />);
 
+    fireEvent.change(screen.getByLabelText("Backend URL"), {
+      target: { value: "https://backend.example.ts.net" },
+    });
     fireEvent.change(screen.getByLabelText("Auth Token"), {
       target: { value: "bad-token" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Login" }));
+    fireEvent.click(screen.getByRole("button", { name: "Connect" }));
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent("Invalid token");
     });
-    expect(mockState.setAuthToken).not.toHaveBeenCalled();
+    expect(mockState.setConnection).not.toHaveBeenCalled();
   });
 
-  it("shows 'Verifying...' while submit is in progress", async () => {
-    // The button text should change during verification to indicate loading
-    let resolveVerify!: (v: boolean) => void;
-    mockVerifyAuthToken.mockReturnValue(
-      new Promise<boolean>((r) => { resolveVerify = r; }),
+  it("bootstraps from connect-route fragment params and strips the token from the URL", async () => {
+    render(
+      <LoginPage
+        route={{
+          page: "connect",
+          server: "https://backend.example.ts.net",
+          token: "bootstrap-token",
+        }}
+      />,
     );
-    render(<LoginPage />);
 
-    fireEvent.change(screen.getByLabelText("Auth Token"), {
-      target: { value: "some-token" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Login" }));
-
-    // Should show loading state
-    expect(screen.getByRole("button", { name: "Verifying..." })).toBeDisabled();
-
-    // Resolve and check loading goes away
-    resolveVerify(false);
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Login" })).toBeInTheDocument();
+      expect(mockNavigateToConnect).toHaveBeenCalledWith(
+        { server: "https://backend.example.ts.net" },
+        true,
+      );
+      expect(mockVerifyAuthToken).toHaveBeenCalledWith(
+        "https://backend.example.ts.net",
+        "bootstrap-token",
+      );
+      expect(mockState.setConnection).toHaveBeenCalledWith({
+        serverUrl: "https://backend.example.ts.net",
+        authToken: "bootstrap-token",
+      });
     });
   });
 
-  it("shows empty-token error when submitting whitespace-only input", async () => {
-    // Submitting only spaces should show a validation error without calling the API
+  it("shows a validation error for empty tokens", async () => {
     render(<LoginPage />);
 
-    const input = screen.getByLabelText("Auth Token");
-    // Need to type something to enable the button behavior check
-    fireEvent.change(input, { target: { value: "   " } });
-    fireEvent.submit(input.closest("form")!);
+    fireEvent.change(screen.getByLabelText("Backend URL"), {
+      target: { value: "https://backend.example.ts.net" },
+    });
+    fireEvent.submit(screen.getByLabelText("Auth Token").closest("form")!);
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent("Please enter a token");
     });
-    expect(mockVerifyAuthToken).not.toHaveBeenCalled();
+    expect(mockGetPublicInfo).not.toHaveBeenCalled();
   });
 
-  it("clears error when user types after a failed attempt", async () => {
-    // Typing new input should clear the previous error message
-    mockVerifyAuthToken.mockResolvedValue(false);
-    render(<LoginPage />);
-
-    // First: trigger an error
-    fireEvent.change(screen.getByLabelText("Auth Token"), {
-      target: { value: "bad" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Login" }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("alert")).toBeInTheDocument();
-    });
-
-    // Then: type again to clear the error
-    fireEvent.change(screen.getByLabelText("Auth Token"), {
-      target: { value: "new-attempt" },
-    });
-
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  });
-
-  it("toggles password visibility when Show/Hide is clicked", () => {
-    // The Show/Hide button should toggle the input type between password and text
+  it("toggles password visibility", () => {
     render(<LoginPage />);
 
     const input = screen.getByLabelText("Auth Token");
     expect(input).toHaveAttribute("type", "password");
 
-    // Click "Show" to reveal the token
     fireEvent.click(screen.getByText("Show"));
     expect(input).toHaveAttribute("type", "text");
 
-    // Click "Hide" to mask it again
     fireEvent.click(screen.getByText("Hide"));
     expect(input).toHaveAttribute("type", "password");
-  });
-});
-
-describe("LoginPage localhost auto-auth", () => {
-  it("auto-authenticates on localhost without user interaction", async () => {
-    // When the server detects a localhost request, it returns the token
-    // so the user never sees the login form on first launch
-    mockAutoAuth.mockResolvedValue("localhost-auto-token");
-    render(<LoginPage />);
-
-    await waitFor(() => {
-      expect(mockAutoAuth).toHaveBeenCalled();
-      expect(mockState.setAuthToken).toHaveBeenCalledWith("localhost-auto-token");
-    });
-  });
-
-  it("falls back to URL token when auto-auth returns null (remote access)", async () => {
-    // On remote connections, auto-auth returns null — then ?token= is checked
-    mockAutoAuth.mockResolvedValue(null);
-    window.history.replaceState({}, "", "/?token=url-token-abc");
-    mockVerifyAuthToken.mockResolvedValue(true);
-
-    render(<LoginPage />);
-
-    await waitFor(() => {
-      expect(mockVerifyAuthToken).toHaveBeenCalledWith("url-token-abc");
-      expect(mockState.setAuthToken).toHaveBeenCalledWith("url-token-abc");
-    });
-  });
-});
-
-describe("LoginPage auto-login from URL", () => {
-  it("auto-authenticates when ?token= is present in the URL", async () => {
-    // When the page loads with ?token=xxx (e.g. from a QR code scanned with
-    // the native iPhone camera), it should auto-verify and login
-    mockAutoAuth.mockResolvedValue(null);
-    window.history.replaceState({}, "", "/?token=url-token-abc");
-    mockVerifyAuthToken.mockResolvedValue(true);
-
-    render(<LoginPage />);
-
-    await waitFor(() => {
-      expect(mockVerifyAuthToken).toHaveBeenCalledWith("url-token-abc");
-      expect(mockState.setAuthToken).toHaveBeenCalledWith("url-token-abc");
-    });
-  });
-
-  it("shows error when URL token is invalid", async () => {
-    // An invalid URL token should display an error message
-    mockAutoAuth.mockResolvedValue(null);
-    window.history.replaceState({}, "", "/?token=invalid-url-token");
-    mockVerifyAuthToken.mockResolvedValue(false);
-
-    render(<LoginPage />);
-
-    await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent("Invalid token from URL");
-    });
-    expect(mockState.setAuthToken).not.toHaveBeenCalled();
   });
 });
 
@@ -248,16 +189,18 @@ describe("LoginPage accessibility", () => {
     expect(results).toHaveNoViolations();
   });
 
-  it("passes axe accessibility checks with error displayed", async () => {
-    // The error state should also be accessible
+  it("passes axe accessibility checks with an error displayed", async () => {
     const { axe } = await import("vitest-axe");
-    mockVerifyAuthToken.mockResolvedValue(false);
+    mockVerifyAuthToken.mockResolvedValueOnce(false);
     const { container } = render(<LoginPage />);
 
-    fireEvent.change(screen.getByLabelText("Auth Token"), {
-      target: { value: "bad" },
+    fireEvent.change(screen.getByLabelText("Backend URL"), {
+      target: { value: "https://backend.example.ts.net" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Login" }));
+    fireEvent.change(screen.getByLabelText("Auth Token"), {
+      target: { value: "bad-token" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Connect" }));
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toBeInTheDocument();

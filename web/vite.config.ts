@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "node:path";
 
-const destroyOfflineWorker = process.env.COMPANION_DISABLE_OFFLINE === "1";
+const destroyOfflineWorker = process.env.MOKU_DISABLE_OFFLINE === "1";
 
 export default defineConfig({
   resolve: {

@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { setCookie } from "hono/cookie";
 import { streamSSE, type SSEStreamingApi } from "hono/streaming";
 import { execSync } from "node:child_process";
 import { resolveBinary } from "./path-resolver.js";
@@ -34,15 +33,13 @@ import { registerLinearRoutes, transitionLinearIssue, fetchLinearTeamStates } fr
 import { getSettings } from "./settings-manager.js";
 import { discoverClaudeSessions } from "./claude-session-discovery.js";
 import { getClaudeSessionHistoryPage } from "./claude-session-history.js";
-import { verifyToken, getToken, getLanAddress, regenerateToken, getAllAddresses } from "./auth-manager.js";
-import QRCode from "qrcode";
+import { verifyToken, getToken, regenerateToken } from "./auth-manager.js";
+import type { HostedFrontendInfo } from "./hosted-frontend.js";
 
 const UPDATE_CHECK_STALE_MS = 5 * 60 * 1000;
 const ROUTES_DIR = dirname(fileURLToPath(import.meta.url));
 const WEB_DIR = dirname(ROUTES_DIR);
-const VSCODE_EDITOR_CONTAINER_PORT = 13337;
-const CODEX_APP_SERVER_CONTAINER_PORT = Number(process.env.COMPANION_CODEX_CONTAINER_WS_PORT || "4502");
-const VSCODE_EDITOR_HOST_PORT = Number(process.env.COMPANION_EDITOR_PORT || "13338");
+const CODEX_APP_SERVER_CONTAINER_PORT = Number(process.env.MOKU_CODEX_CONTAINER_WS_PORT || "4502");
 
 function shellEscapeArg(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
@@ -54,6 +51,7 @@ export function createRoutes(
   sessionStore: SessionStore,
   worktreeTracker: WorktreeTracker,
   terminalManager: TerminalManager,
+  getPublicInfo: () => HostedFrontendInfo,
   prPoller?: import("./pr-poller.js").PRPoller,
   recorder?: import("./recorder.js").RecorderManager,
   cronScheduler?: import("./cron-scheduler.js").CronScheduler,
@@ -66,83 +64,18 @@ export function createRoutes(
   api.post("/auth/verify", async (c) => {
     const body = await c.req.json().catch(() => ({} as { token?: string }));
     if (verifyToken(body.token)) {
-      // Set cookie so the dynamic manifest can embed the token in start_url.
-      // This bridges auth from Safari to standalone PWA on iOS (isolated storage).
-      setCookie(c, "companion_auth", body.token!, {
-        path: "/",
-        httpOnly: true,
-        sameSite: "Strict",
-        maxAge: 365 * 24 * 60 * 60,
-      });
       return c.json({ ok: true });
     }
     return c.json({ error: "Invalid token" }, 401);
   });
 
-  api.get("/auth/qr", async (c) => {
-    // QR endpoint requires auth — only authenticated users can generate QR for mobile
-    const authHeader = c.req.header("Authorization");
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    if (!isLocalhostRequest(c) && !verifyToken(token)) {
-      return c.json({ error: "unauthorized" }, 401);
-    }
-
-    const port = Number(process.env.PORT) || (process.env.NODE_ENV === "production" ? 3456 : 3457);
-    const authToken = getToken();
-
-    // Build QR codes for each remote address (skip localhost — it auto-auths).
-    // Each QR encodes the full login URL so the native iPhone Camera app can
-    // open it directly: scan → tap popup → Safari opens → auto-authenticated.
-    const addresses = getAllAddresses().filter((a) => a.ip !== "localhost");
-    const qrCodes = await Promise.all(
-      addresses.map(async (a) => {
-        const loginUrl = `http://${a.ip}:${port}/?token=${authToken}`;
-        const qrDataUrl = await QRCode.toDataURL(loginUrl, { width: 256, margin: 2 });
-        return { label: a.label, url: `http://${a.ip}:${port}`, qrDataUrl };
-      }),
-    );
-
-    return c.json({ qrCodes });
-  });
-
-  // ─── Localhost auto-auth (exempt from auth middleware) ────────────
-  // Localhost users are on the same machine as the server, so they can
-  // auto-authenticate without a token. This makes first-launch seamless.
-
-  // Check if the request comes from localhost (same machine as the server).
-  // Uses Bun's requestIP which returns the actual TCP source address.
-  // Returns false in test environments where c.env is not a Bun server.
-  function isLocalhostRequest(c: { env: unknown; req: { raw: Request } }): boolean {
-    const bunServer = c.env as { requestIP?: (req: Request) => { address: string } | null };
-    const ip = bunServer?.requestIP?.(c.req.raw);
-    const addr = ip?.address ?? "";
-    return addr === "127.0.0.1" || addr === "::1" || addr === "::ffff:127.0.0.1";
-  }
-
-  api.get("/auth/auto", (c) => {
-    if (isLocalhostRequest(c)) {
-      const token = getToken();
-      setCookie(c, "companion_auth", token, {
-        path: "/",
-        httpOnly: true,
-        sameSite: "Strict",
-        maxAge: 365 * 24 * 60 * 60,
-      });
-      return c.json({ ok: true, token });
-    }
-    return c.json({ ok: false });
-  });
+  api.get("/public/info", (c) => c.json(getPublicInfo()));
 
   // ─── Auth middleware (protects all routes below) ───────────────────
 
   api.use("/*", async (c, next) => {
-    // Skip auth for the verify endpoint (handled above)
-    if (c.req.path === "/auth/verify") {
-      return next();
-    }
-
-    // Localhost bypass — same machine as the server, always trusted
-    if (isLocalhostRequest(c)) {
+    // Public endpoints are handled above but still need to bypass this middleware.
+    if (c.req.path === "/auth/verify" || c.req.path === "/public/info") {
       return next();
     }
 
@@ -181,13 +114,13 @@ export function createRoutes(
 
       // Resolve environment variables from envSlug
       let envVars: Record<string, string> | undefined = body.env;
-      const companionEnv = body.envSlug ? envManager.getEnv(body.envSlug) : null;
-      if (body.envSlug && companionEnv) {
+      const selectedEnv = body.envSlug ? envManager.getEnv(body.envSlug) : null;
+      if (body.envSlug && selectedEnv) {
         console.log(
-          `[routes] Injecting env "${companionEnv.name}" (${Object.keys(companionEnv.variables).length} vars):`,
-          Object.keys(companionEnv.variables).join(", "),
+          `[routes] Injecting env "${selectedEnv.name}" (${Object.keys(selectedEnv.variables).length} vars):`,
+          Object.keys(selectedEnv.variables).join(", "),
         );
-        envVars = { ...companionEnv.variables, ...body.env };
+        envVars = { ...selectedEnv.variables, ...body.env };
       } else if (body.envSlug) {
         console.warn(
           `[routes] Environment "${body.envSlug}" not found, ignoring`,
@@ -195,7 +128,7 @@ export function createRoutes(
       }
 
       // Resolve Docker image early so we know whether git ops should run on host or in container
-      let effectiveImage = companionEnv
+      let effectiveImage = selectedEnv
         ? (body.envSlug ? envManager.getEffectiveImage(body.envSlug) : null)
         : (body.container?.image || null);
       const isDockerSession = !!effectiveImage;
@@ -300,21 +233,20 @@ export function createRoutes(
         }
 
         const tempId = crypto.randomUUID().slice(0, 8);
-        const requestedPorts = companionEnv?.ports
+        const requestedPorts = selectedEnv?.ports
           ?? (Array.isArray(body.container?.ports)
             ? body.container.ports.map(Number).filter((n: number) => n > 0)
             : []);
         const containerPorts = Array.from(
           new Set([
             ...requestedPorts,
-            VSCODE_EDITOR_CONTAINER_PORT,
             ...(backend === "codex" ? [CODEX_APP_SERVER_CONTAINER_PORT] : []),
           ]),
         );
         const cConfig: ContainerConfig = {
           image: effectiveImage,
           ports: containerPorts,
-          volumes: companionEnv?.volumes ?? body.container?.volumes,
+          volumes: selectedEnv?.volumes ?? body.container?.volumes,
           env: envVars,
         };
         try {
@@ -364,18 +296,18 @@ export function createRoutes(
         }
 
         // Run per-environment init script if configured
-        if (companionEnv?.initScript?.trim()) {
+        if (selectedEnv?.initScript?.trim()) {
           try {
-            console.log(`[routes] Running init script for env "${companionEnv.name}" in container ${containerInfo.name}...`);
-            const initTimeout = Number(process.env.COMPANION_INIT_SCRIPT_TIMEOUT) || 120_000;
+            console.log(`[routes] Running init script for env "${selectedEnv.name}" in container ${containerInfo.name}...`);
+            const initTimeout = Number(process.env.MOKU_INIT_SCRIPT_TIMEOUT) || 120_000;
             const result = await containerManager.execInContainerAsync(
               containerInfo.containerId,
-              ["sh", "-lc", companionEnv.initScript],
+              ["sh", "-lc", selectedEnv.initScript],
               { timeout: initTimeout },
             );
             if (result.exitCode !== 0) {
               console.error(
-                `[routes] Init script failed for env "${companionEnv.name}" (exit ${result.exitCode}):\n${result.output}`,
+                `[routes] Init script failed for env "${selectedEnv.name}" (exit ${result.exitCode}):\n${result.output}`,
               );
               containerManager.removeContainer(tempId);
               const truncated = result.output.length > 2000
@@ -385,7 +317,7 @@ export function createRoutes(
                 error: `Init script failed (exit ${result.exitCode}):\n${truncated}`,
               }, 503);
             }
-            console.log(`[routes] Init script completed successfully for env "${companionEnv.name}"`);
+            console.log(`[routes] Init script completed successfully for env "${selectedEnv.name}"`);
           } catch (e) {
             containerManager.removeContainer(tempId);
             const reason = e instanceof Error ? e.message : String(e);
@@ -478,13 +410,13 @@ export function createRoutes(
         await emitProgress(stream, "resolving_env", "Resolving environment...", "in_progress");
 
         let envVars: Record<string, string> | undefined = body.env;
-        const companionEnv = body.envSlug ? envManager.getEnv(body.envSlug) : null;
-        if (body.envSlug && companionEnv) {
-          envVars = { ...companionEnv.variables, ...body.env };
+        const selectedEnv = body.envSlug ? envManager.getEnv(body.envSlug) : null;
+        if (body.envSlug && selectedEnv) {
+          envVars = { ...selectedEnv.variables, ...body.env };
         }
 
         // Resolve Docker image early so we know whether git ops should run on host or in container
-        let effectiveImage = companionEnv
+        let effectiveImage = selectedEnv
           ? (body.envSlug ? envManager.getEffectiveImage(body.envSlug) : null)
           : (body.container?.image || null);
         const isDockerSession = !!effectiveImage;
@@ -625,21 +557,20 @@ export function createRoutes(
           // --- Step: Create container ---
           await emitProgress(stream, "creating_container", "Starting container...", "in_progress");
           const tempId = crypto.randomUUID().slice(0, 8);
-          const requestedPorts = companionEnv?.ports
+          const requestedPorts = selectedEnv?.ports
             ?? (Array.isArray(body.container?.ports)
               ? body.container.ports.map(Number).filter((n: number) => n > 0)
               : []);
           const containerPorts = Array.from(
             new Set([
               ...requestedPorts,
-              VSCODE_EDITOR_CONTAINER_PORT,
               ...(backend === "codex" ? [CODEX_APP_SERVER_CONTAINER_PORT] : []),
             ]),
           );
           const cConfig: ContainerConfig = {
             image: effectiveImage,
             ports: containerPorts,
-            volumes: companionEnv?.volumes ?? body.container?.volumes,
+            volumes: selectedEnv?.volumes ?? body.container?.volumes,
             env: envVars,
           };
           try {
@@ -718,13 +649,13 @@ export function createRoutes(
           }
 
           // --- Step: Init script ---
-          if (companionEnv?.initScript?.trim()) {
+          if (selectedEnv?.initScript?.trim()) {
             await emitProgress(stream, "running_init_script", "Running init script...", "in_progress");
             try {
-              const initTimeout = Number(process.env.COMPANION_INIT_SCRIPT_TIMEOUT) || 120_000;
+              const initTimeout = Number(process.env.MOKU_INIT_SCRIPT_TIMEOUT) || 120_000;
               const result = await containerManager.execInContainerAsync(
                 containerInfo.containerId,
-                ["sh", "-lc", companionEnv.initScript],
+                ["sh", "-lc", selectedEnv.initScript],
                 {
                   timeout: initTimeout,
                   onOutput: (line) => {
@@ -734,7 +665,7 @@ export function createRoutes(
               );
               if (result.exitCode !== 0) {
                 console.error(
-                  `[routes] Init script failed for env "${companionEnv.name}" (exit ${result.exitCode}):\n${result.output}`,
+                  `[routes] Init script failed for env "${selectedEnv.name}" (exit ${result.exitCode}):\n${result.output}`,
                 );
                 containerManager.removeContainer(tempId);
                 const truncated = result.output.length > 2000
@@ -883,142 +814,6 @@ export function createRoutes(
       return c.json({ error: "Claude session history not found" }, 404);
     }
     return c.json(page);
-  });
-
-  api.post("/sessions/:id/editor/start", async (c) => {
-    const id = c.req.param("id");
-    const session = launcher.getSession(id);
-    if (!session) return c.json({ error: "Session not found" }, 404);
-
-    // For container sessions, try code-server inside the container first.
-    // If unavailable, fall through to host code-server with the host-mapped cwd.
-    let hostFallbackCwd = session.cwd;
-
-    if (session.containerId) {
-      const container = containerManager.getContainer(id);
-      const hasContainerCodeServer = container
-        && containerManager.hasBinaryInContainer(container.containerId, "code-server");
-
-      if (container && hasContainerCodeServer) {
-        const editorPathSuffix = `?folder=${encodeURIComponent("/workspace")}`;
-        const portMapping = container.portMappings.find(
-          (p) => p.containerPort === VSCODE_EDITOR_CONTAINER_PORT,
-        );
-        if (!portMapping) {
-          return c.json({
-            available: false,
-            installed: true,
-            mode: "container",
-            message: "Container editor port is missing. Start a new session to enable the VS Code editor.",
-          });
-        }
-
-        try {
-          const alive = containerManager.isContainerAlive(container.containerId);
-          if (alive === "stopped") {
-            containerManager.startContainer(container.containerId);
-          } else if (alive === "missing") {
-            return c.json({
-              available: false,
-              installed: true,
-              mode: "container",
-              message: "Session container no longer exists. Start a new session to use the editor.",
-            });
-          }
-
-          const startCmd = [
-            `if ! pgrep -f ${shellEscapeArg(`code-server.*--bind-addr 0.0.0.0:${VSCODE_EDITOR_CONTAINER_PORT}`)} >/dev/null 2>&1; then`,
-            `nohup code-server --auth none --disable-telemetry --bind-addr 0.0.0.0:${VSCODE_EDITOR_CONTAINER_PORT} /workspace >/tmp/companion-code-server.log 2>&1 &`,
-            "fi",
-          ].join(" ");
-          containerManager.execInContainer(container.containerId, ["sh", "-lc", startCmd], 10_000);
-
-          // Wait for code-server to be ready (up to 5s)
-          const containerEditorUrl = `http://localhost:${portMapping.hostPort}${editorPathSuffix}`;
-          for (let i = 0; i < 25; i++) {
-            try {
-              const res = await fetch(`http://127.0.0.1:${portMapping.hostPort}/healthz`);
-              if (res.ok || res.status === 302 || res.status === 200) break;
-            } catch {
-              // not ready yet
-            }
-            await new Promise((r) => setTimeout(r, 200));
-          }
-
-          return c.json({
-            available: true,
-            installed: true,
-            mode: "container",
-            url: containerEditorUrl,
-          });
-        } catch (e) {
-          const message = e instanceof Error ? e.message : String(e);
-          return c.json({
-            available: false,
-            installed: true,
-            mode: "container",
-            message: `Failed to start VS Code editor in container: ${message}`,
-          });
-        }
-      }
-
-      // Container doesn't have code-server — fall through to host code-server
-      // using the host-mapped workspace path
-      if (container) {
-        hostFallbackCwd = container.hostCwd;
-      }
-    }
-
-    const hostCodeServer = resolveBinary("code-server");
-    if (!hostCodeServer) {
-      return c.json({
-        available: false,
-        installed: false,
-        mode: "host",
-        message: "VS Code editor is not installed. Install it with: brew install code-server",
-      });
-    }
-
-    const editorPathSuffix = `?folder=${encodeURIComponent(hostFallbackCwd)}`;
-
-    try {
-      const companionDir = join(homedir(), ".companion");
-      const logFile = join(companionDir, "code-server-host.log");
-      const startCmd = [
-        `if ! pgrep -f ${shellEscapeArg(`code-server.*--bind-addr 127.0.0.1:${VSCODE_EDITOR_HOST_PORT}`)} >/dev/null 2>&1; then`,
-        `nohup ${shellEscapeArg(hostCodeServer)} --auth none --disable-telemetry --bind-addr 127.0.0.1:${VSCODE_EDITOR_HOST_PORT} ${shellEscapeArg(hostFallbackCwd)} >> ${shellEscapeArg(logFile)} 2>&1 &`,
-        "fi",
-      ].join(" ");
-      const startHostCmd = `mkdir -p ${shellEscapeArg(companionDir)} && ${startCmd}`;
-      execSync(startHostCmd, { encoding: "utf-8", timeout: 10_000 });
-
-      // Wait for code-server to be ready (up to 5s)
-      const editorUrl = `http://localhost:${VSCODE_EDITOR_HOST_PORT}${editorPathSuffix}`;
-      for (let i = 0; i < 25; i++) {
-        try {
-          const res = await fetch(`http://127.0.0.1:${VSCODE_EDITOR_HOST_PORT}/healthz`);
-          if (res.ok || res.status === 302 || res.status === 200) break;
-        } catch {
-          // not ready yet
-        }
-        await new Promise((r) => setTimeout(r, 200));
-      }
-
-      return c.json({
-        available: true,
-        installed: true,
-        mode: "host",
-        url: editorUrl,
-      });
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      return c.json({
-        available: false,
-        installed: true,
-        mode: "host",
-        message: `Failed to start VS Code editor: ${message}`,
-      });
-    }
   });
 
   api.patch("/sessions/:id/name", async (c) => {
@@ -1335,9 +1130,9 @@ export function createRoutes(
     const session = launcher.getSession(sessionId);
     if (!session) return c.json({ error: "Session not found" }, 404);
 
-    // Safety: don't allow killing the Companion server or Claude CLI process itself
+    // Safety: don't allow killing the Moku server or Claude CLI process itself
     if (pid === process.pid) {
-      return c.json({ error: "Cannot kill the Companion server" }, 403);
+      return c.json({ error: "Cannot kill the Moku server" }, 403);
     }
     if (session.pid === pid) {
       return c.json({ error: "Use the session kill endpoint to terminate Claude" }, 403);
@@ -1628,7 +1423,7 @@ export function createRoutes(
       return { cleaned: false, dirty: true, path: mapping.worktreePath };
     }
 
-    // Delete companion-managed branch if it differs from the user-selected branch
+    // Delete moku-managed branch if it differs from the user-selected branch
     const branchToDelete =
       mapping.actualBranch && mapping.actualBranch !== mapping.branch
         ? mapping.actualBranch

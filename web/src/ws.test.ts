@@ -54,11 +54,21 @@ beforeEach(async () => {
   useStore = storeModule.useStore;
   useStore.getState().reset();
   localStorage.clear();
+  localStorage.setItem(
+    "moku_connection",
+    JSON.stringify({
+      version: 1,
+      serverUrl: "http://localhost:3456",
+      authToken: "",
+    }),
+  );
 
   wsModule = await import("./ws.js");
 });
 
 afterEach(() => {
+  wsModule.disconnectAll();
+  vi.clearAllTimers();
   vi.useRealTimers();
 });
 

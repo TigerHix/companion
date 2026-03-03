@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useSyncExternalStore } from
 import { useStore } from "./store.js";
 import { connectSession } from "./ws.js";
 import { api } from "./api.js";
-import { parseHash, navigateToSession } from "./utils/routing.js";
+import { navigateToConnect, navigateToSession, parseHash } from "./utils/routing.js";
 import { LoginPage } from "./components/LoginPage.js";
 import { Sidebar } from "./components/Sidebar.js";
 import { ChatView } from "./components/ChatView.js";
@@ -55,6 +55,7 @@ export default function App() {
   const hash = useHash();
   const route = useMemo(() => parseHash(hash), [hash]);
   const isSettingsPage = route.page === "settings";
+  const isConnectPage = route.page === "connect";
   const isEnvironmentsPage = route.page === "environments";
   const isDockerBuilderPage = route.page === "docker-builder";
   const isScheduledPage = route.page === "scheduled";
@@ -88,6 +89,12 @@ export default function App() {
   // Sync hash → remembered-session state. On mount, restore the remembered
   // session into the URL first when loading the bare home route.
   useEffect(() => {
+    if (!isAuthenticated) {
+      if (route.page !== "connect") {
+        navigateToConnect(undefined, true);
+      }
+      return;
+    }
     if (restoredIdRef.current !== null && route.page === "home") {
       navigateToSession(restoredIdRef.current, true);
       restoredIdRef.current = null;
@@ -105,7 +112,7 @@ export default function App() {
     // Home means "no selected session", but we keep the remembered session
     // unless the user explicitly started a fresh session flow.
     // Other pages preserve the remembered session for restore/back-navigation.
-  }, [route]);
+  }, [isAuthenticated, route]);
 
   // Keep git changed-files count in sync for the badge regardless of which tab is active.
   // DiffPanel does the same when mounted; this covers the case where the diff tab is closed.
@@ -131,8 +138,8 @@ export default function App() {
   }, [selectedSessionId, sessionCwd, diffBase, changedFilesTick, setGitChangedFilesCount]);
 
   // Auth gate: show login page when not authenticated
-  if (!isAuthenticated) {
-    return <LoginPage />;
+  if (!isAuthenticated || isConnectPage) {
+    return <LoginPage route={isConnectPage ? route : null} />;
   }
 
   if (route.page === "playground") {

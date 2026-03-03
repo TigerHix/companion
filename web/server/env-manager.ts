@@ -19,9 +19,9 @@ export interface CompanionEnv {
   // Docker configuration
   /** Raw Dockerfile content (stored inline). When present, used to build a custom image. */
   dockerfile?: string;
-  /** Tag of the built image (e.g. "companion-env-myproject:latest") */
+  /** Tag of the built image (e.g. "moku-env-myproject:latest") */
   imageTag?: string;
-  /** Base image to use when no custom Dockerfile is provided (e.g. "the-companion:latest") */
+  /** Base image to use when no custom Dockerfile is provided (e.g. "moku:latest") */
   baseImage?: string;
   /** Current build status */
   buildStatus?: "idle" | "building" | "success" | "error";
@@ -54,8 +54,8 @@ export interface EnvUpdateFields {
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
-const COMPANION_DIR = join(homedir(), ".companion");
-const ENVS_DIR = join(COMPANION_DIR, "envs");
+const MOKU_DIR = join(homedir(), ".moku");
+const ENVS_DIR = join(MOKU_DIR, "envs");
 
 function ensureDir(): void {
   mkdirSync(ENVS_DIR, { recursive: true });

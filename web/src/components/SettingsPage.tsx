@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { useStore } from "../store.js";
+import { buildBootstrapUrl, DEFAULT_FRONTEND_URL } from "../connection.js";
+import { navigateToConnect } from "../utils/routing.js";
+import { verifyAuthToken } from "../api.js";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
@@ -65,7 +68,6 @@ function SettingRow({
 export function SettingsPage() {
   const [anthropicApiKey, setAnthropicApiKey] = useState("");
   const [anthropicModel, setAnthropicModel] = useState("");
-  const [editorTabEnabled, setEditorTabEnabled] = useState(false);
   const [configured, setConfigured] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -79,33 +81,55 @@ export function SettingsPage() {
   const toggleNotificationSound = useStore((s) => s.toggleNotificationSound);
   const notificationDesktop = useStore((s) => s.notificationDesktop);
   const setNotificationDesktop = useStore((s) => s.setNotificationDesktop);
-  const setStoreEditorTabEnabled = useStore((s) => s.setEditorTabEnabled);
+  const connection = useStore((s) => s.connection);
+  const setConnection = useStore((s) => s.setConnection);
+  const logout = useStore((s) => s.logout);
   const notificationApiAvailable = typeof Notification !== "undefined";
   const [apiKeyFocused, setApiKeyFocused] = useState(false);
 
   // Auth section state
+  const [backendUrlInput, setBackendUrlInput] = useState("");
   const [authToken, setAuthToken] = useState<string | null>(null);
+  const [frontendUrl, setFrontendUrl] = useState(DEFAULT_FRONTEND_URL);
   const [tokenRevealed, setTokenRevealed] = useState(false);
-  const [qrCodes, setQrCodes] = useState<{ label: string; url: string; qrDataUrl: string }[] | null>(null);
-  const [selectedQrIndex, setSelectedQrIndex] = useState(0);
+  const [connectLinkCopied, setConnectLinkCopied] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [tokenCopied, setTokenCopied] = useState(false);
+  const [savingConnection, setSavingConnection] = useState(false);
+  const [connectionSaved, setConnectionSaved] = useState(false);
 
   useEffect(() => {
+    setBackendUrlInput(connection?.serverUrl || "");
     api
       .getSettings()
       .then((s) => {
         setConfigured(s.anthropicApiKeyConfigured);
         setAnthropicModel(s.anthropicModel || "");
-        setEditorTabEnabled(s.editorTabEnabled);
-        setStoreEditorTabEnabled(s.editorTabEnabled);
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false));
 
     api.getAuthToken().then((res) => setAuthToken(res.token)).catch(() => {});
-  }, []);
+    api.getPublicInfo()
+      .then((info) => {
+        setFrontendUrl(info.frontendUrl || DEFAULT_FRONTEND_URL);
+        if (info.canonicalBackendUrl) {
+          setBackendUrlInput(info.canonicalBackendUrl);
+        }
+      })
+      .catch(() => {});
+  }, [connection?.serverUrl]);
+
+  const activeBackendUrl = connection?.serverUrl || backendUrlInput.trim();
+  const activeAuthToken = authToken || connection?.authToken || null;
+  const connectLink = activeBackendUrl && activeAuthToken
+    ? buildBootstrapUrl(frontendUrl, {
+      serverUrl: activeBackendUrl,
+      authToken: activeAuthToken,
+    })
+    : null;
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
@@ -114,9 +138,8 @@ export function SettingsPage() {
     setSaved(false);
     try {
       const nextKey = anthropicApiKey.trim();
-      const payload: { anthropicApiKey?: string; anthropicModel: string; editorTabEnabled: boolean } = {
+      const payload: { anthropicApiKey?: string; anthropicModel: string } = {
         anthropicModel: anthropicModel.trim(),
-        editorTabEnabled,
       };
       if (nextKey) {
         payload.anthropicApiKey = nextKey;
@@ -124,8 +147,6 @@ export function SettingsPage() {
 
       const res = await api.updateSettings(payload);
       setConfigured(res.anthropicApiKeyConfigured);
-      setEditorTabEnabled(res.editorTabEnabled);
-      setStoreEditorTabEnabled(res.editorTabEnabled);
       setAnthropicApiKey("");
       setSaved(true);
       setTimeout(() => setSaved(false), 1800);
@@ -133,6 +154,39 @@ export function SettingsPage() {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function onSaveConnection() {
+    const currentToken = activeAuthToken?.trim() || "";
+    if (!currentToken) {
+      setError("No auth token is available for reconnecting");
+      return;
+    }
+
+    setSavingConnection(true);
+    setError("");
+    setConnectionSaved(false);
+    try {
+      const info = await api.getPublicInfo(backendUrlInput);
+      const nextServerUrl = info.canonicalBackendUrl || backendUrlInput.trim();
+      const valid = await verifyAuthToken(nextServerUrl, currentToken);
+      if (!valid) {
+        throw new Error("The current token was rejected by that backend");
+      }
+      setConnection({
+        serverUrl: nextServerUrl,
+        authToken: currentToken,
+      });
+      setBackendUrlInput(nextServerUrl);
+      setFrontendUrl(info.frontendUrl || DEFAULT_FRONTEND_URL);
+      setQrDataUrl(null);
+      setConnectionSaved(true);
+      setTimeout(() => setConnectionSaved(false), 1800);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSavingConnection(false);
     }
   }
 
@@ -150,10 +204,47 @@ export function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Use the auth token or QR code to connect additional devices (e.g. mobile over Tailscale).
+              The hosted frontend stores one backend connection locally. Use this page to inspect the
+              backend URL, rotate the token, or generate a connect link for another device.
             </p>
 
-            {/* Token display */}
+            <SettingField
+              label="Backend URL"
+              description="This is the backend origin the hosted frontend will call for API and WebSocket traffic."
+              htmlFor="backend-url"
+            >
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  id="backend-url"
+                  value={backendUrlInput}
+                  onChange={(e) => {
+                    setBackendUrlInput(e.target.value);
+                    setError("");
+                    setConnectionSaved(false);
+                  }}
+                  placeholder="https://backend-name.tailnet-name.ts.net"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+                <Button
+                  type="button"
+                  onClick={() => void onSaveConnection()}
+                  disabled={savingConnection || !backendUrlInput.trim()}
+                  variant="outline"
+                  size="sm"
+                >
+                  {savingConnection ? "Saving..." : "Save backend"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Hosted frontend: {frontendUrl}
+              </p>
+              {connectionSaved && (
+                <p className="text-xs text-success">Backend connection updated.</p>
+              )}
+            </SettingField>
+
             <SettingField label="Auth Token">
               <div className="flex items-center gap-2">
                 <div className="flex-1 px-3 py-2.5 text-sm rounded-lg border bg-muted/50 font-mono select-all break-all flex items-center min-h-9">
@@ -192,74 +283,75 @@ export function SettingsPage() {
               </div>
             </SettingField>
 
-            {/* QR code */}
-            <SettingField label="Mobile Login QR">
-              {qrCodes && qrCodes.length > 0 ? (
-                <div className="space-y-3">
-                  {qrCodes.length > 1 && (
-                    <div className="flex gap-1">
-                      {qrCodes.map((qr, i) => (
-                        <Button
-                          key={qr.label}
-                          type="button"
-                          onClick={() => setSelectedQrIndex(i)}
-                          variant={i === selectedQrIndex ? "default" : "outline"}
-                          size="xs"
-                        >
-                          {qr.label}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                  <div className="inline-block rounded-lg bg-white p-2">
-                    <img
-                      src={qrCodes[selectedQrIndex].qrDataUrl}
-                      alt={`QR code for ${qrCodes[selectedQrIndex].label} login`}
-                      className="w-48 h-48"
-                    />
-                  </div>
-                  <div className="px-3 py-2 rounded-lg border bg-muted/50 text-sm font-mono break-all select-all">
-                    {qrCodes[selectedQrIndex].url}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Scan with your phone&apos;s camera app — it will open the URL and auto-authenticate.
-                  </p>
+            <SettingField label="Hosted Connect Link">
+              <div className="space-y-3">
+                <div className="px-3 py-2 rounded-lg border bg-muted/50 text-sm font-mono break-all select-all">
+                  {connectLink || "Connect link unavailable until the backend URL and token are loaded."}
                 </div>
-              ) : qrCodes && qrCodes.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  No remote addresses detected (LAN or Tailscale). Connect to a network to generate a QR code.
-                </p>
-              ) : (
-                <Button
-                  type="button"
-                  onClick={async () => {
-                    setQrLoading(true);
-                    try {
-                      const data = await api.getAuthQr();
-                      setQrCodes(data.qrCodes);
-                    } catch {
-                      // QR generation failed silently — user can retry
-                    } finally {
-                      setQrLoading(false);
-                    }
-                  }}
-                  disabled={qrLoading}
-                  variant="outline"
-                  size="sm"
-                >
-                  {qrLoading ? (
-                    <>
-                      <Spinner className="size-4" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <QrCode className="size-4" />
-                      Show QR Code
-                    </>
-                  )}
-                </Button>
-              )}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (!connectLink) return;
+                      navigator.clipboard.writeText(connectLink).then(() => {
+                        setConnectLinkCopied(true);
+                        setTimeout(() => setConnectLinkCopied(false), 1500);
+                      });
+                    }}
+                    disabled={!connectLink}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {connectLinkCopied ? "Copied" : "Copy link"}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      if (!connectLink) return;
+                      setQrLoading(true);
+                      try {
+                        const { default: QRCodeLib } = await import("qrcode");
+                        const nextQr = await QRCodeLib.toDataURL(connectLink, {
+                          width: 256,
+                          margin: 2,
+                        });
+                        setQrDataUrl(nextQr);
+                      } finally {
+                        setQrLoading(false);
+                      }
+                    }}
+                    disabled={!connectLink || qrLoading}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {qrLoading ? (
+                      <>
+                        <Spinner className="size-4" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <QrCode className="size-4" />
+                        Show QR Code
+                      </>
+                    )}
+                  </Button>
+                </div>
+                {qrDataUrl && (
+                  <div className="space-y-2">
+                    <div className="inline-block rounded-lg bg-white p-2">
+                      <img
+                        src={qrDataUrl}
+                        alt="QR code for hosted frontend connect link"
+                        className="w-48 h-48"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Scan this with the device camera. It opens the hosted frontend and bootstraps the backend URL plus token from the URL fragment.
+                    </p>
+                  </div>
+                )}
+              </div>
             </SettingField>
 
             {/* Regenerate token */}
@@ -275,8 +367,14 @@ export function SettingsPage() {
                   try {
                     const res = await api.regenerateAuthToken();
                     setAuthToken(res.token);
+                    if (activeBackendUrl) {
+                      setConnection({
+                        serverUrl: activeBackendUrl,
+                        authToken: res.token,
+                      });
+                    }
                     setTokenRevealed(true);
-                    setQrCodes(null);
+                    setQrDataUrl(null);
                   } catch {
                     // Regeneration failed
                   } finally {
@@ -288,6 +386,23 @@ export function SettingsPage() {
                 size="sm"
               >
                 {regenerating ? <Spinner className="size-4" /> : "Regenerate"}
+              </Button>
+            </SettingRow>
+
+            <SettingRow
+              label="Disconnect"
+              description="Forget this backend connection on this device and return to the Connect page."
+            >
+              <Button
+                type="button"
+                onClick={() => {
+                  logout({ forgetServerUrl: true });
+                  navigateToConnect(undefined, true);
+                }}
+                variant="destructive"
+                size="sm"
+              >
+                Disconnect
               </Button>
             </SettingRow>
           </CardContent>
@@ -322,19 +437,6 @@ export function SettingsPage() {
             <CardTitle>General</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* moku: not used in moku
-            <SettingRow
-              label="Editor tab (CodeMirror)"
-              description="Shows a simple in-app file editor in the session tabs."
-            >
-              <Switch
-                checked={editorTabEnabled}
-                onCheckedChange={setEditorTabEnabled}
-                aria-label="Enable Editor tab (CodeMirror)"
-              />
-            </SettingRow>
-            */}
-
             <SettingField label="Diff compare against" description="Last commit shows only uncommitted changes. Default branch shows all changes since diverging from main.">
               <Tabs
                 value={diffBase}

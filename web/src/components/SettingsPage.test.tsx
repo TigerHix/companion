@@ -7,11 +7,13 @@ interface MockStoreState {
   notificationSound: boolean;
   notificationDesktop: boolean;
   diffBase: string;
+  connection: { version: 1; serverUrl: string; authToken: string } | null;
   setDarkMode: ReturnType<typeof vi.fn>;
   toggleNotificationSound: ReturnType<typeof vi.fn>;
   setNotificationDesktop: ReturnType<typeof vi.fn>;
   setDiffBase: ReturnType<typeof vi.fn>;
-  setEditorTabEnabled: ReturnType<typeof vi.fn>;
+  setConnection: ReturnType<typeof vi.fn>;
+  logout: ReturnType<typeof vi.fn>;
   currentSessionId: string | null;
 }
 
@@ -23,11 +25,17 @@ function createMockState(overrides: Partial<MockStoreState> = {}): MockStoreStat
     notificationSound: true,
     notificationDesktop: false,
     diffBase: "last-commit",
+    connection: {
+      version: 1,
+      serverUrl: "https://backend.example.ts.net",
+      authToken: "abc123testtoken",
+    },
     setDarkMode: vi.fn(),
     toggleNotificationSound: vi.fn(),
     setNotificationDesktop: vi.fn(),
     setDiffBase: vi.fn(),
-    setEditorTabEnabled: vi.fn(),
+    setConnection: vi.fn(),
+    logout: vi.fn(),
     currentSessionId: null,
     ...overrides,
   };
@@ -38,7 +46,8 @@ const mockApi = {
   updateSettings: vi.fn(),
   getAuthToken: vi.fn(),
   regenerateAuthToken: vi.fn(),
-  getAuthQr: vi.fn(),
+  getPublicInfo: vi.fn(),
+  verifyAuthToken: vi.fn(),
 };
 
 vi.mock("../api.js", () => ({
@@ -47,9 +56,25 @@ vi.mock("../api.js", () => ({
     updateSettings: (...args: unknown[]) => mockApi.updateSettings(...args),
     getAuthToken: (...args: unknown[]) => mockApi.getAuthToken(...args),
     regenerateAuthToken: (...args: unknown[]) => mockApi.regenerateAuthToken(...args),
-    getAuthQr: (...args: unknown[]) => mockApi.getAuthQr(...args),
+    getPublicInfo: (...args: unknown[]) => mockApi.getPublicInfo(...args),
+  },
+  verifyAuthToken: (...args: unknown[]) => mockApi.verifyAuthToken(...args),
+}));
+
+vi.mock("qrcode", () => ({
+  default: {
+    toDataURL: vi.fn(async () => "data:image/png;base64,CONNECT_QR"),
   },
 }));
+
+const mockNavigateToConnect = vi.fn();
+vi.mock("../utils/routing.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../utils/routing.js")>();
+  return {
+    ...actual,
+    navigateToConnect: (...args: unknown[]) => mockNavigateToConnect(...args),
+  };
+});
 
 vi.mock("../store.js", () => {
   const useStoreFn = (selector: (state: MockStoreState) => unknown) => selector(mockState);
@@ -66,21 +91,28 @@ beforeEach(() => {
   mockApi.getSettings.mockResolvedValue({
     anthropicApiKeyConfigured: true,
     anthropicModel: "claude-sonnet-4.6",
-    editorTabEnabled: false,
   });
   mockApi.updateSettings.mockResolvedValue({
     anthropicApiKeyConfigured: true,
     anthropicModel: "claude-sonnet-4.6",
-    editorTabEnabled: false,
   });
   mockApi.getAuthToken.mockResolvedValue({ token: "abc123testtoken" });
   mockApi.regenerateAuthToken.mockResolvedValue({ token: "newtoken456" });
-  mockApi.getAuthQr.mockResolvedValue({
-    qrCodes: [
-      { label: "LAN", url: "http://192.168.1.10:3456", qrDataUrl: "data:image/png;base64,LAN_QR" },
-      { label: "Tailscale", url: "http://100.118.112.23:3456", qrDataUrl: "data:image/png;base64,TS_QR" },
-    ],
+  mockApi.getPublicInfo.mockResolvedValue({
+    name: "Moku",
+    backendVersion: "0.69.0",
+    authMode: "bearer_token",
+    deploymentMode: "tailscale-hosted-frontend",
+    frontendUrl: "https://moku.sh",
+    canonicalBackendUrl: "https://backend.example.ts.net",
+    allowedWebOrigins: ["https://moku.sh"],
+    capabilities: {
+      clientQrBootstrap: true,
+      inAppEditor: true,
+      hostedFrontendOnly: true,
+    },
   });
+  mockApi.verifyAuthToken.mockResolvedValue(true);
 });
 
 describe("SettingsPage", () => {
@@ -112,7 +144,6 @@ describe("SettingsPage", () => {
     mockApi.getSettings.mockResolvedValueOnce({
       anthropicApiKeyConfigured: false,
       anthropicModel: "claude-sonnet-4.6",
-      editorTabEnabled: false,
     });
 
     render(<SettingsPage />);
@@ -145,7 +176,6 @@ describe("SettingsPage", () => {
       expect(mockApi.updateSettings).toHaveBeenCalledWith({
         anthropicApiKey: "or-key",
         anthropicModel: "openai/gpt-4o-mini",
-        editorTabEnabled: false,
       });
     });
 
@@ -164,7 +194,6 @@ describe("SettingsPage", () => {
     await waitFor(() => {
       expect(mockApi.updateSettings).toHaveBeenCalledWith({
         anthropicModel: "",
-        editorTabEnabled: false,
       });
     });
   });
@@ -181,14 +210,11 @@ describe("SettingsPage", () => {
     await waitFor(() => {
       expect(mockApi.updateSettings).toHaveBeenCalledWith({
         anthropicModel: "openai/gpt-4o-mini",
-        editorTabEnabled: false,
       });
     });
   });
 
-  // moku: Editor tab toggle is hidden in the UI but editorTabEnabled is still
-  // sent in the save payload (defaults to false).
-  it("saves editorTabEnabled=false in settings payload by default", async () => {
+  it("saves the default model when the form is submitted unchanged", async () => {
     render(<SettingsPage />);
     await screen.findByText("Anthropic key configured");
 
@@ -197,7 +223,6 @@ describe("SettingsPage", () => {
     await waitFor(() => {
       expect(mockApi.updateSettings).toHaveBeenCalledWith({
         anthropicModel: "claude-sonnet-4.6",
-        editorTabEnabled: false,
       });
     });
   });
@@ -228,7 +253,6 @@ describe("SettingsPage", () => {
     let resolveSave: ((value: {
       anthropicApiKeyConfigured: boolean;
       anthropicModel: string;
-      editorTabEnabled: boolean;
     }) => void) | undefined;
     mockApi.updateSettings.mockReturnValueOnce(
       new Promise((resolve) => {
@@ -249,7 +273,6 @@ describe("SettingsPage", () => {
     resolveSave?.({
       anthropicApiKeyConfigured: true,
       anthropicModel: "claude-sonnet-4.6",
-      editorTabEnabled: false,
     });
 
     await screen.findByText("Settings saved.");
@@ -309,20 +332,16 @@ describe("SettingsPage", () => {
 
   // ─── Authentication section tests ──────────────────────────────────
 
-  // The auth card fetches the token on mount and displays it masked.
-  it("fetches and displays the auth token masked by default", async () => {
+  it("loads the current backend URL and token details", async () => {
     render(<SettingsPage />);
     await screen.findByText("Anthropic key configured");
 
     expect(mockApi.getAuthToken).toHaveBeenCalledTimes(1);
-
-    await waitFor(() => {
-      expect(screen.getByText("\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022")).toBeInTheDocument();
-    });
+    expect(mockApi.getPublicInfo).toHaveBeenCalledTimes(1);
+    expect(screen.getByDisplayValue("https://backend.example.ts.net")).toBeInTheDocument();
     expect(screen.queryByText("abc123testtoken")).not.toBeInTheDocument();
   });
 
-  // Clicking "Show" reveals the actual token value.
   it("reveals the token when Show is clicked", async () => {
     render(<SettingsPage />);
     await screen.findByText("Anthropic key configured");
@@ -335,31 +354,31 @@ describe("SettingsPage", () => {
     expect(screen.getByText("abc123testtoken")).toBeInTheDocument();
   });
 
-  // Clicking "Show QR Code" loads and displays QR with address tabs.
-  it("shows QR code with address tabs when button is clicked", async () => {
+  it("copies a hosted connect link and generates a client-side QR code", async () => {
+    const clipboardWriteText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: clipboardWriteText,
+      },
+    });
+
     render(<SettingsPage />);
     await screen.findByText("Anthropic key configured");
+
+    fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
+    await waitFor(() => {
+      expect(clipboardWriteText).toHaveBeenCalledWith(
+        "https://moku.sh/#/connect?server=https%3A%2F%2Fbackend.example.ts.net&token=abc123testtoken",
+      );
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Show QR Code" }));
 
     await waitFor(() => {
-      expect(mockApi.getAuthQr).toHaveBeenCalledTimes(1);
+      expect(screen.getByAltText("QR code for hosted frontend connect link")).toBeInTheDocument();
     });
-
-    const img = await screen.findByAltText("QR code for LAN login");
-    expect(img).toBeInTheDocument();
-    expect(img).toHaveAttribute("src", "data:image/png;base64,LAN_QR");
-
-    expect(screen.getByRole("button", { name: "LAN" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Tailscale" })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Tailscale" }));
-    const tsImg = screen.getByAltText("QR code for Tailscale login");
-    expect(tsImg).toHaveAttribute("src", "data:image/png;base64,TS_QR");
-    expect(screen.getByText("http://100.118.112.23:3456")).toBeInTheDocument();
   });
 
-  // Regenerating the token calls the API and reveals the new token.
   it("regenerates the token after user confirms", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
 
@@ -373,21 +392,87 @@ describe("SettingsPage", () => {
     });
 
     expect(await screen.findByText("newtoken456")).toBeInTheDocument();
+    expect(mockState.setConnection).toHaveBeenCalledWith({
+      serverUrl: "https://backend.example.ts.net",
+      authToken: "newtoken456",
+    });
 
     (window.confirm as ReturnType<typeof vi.spyOn>).mockRestore();
   });
 
-  // Cancelling the confirmation dialog skips regeneration entirely.
   it("does not regenerate when user cancels confirmation", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(false);
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
 
     render(<SettingsPage />);
     await screen.findByText("Anthropic key configured");
 
     fireEvent.click(screen.getByRole("button", { name: "Regenerate" }));
 
-    expect(mockApi.regenerateAuthToken).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(confirmSpy).toHaveBeenCalledTimes(1);
+      expect(mockApi.regenerateAuthToken).not.toHaveBeenCalled();
+    });
 
-    (window.confirm as ReturnType<typeof vi.spyOn>).mockRestore();
+    confirmSpy.mockRestore();
+  });
+
+  it("reconnects to a new backend URL using the current token", async () => {
+    mockApi.getPublicInfo.mockResolvedValueOnce({
+      name: "Moku",
+      backendVersion: "0.69.0",
+      authMode: "bearer_token",
+      deploymentMode: "tailscale-hosted-frontend",
+      frontendUrl: "https://moku.sh",
+      canonicalBackendUrl: "https://backend.example.ts.net",
+      allowedWebOrigins: ["https://moku.sh"],
+      capabilities: {
+        clientQrBootstrap: true,
+        inAppEditor: true,
+        hostedFrontendOnly: true,
+      },
+    });
+    mockApi.getPublicInfo.mockResolvedValueOnce({
+      name: "Moku",
+      backendVersion: "0.69.0",
+      authMode: "bearer_token",
+      deploymentMode: "tailscale-hosted-frontend",
+      frontendUrl: "https://moku.sh",
+      canonicalBackendUrl: "https://new-backend.example.ts.net",
+      allowedWebOrigins: ["https://moku.sh"],
+      capabilities: {
+        clientQrBootstrap: true,
+        inAppEditor: true,
+        hostedFrontendOnly: true,
+      },
+    });
+    render(<SettingsPage />);
+    await screen.findByText("Anthropic key configured");
+
+    fireEvent.change(screen.getByLabelText("Backend URL"), {
+      target: { value: "https://new-backend.example.ts.net" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save backend" }));
+
+    await waitFor(() => {
+      expect(mockApi.getPublicInfo).toHaveBeenCalledWith("https://new-backend.example.ts.net");
+      expect(mockApi.verifyAuthToken).toHaveBeenCalledWith(
+        "https://new-backend.example.ts.net",
+        "abc123testtoken",
+      );
+      expect(mockState.setConnection).toHaveBeenCalledWith({
+        serverUrl: "https://new-backend.example.ts.net",
+        authToken: "abc123testtoken",
+      });
+    });
+  });
+
+  it("disconnects and routes back to connect", async () => {
+    render(<SettingsPage />);
+    await screen.findByText("Anthropic key configured");
+
+    fireEvent.click(screen.getByRole("button", { name: "Disconnect" }));
+
+    expect(mockState.logout).toHaveBeenCalledWith({ forgetServerUrl: true });
+    expect(mockNavigateToConnect).toHaveBeenCalledWith(undefined, true);
   });
 });

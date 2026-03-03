@@ -1,4 +1,14 @@
 // @vitest-environment jsdom
+vi.mock("./connection.js", () => ({
+  canonicalizeServerUrl: (serverUrl: string) => new URL(serverUrl.trim()).origin,
+  getApiBaseUrl: () => "/api",
+  getConnection: () => ({
+    version: 1 as const,
+    serverUrl: "https://backend.example.ts.net",
+    authToken: "stored-token",
+  }),
+}));
+
 import { api } from "./api.js";
 
 const mockFetch = vi.fn();
@@ -102,11 +112,11 @@ describe("discoverClaudeSessions", () => {
       sessions: [
         {
           sessionId: "ac5b80ba-2927-4f20-84c2-6bbaf9afdeb3",
-          cwd: "/Users/skolte/Github-Private/companion",
+          cwd: "/Users/skolte/Github-Private/moku",
           gitBranch: "main",
           slug: "snazzy-baking-tarjan",
           lastActivityAt: 1234,
-          sourceFile: "/Users/skolte/.claude/projects/-Users-skolte-Github-Private-companion/ac5b80ba-2927-4f20-84c2-6bbaf9afdeb3.jsonl",
+          sourceFile: "/Users/skolte/.claude/projects/-Users-skolte-Github-Private-moku/ac5b80ba-2927-4f20-84c2-6bbaf9afdeb3.jsonl",
         },
       ],
     };
@@ -372,7 +382,7 @@ describe("getCloudProviderPlan", () => {
       image: "moku-core:latest",
       cwd: "/repo",
       mappedPorts: [{ containerPort: 3000, hostPort: 49152 }],
-      commandPreview: "modal run companion_cloud.py --manifest /repo/.moku/cloud/environments/s1.json",
+      commandPreview: "modal run moku_cloud.py --manifest /repo/.moku/cloud/environments/s1.json",
     };
     mockFetch.mockResolvedValueOnce(mockResponse(plan));
 
@@ -441,17 +451,31 @@ describe("terminal API", () => {
 });
 
 // ===========================================================================
-// Auth API (getAuthQr, getAuthToken, regenerateAuthToken)
+// Auth API (public info, getAuthToken, regenerateAuthToken)
 // ===========================================================================
 describe("auth API", () => {
-  it("getAuthQr sends GET to /api/auth/qr", async () => {
-    const data = { qrCodes: [{ label: "Local", url: "http://localhost:3456", qrDataUrl: "data:image/png;base64,abc" }] };
+  it("getPublicInfo uses the explicit backend URL without auth", async () => {
+    const data = {
+      name: "Moku",
+      backendVersion: "0.69.0",
+      authMode: "bearer_token",
+      deploymentMode: "tailscale-hosted-frontend",
+      frontendUrl: "https://moku.sh",
+      canonicalBackendUrl: "https://backend.example.ts.net",
+      allowedWebOrigins: ["https://moku.sh"],
+      capabilities: {
+        clientQrBootstrap: true,
+        inAppEditor: true,
+        hostedFrontendOnly: true,
+      },
+    };
     mockFetch.mockResolvedValueOnce(mockResponse(data));
 
-    const result = await api.getAuthQr();
+    const result = await api.getPublicInfo("https://backend.example.ts.net/");
 
-    const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/auth/qr");
+    const [url, opts] = mockFetch.mock.calls[0];
+    expect(url).toBe("https://backend.example.ts.net/api/public/info");
+    expect(opts.headers.Authorization).toBeUndefined();
     expect(result).toEqual(data);
   });
 
@@ -480,38 +504,6 @@ describe("auth API", () => {
 });
 
 // ===========================================================================
-// autoAuth
-// ===========================================================================
-describe("autoAuth", () => {
-  it("returns token on successful auto-auth", async () => {
-    const { autoAuth } = await import("./api.js");
-    mockFetch.mockResolvedValueOnce(mockResponse({ ok: true, token: "auto_tok" }));
-
-    const result = await autoAuth();
-
-    const [url] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/auth/auto");
-    expect(result).toBe("auto_tok");
-  });
-
-  it("returns null when ok is false", async () => {
-    const { autoAuth } = await import("./api.js");
-    mockFetch.mockResolvedValueOnce(mockResponse({ ok: false }));
-
-    const result = await autoAuth();
-    expect(result).toBeNull();
-  });
-
-  it("returns null on fetch failure", async () => {
-    const { autoAuth } = await import("./api.js");
-    mockFetch.mockRejectedValueOnce(new Error("Network error"));
-
-    const result = await autoAuth();
-    expect(result).toBeNull();
-  });
-});
-
-// ===========================================================================
 // verifyAuthToken
 // ===========================================================================
 describe("verifyAuthToken", () => {
@@ -519,10 +511,10 @@ describe("verifyAuthToken", () => {
     const { verifyAuthToken } = await import("./api.js");
     mockFetch.mockResolvedValueOnce(mockResponse({ ok: true }));
 
-    const result = await verifyAuthToken("valid_token");
+    const result = await verifyAuthToken("https://backend.example.ts.net/", "valid_token");
 
     const [url, opts] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/auth/verify");
+    expect(url).toBe("https://backend.example.ts.net/api/auth/verify");
     expect(opts.method).toBe("POST");
     expect(JSON.parse(opts.body)).toEqual({ token: "valid_token" });
     expect(result).toBe(true);
@@ -532,7 +524,7 @@ describe("verifyAuthToken", () => {
     const { verifyAuthToken } = await import("./api.js");
     mockFetch.mockResolvedValueOnce(mockResponse({ ok: false }, 401));
 
-    const result = await verifyAuthToken("bad_token");
+    const result = await verifyAuthToken("https://backend.example.ts.net", "bad_token");
     expect(result).toBe(false);
   });
 
@@ -540,7 +532,7 @@ describe("verifyAuthToken", () => {
     const { verifyAuthToken } = await import("./api.js");
     mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
-    const result = await verifyAuthToken("any_token");
+    const result = await verifyAuthToken("https://backend.example.ts.net", "any_token");
     expect(result).toBe(false);
   });
 });
@@ -907,23 +899,6 @@ describe("image pull API", () => {
 
     const [url, opts] = mockFetch.mock.calls[0];
     expect(url).toBe(`/api/images/${encodeURIComponent("node:20")}/pull`);
-    expect(opts.method).toBe("POST");
-    expect(result).toEqual(data);
-  });
-});
-
-// ===========================================================================
-// Editor API
-// ===========================================================================
-describe("editor API", () => {
-  it("startEditor sends POST to /api/sessions/:id/editor/start", async () => {
-    const data = { available: true, installed: true, mode: "host", url: "http://localhost:8080" };
-    mockFetch.mockResolvedValueOnce(mockResponse(data));
-
-    const result = await api.startEditor("sess-1");
-
-    const [url, opts] = mockFetch.mock.calls[0];
-    expect(url).toBe("/api/sessions/sess-1/editor/start");
     expect(opts.method).toBe("POST");
     expect(result).toEqual(data);
   });

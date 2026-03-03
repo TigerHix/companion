@@ -676,27 +676,48 @@ describe("MCP Servers", () => {
 // ─── Auth actions ────────────────────────────────────────────────────────────
 
 describe("Auth actions", () => {
-  it("setAuthToken: persists token to localStorage and sets isAuthenticated true", () => {
-    useStore.getState().setAuthToken("my-secret-token");
+  it("setConnection: persists the connection and sets isAuthenticated true", () => {
+    useStore.getState().setConnection({
+      serverUrl: "https://backend.example.ts.net",
+      authToken: "my-secret-token",
+    });
 
     const state = useStore.getState();
+    expect(state.connection).toEqual({
+      version: 1,
+      serverUrl: "https://backend.example.ts.net",
+      authToken: "my-secret-token",
+    });
     expect(state.authToken).toBe("my-secret-token");
     expect(state.isAuthenticated).toBe(true);
-    expect(localStorage.getItem("moku_auth_token")).toBe("my-secret-token");
+    expect(localStorage.getItem("moku_connection")).toBe(
+      JSON.stringify({
+        version: 1,
+        serverUrl: "https://backend.example.ts.net",
+        authToken: "my-secret-token",
+      }),
+    );
   });
 
-  it("logout: removes token from localStorage and sets isAuthenticated false", () => {
+  it("logout: removes the connection from localStorage and sets isAuthenticated false", () => {
     // First authenticate
-    useStore.getState().setAuthToken("token-123");
+    useStore.getState().setConnection({
+      serverUrl: "https://backend.example.ts.net",
+      authToken: "token-123",
+    });
     expect(useStore.getState().isAuthenticated).toBe(true);
 
     // Then logout
     useStore.getState().logout();
 
     const state = useStore.getState();
+    expect(state.connection).toBeNull();
     expect(state.authToken).toBeNull();
     expect(state.isAuthenticated).toBe(false);
-    expect(localStorage.getItem("moku_auth_token")).toBeNull();
+    expect(localStorage.getItem("moku_connection")).toBeNull();
+    expect(localStorage.getItem("moku_last_server_url")).toBe(
+      "https://backend.example.ts.net",
+    );
   });
 });
 
@@ -1092,18 +1113,6 @@ describe("Connection and session status", () => {
 
     useStore.getState().setSessionStatus("s1", null);
     expect(useStore.getState().sessionStatus.get("s1")).toBeNull();
-  });
-});
-
-// ─── Editor tab ──────────────────────────────────────────────────────────────
-
-describe("Editor tab", () => {
-  it("setEditorTabEnabled: sets the editor tab enabled state", () => {
-    useStore.getState().setEditorTabEnabled(true);
-    expect(useStore.getState().editorTabEnabled).toBe(true);
-
-    useStore.getState().setEditorTabEnabled(false);
-    expect(useStore.getState().editorTabEnabled).toBe(false);
   });
 });
 

@@ -184,7 +184,7 @@ export function DockerBuilderPage() {
   const envsWithDockerfile = envs.filter((e) => e.dockerfile);
 
   // Derive read-only display values from the selected env
-  const displayImageTag = selectedEnv?.imageTag || (selectedEnvSlug ? `companion-env-${selectedEnvSlug}:latest` : "");
+  const displayImageTag = selectedEnv?.imageTag || (selectedEnvSlug ? `moku-env-${selectedEnvSlug}:latest` : "");
   const displayBaseImage = selectedEnv?.baseImage || "";
   const displayDockerfile = selectedEnv?.dockerfile || "";
 

@@ -1,76 +1,123 @@
-import { useState, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useStore } from "../store.js";
-import { verifyAuthToken, autoAuth } from "../api.js";
+import { api, verifyAuthToken } from "../api.js";
+import { canonicalizeServerUrl, getRememberedServerUrl } from "../connection.js";
+import { navigateHome, navigateToConnect, type Route } from "../utils/routing.js";
 import { Button } from "@/components/ui/button";
 
-export function LoginPage() {
+interface Props {
+  route?: Extract<Route, { page: "connect" }> | null;
+}
+
+export function LoginPage({ route = null }: Props) {
+  const [serverUrl, setServerUrl] = useState(() => route?.server || getRememberedServerUrl() || "");
   const [token, setToken] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const setAuthToken = useStore((s) => s.setAuthToken);
+  const setConnection = useStore((s) => s.setConnection);
+  const bootstrapKeyRef = useRef<string | null>(null);
+
+  const connect = useCallback(
+    async (serverInput: string, tokenInput: string) => {
+      const trimmedToken = tokenInput.trim();
+      if (!trimmedToken) {
+        throw new Error("Please enter a token");
+      }
+
+      const normalizedServerUrl = canonicalizeServerUrl(serverInput);
+      const info = await api.getPublicInfo(normalizedServerUrl);
+      if (info.authMode !== "bearer_token" || info.deploymentMode !== "tailscale-hosted-frontend") {
+        throw new Error("This backend is not compatible with the hosted frontend");
+      }
+
+      const canonicalServerUrl = info.canonicalBackendUrl || normalizedServerUrl;
+      const valid = await verifyAuthToken(canonicalServerUrl, trimmedToken);
+      if (!valid) {
+        throw new Error("Invalid token");
+      }
+
+      setConnection({
+        serverUrl: canonicalServerUrl,
+        authToken: trimmedToken,
+      });
+      navigateHome(true);
+    },
+    [setConnection],
+  );
+
+  useEffect(() => {
+    if (route?.server) {
+      setServerUrl(route.server);
+    } else {
+      setServerUrl((current) => current || getRememberedServerUrl() || "");
+    }
+
+    if (!route?.token) return;
+
+    const bootstrapKey = `${route.server || ""}\n${route.token}`;
+    if (bootstrapKeyRef.current === bootstrapKey) return;
+    bootstrapKeyRef.current = bootstrapKey;
+    setToken(route.token);
+    navigateToConnect(route.server ? { server: route.server } : undefined, true);
+    setLoading(true);
+    setError(null);
+    void connect(route.server || "", route.token)
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Unable to connect");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [connect, route?.server, route?.token]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      const trimmed = token.trim();
-      if (!trimmed) {
-        setError("Please enter a token");
-        return;
-      }
       setLoading(true);
       setError(null);
-      const valid = await verifyAuthToken(trimmed);
-      if (valid) {
-        setAuthToken(trimmed);
-      } else {
-        setError("Invalid token");
+      try {
+        await connect(serverUrl, token);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Unable to connect");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     },
-    [token, setAuthToken],
+    [connect, serverUrl, token],
   );
-
-  // Auto-login: try localhost auto-auth first, then ?token= URL param
-  useEffect(() => {
-    // 1. Try localhost auto-auth — server returns the token for same-machine requests
-    autoAuth().then((localhostToken) => {
-      if (localhostToken) {
-        setAuthToken(localhostToken);
-        return;
-      }
-
-      // 2. Fall back to ?token= URL param (used by QR codes scanned with native camera)
-      const params = new URLSearchParams(window.location.search);
-      const urlToken = params.get("token");
-      if (urlToken) {
-        setLoading(true);
-        verifyAuthToken(urlToken).then((valid) => {
-          if (valid) {
-            setAuthToken(urlToken);
-            // Strip token from URL to avoid leaking it in history
-            const url = new URL(window.location.href);
-            url.searchParams.delete("token");
-            window.history.replaceState({}, "", url.toString());
-          } else {
-            setError("Invalid token from URL");
-            setLoading(false);
-          }
-        });
-      }
-    });
-  }, [setAuthToken]);
 
   const [showToken, setShowToken] = useState(false);
 
   return (
     <div className="h-[100dvh] flex items-center justify-center bg-background text-foreground font-sans antialiased">
-      <div className="w-full max-w-sm px-6">
+      <div className="w-full max-w-md px-6">
         <div className="text-center mb-8">
           <h1 className="text-xl font-semibold text-foreground mb-2">Moku</h1>
-          <p className="text-sm text-muted-foreground">Enter your auth token to continue</p>
+          <p className="text-sm text-muted-foreground">Connect to your Tailscale backend</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="backend-url" className="block text-xs text-muted-foreground mb-1.5">
+              Backend URL
+            </label>
+            <input
+              id="backend-url"
+              type="url"
+              value={serverUrl}
+              onChange={(e) => {
+                setServerUrl(e.target.value);
+                setError(null);
+              }}
+              placeholder="https://backend-name.tailnet-name.ts.net"
+              className="w-full px-3 py-2 text-sm bg-accent border border-border rounded-md text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              disabled={loading}
+            />
+          </div>
+
           <div>
             <label htmlFor="auth-token" className="block text-xs text-muted-foreground mb-1.5">
               Auth Token
@@ -108,16 +155,16 @@ export function LoginPage() {
 
           <Button
             type="submit"
-            disabled={loading || !token.trim()}
+            disabled={loading || !serverUrl.trim() || !token.trim()}
             className="w-full text-sm bg-primary text-white hover:opacity-90"
           >
-            {loading ? "Verifying..." : "Login"}
+            {loading ? "Connecting..." : "Connect"}
           </Button>
         </form>
 
         <p className="mt-6 text-xs text-muted-foreground text-center leading-relaxed">
-          Scan the QR code in Settings with your phone camera to authenticate,
-          or find your token in the server console.
+          Scan the QR code from Settings on another device, or paste the connect link
+          printed in the backend startup output.
         </p>
       </div>
     </div>

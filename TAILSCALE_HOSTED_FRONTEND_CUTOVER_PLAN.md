@@ -1,6 +1,31 @@
 # Tailscale Hosted Frontend Cutover Plan
 
-Status: Locked
+Status: Implemented
+
+## Implementation Progress
+
+Last updated: March 3, 2026
+
+- Completed:
+  - Added a dedicated frontend connection model stored as `moku_connection`.
+  - Added `#/connect` route parsing plus hosted-frontend bootstrap handling from the URL fragment.
+  - Replaced the token-only login UI with a backend URL + token connect flow.
+  - Refactored frontend REST, browser WebSocket, terminal WebSocket, and agent webhook URL generation to derive from the saved backend connection instead of page origin.
+  - Replaced backend-generated QR usage in Settings with client-side hosted connect link + QR generation.
+  - Gated browser-visible localhost process links so they are no longer shown as clickable localhost URLs for remote backends.
+  - Added `GET /api/public/info`, removed localhost auto-auth / backend QR endpoints / manifest-cookie auth behavior, and simplified backend auth verification to token-only.
+  - Added explicit backend CORS allowlisting plus browser/terminal WebSocket origin enforcement for hosted frontend origins.
+  - Added managed `tailscale serve` reconciliation helpers, cached hosted-backend public info, and startup output that prints frontend URL, backend URL, auth token, connect URL, and a terminal QR when hosted mode is available.
+  - Removed the dead external `code-server` route, its implicit container port wiring, and the unused `code-server` install layer from the Docker image.
+  - Added backend coverage for the hosted-frontend helper contract and updated route tests for the new public-info and no-editor behavior.
+  - Updated the README so operator instructions point to the hosted frontend / connect URL flow instead of opening the backend origin in a browser.
+  - Verified `bun run typecheck` passes.
+  - Verified the touched cutover surface with a targeted Vitest run covering connection/runtime helpers, connect/settings UI, transport wiring, process-panel gating, auth manager, routes, and hosted-frontend helpers.
+- Validation notes:
+  - `bun run test` is still red at the repo level, but the remaining failures are outside this cutover surface:
+    - sandbox-related `EPERM` failures in `server/routes/fs-routes.test.ts`
+    - existing timeout-heavy failures in `server/cli-launcher.test.ts`, `server/codex-adapter.test.ts`, and several unrelated frontend component suites
+  - No remaining failures were observed in the files directly changed for this cutover.
 
 ## Summary
 

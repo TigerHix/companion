@@ -1,18 +1,34 @@
 import type { SdkSessionInfo } from "./types.js";
 import type { ContentBlock } from "./types.js";
-const BASE = "/api";
-const AUTH_STORAGE_KEY = "moku_auth_token";
+import {
+  canonicalizeServerUrl,
+  getApiBaseUrl,
+  getConnection,
+  type PublicBackendInfo,
+} from "./connection.js";
 
-function getAuthHeaders(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  const token = localStorage.getItem(AUTH_STORAGE_KEY);
+interface RequestOptions {
+  authToken?: string | null;
+  includeAuth?: boolean;
+  serverUrl?: string;
+}
+
+function buildApiUrl(path: string, options?: RequestOptions): string {
+  const base = options?.serverUrl
+    ? `${canonicalizeServerUrl(options.serverUrl)}/api`
+    : getApiBaseUrl();
+  return `${base}${path}`;
+}
+
+function getAuthHeaders(options?: RequestOptions): Record<string, string> {
+  if (options?.includeAuth === false) return {};
+  const token = options?.authToken ?? getConnection()?.authToken ?? "";
   if (!token) return {};
   return { Authorization: `Bearer ${token}` };
 }
 
 function handle401(status: number): void {
   if (status === 401 && typeof window !== "undefined") {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
     // Dynamic import to avoid circular dependency
     import("./store.js").then(({ useStore }) => {
       useStore.getState().logout();
@@ -37,137 +53,59 @@ function trackApiFailure(
   _status?: number,
 ): void {}
 
-async function post<T = unknown>(path: string, body?: object): Promise<T> {
+async function requestJson<T = unknown>(
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
+  path: string,
+  body?: object,
+  options?: RequestOptions,
+): Promise<T> {
   const startedAt = nowMs();
   let failureTracked = false;
   try {
-    const res = await fetch(`${BASE}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+    const res = await fetch(buildApiUrl(path, options), {
+      method,
+      headers: {
+        ...(body ? { "Content-Type": "application/json" } : {}),
+        ...getAuthHeaders(options),
+      },
       body: body ? JSON.stringify(body) : undefined,
     });
     if (!res.ok) {
       handle401(res.status);
       const err = await res.json().catch(() => ({ error: res.statusText }));
       const apiError = new Error(err.error || res.statusText);
-      trackApiFailure("POST", path, nowMs() - startedAt, apiError, res.status);
+      trackApiFailure(method, path, nowMs() - startedAt, apiError, res.status);
       failureTracked = true;
       throw apiError;
     }
-    trackApiSuccess("POST", path, nowMs() - startedAt, res.status);
+    trackApiSuccess(method, path, nowMs() - startedAt, res.status);
     return res.json();
   } catch (error) {
     if (!failureTracked) {
-      trackApiFailure("POST", path, nowMs() - startedAt, error);
+      trackApiFailure(method, path, nowMs() - startedAt, error);
     }
     throw error;
   }
 }
 
-async function get<T = unknown>(path: string): Promise<T> {
-  const startedAt = nowMs();
-  let failureTracked = false;
-  try {
-    const res = await fetch(`${BASE}${path}`, {
-      headers: { ...getAuthHeaders() },
-    });
-    if (!res.ok) {
-      handle401(res.status);
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      const apiError = new Error(err.error || res.statusText);
-      trackApiFailure("GET", path, nowMs() - startedAt, apiError, res.status);
-      failureTracked = true;
-      throw apiError;
-    }
-    trackApiSuccess("GET", path, nowMs() - startedAt, res.status);
-    return res.json();
-  } catch (error) {
-    if (!failureTracked) {
-      trackApiFailure("GET", path, nowMs() - startedAt, error);
-    }
-    throw error;
-  }
+async function get<T = unknown>(path: string, options?: RequestOptions): Promise<T> {
+  return requestJson<T>("GET", path, undefined, options);
 }
 
-async function put<T = unknown>(path: string, body?: object): Promise<T> {
-  const startedAt = nowMs();
-  let failureTracked = false;
-  try {
-    const res = await fetch(`${BASE}${path}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    if (!res.ok) {
-      handle401(res.status);
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      const apiError = new Error(err.error || res.statusText);
-      trackApiFailure("PUT", path, nowMs() - startedAt, apiError, res.status);
-      failureTracked = true;
-      throw apiError;
-    }
-    trackApiSuccess("PUT", path, nowMs() - startedAt, res.status);
-    return res.json();
-  } catch (error) {
-    if (!failureTracked) {
-      trackApiFailure("PUT", path, nowMs() - startedAt, error);
-    }
-    throw error;
-  }
+async function post<T = unknown>(path: string, body?: object, options?: RequestOptions): Promise<T> {
+  return requestJson<T>("POST", path, body, options);
 }
 
-async function patch<T = unknown>(path: string, body?: object): Promise<T> {
-  const startedAt = nowMs();
-  let failureTracked = false;
-  try {
-    const res = await fetch(`${BASE}${path}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    if (!res.ok) {
-      handle401(res.status);
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      const apiError = new Error(err.error || res.statusText);
-      trackApiFailure("PATCH", path, nowMs() - startedAt, apiError, res.status);
-      failureTracked = true;
-      throw apiError;
-    }
-    trackApiSuccess("PATCH", path, nowMs() - startedAt, res.status);
-    return res.json();
-  } catch (error) {
-    if (!failureTracked) {
-      trackApiFailure("PATCH", path, nowMs() - startedAt, error);
-    }
-    throw error;
-  }
+async function put<T = unknown>(path: string, body?: object, options?: RequestOptions): Promise<T> {
+  return requestJson<T>("PUT", path, body, options);
 }
 
-async function del<T = unknown>(path: string, body?: object): Promise<T> {
-  const startedAt = nowMs();
-  let failureTracked = false;
-  try {
-    const res = await fetch(`${BASE}${path}`, {
-      method: "DELETE",
-      headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...getAuthHeaders() },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    if (!res.ok) {
-      handle401(res.status);
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      const apiError = new Error(err.error || res.statusText);
-      trackApiFailure("DELETE", path, nowMs() - startedAt, apiError, res.status);
-      failureTracked = true;
-      throw apiError;
-    }
-    trackApiSuccess("DELETE", path, nowMs() - startedAt, res.status);
-    return res.json();
-  } catch (error) {
-    if (!failureTracked) {
-      trackApiFailure("DELETE", path, nowMs() - startedAt, error);
-    }
-    throw error;
-  }
+async function patch<T = unknown>(path: string, body?: object, options?: RequestOptions): Promise<T> {
+  return requestJson<T>("PATCH", path, body, options);
+}
+
+async function del<T = unknown>(path: string, body?: object, options?: RequestOptions): Promise<T> {
+  return requestJson<T>("DELETE", path, body, options);
 }
 
 export interface ContainerCreateOpts {
@@ -335,18 +273,9 @@ export interface UsageLimits {
   } | null;
 }
 
-export interface EditorStartResult {
-  available: boolean;
-  installed: boolean;
-  mode: "host" | "container";
-  url?: string;
-  message?: string;
-}
-
 export interface AppSettings {
   anthropicApiKeyConfigured: boolean;
   anthropicModel: string;
-  editorTabEnabled: boolean;
   aiValidationEnabled: boolean;
   aiValidationAutoApprove: boolean;
   aiValidationAutoDeny: boolean;
@@ -521,13 +450,14 @@ export async function createSessionStream(
   opts: CreateSessionOpts | undefined,
   onProgress: (progress: CreationProgressEvent) => void,
 ): Promise<CreateSessionStreamResult> {
-  const res = await fetch(`${BASE}/sessions/create-stream`, {
+  const res = await fetch(buildApiUrl("/sessions/create-stream"), {
     method: "POST",
     headers: { "Content-Type": "application/json", ...getAuthHeaders() },
     body: JSON.stringify(opts ?? {}),
   });
 
   if (!res.ok || !res.body) {
+    handle401(res.status);
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error((err as { error?: string }).error || res.statusText);
   }
@@ -574,31 +504,9 @@ export async function createSessionStream(
   return result;
 }
 
-/**
- * Verify an auth token with the server.
- * This does NOT use the auth header helpers since it's called before auth is established.
- */
-/**
- * Attempt auto-authentication for localhost users.
- * The server returns the token if the request comes from 127.0.0.1/::1.
- * No auth header needed — this is a pre-auth endpoint.
- */
-export async function autoAuth(): Promise<string | null> {
+export async function verifyAuthToken(serverUrl: string, token: string): Promise<boolean> {
   try {
-    const res = await fetch(`${BASE}/auth/auto`);
-    if (res.ok) {
-      const data = await res.json() as { ok: boolean; token?: string };
-      if (data.ok && data.token) return data.token;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-export async function verifyAuthToken(token: string): Promise<boolean> {
-  try {
-    const res = await fetch(`${BASE}/auth/verify`, {
+    const res = await fetch(buildApiUrl("/auth/verify", { serverUrl }), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token }),
@@ -615,12 +523,15 @@ export async function verifyAuthToken(token: string): Promise<boolean> {
 
 export const api = {
   // Auth
-  getAuthQr: () =>
-    get<{ qrCodes: { label: string; url: string; qrDataUrl: string }[] }>("/auth/qr"),
   getAuthToken: () =>
     get<{ token: string }>("/auth/token"),
   regenerateAuthToken: () =>
     post<{ token: string }>("/auth/regenerate"),
+  getPublicInfo: (serverUrl?: string) =>
+    get<PublicBackendInfo>("/public/info", {
+      includeAuth: false,
+      serverUrl,
+    }),
 
   createSession: (opts?: CreateSessionOpts) =>
     post<{ sessionId: string; state: string; cwd: string }>(
@@ -712,7 +623,6 @@ export const api = {
   updateSettings: (data: {
     anthropicApiKey?: string;
     anthropicModel?: string;
-    editorTabEnabled?: boolean;
   }) => put<AppSettings>("/settings", data),
   verifyAnthropicKey: (apiKey: string) =>
     post<{ valid: boolean; error?: string }>("/settings/anthropic/verify", { apiKey }),
@@ -778,11 +688,6 @@ export const api = {
     ),
 
   // Editor
-  startEditor: (sessionId: string) =>
-    post<EditorStartResult>(
-      `/sessions/${encodeURIComponent(sessionId)}/editor/start`,
-    ),
-
   // Editor filesystem
   getFileTree: (path: string) =>
     get<{ path: string; tree: TreeNode[] }>(
@@ -793,7 +698,7 @@ export const api = {
       `/fs/read?path=${encodeURIComponent(path)}`,
     ),
   getFileBlob: async (path: string): Promise<string> => {
-    const res = await fetch(`${BASE}/fs/raw?path=${encodeURIComponent(path)}`, {
+    const res = await fetch(buildApiUrl(`/fs/raw?path=${encodeURIComponent(path)}`), {
       headers: { ...getAuthHeaders() },
     });
     if (!res.ok) {

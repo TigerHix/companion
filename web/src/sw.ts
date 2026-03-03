@@ -16,7 +16,7 @@ cleanupOutdatedCaches();
 
 const appShellFallback = createHandlerBoundToURL("index.html");
 const navigationStrategy = new NetworkFirst({
-  cacheName: "companion-navigation",
+  cacheName: "moku-navigation",
   networkTimeoutSeconds: 3,
 });
 

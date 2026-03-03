@@ -1007,7 +1007,7 @@ describe("EnvManager existing env edit — Docker baseImage update", () => {
     mockListEnvs.mockResolvedValue([
       {
         name: "Moku",
-        slug: "companion",
+        slug: "moku",
         variables: { CLAUDE_CODE_OAUTH_TOKEN: "tok" },
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -1028,7 +1028,7 @@ describe("EnvManager existing env edit — Docker baseImage update", () => {
 
     await waitFor(() => {
       expect(mockUpdateEnv).toHaveBeenCalledWith(
-        "companion",
+        "moku",
         expect.objectContaining({ baseImage: "moku:latest" }),
       );
     });

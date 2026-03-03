@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
+  connectHash,
+  navigateToConnect,
   parseHash,
   sessionHash,
   navigateToSession,
@@ -22,6 +24,18 @@ describe("parseHash", () => {
 
   it("parses settings route", () => {
     expect(parseHash("#/settings")).toEqual({ page: "settings" });
+  });
+
+  it("parses connect route with bootstrap params", () => {
+    expect(
+      parseHash(
+        "#/connect?server=https%3A%2F%2Fbackend.example.ts.net&token=test-token",
+      ),
+    ).toEqual({
+      page: "connect",
+      server: "https://backend.example.ts.net",
+      token: "test-token",
+    });
   });
 
   it("terminal route falls through to home (standalone terminal removed)", () => {
@@ -76,6 +90,23 @@ describe("sessionHash", () => {
   });
 });
 
+describe("connectHash", () => {
+  it("builds the bare connect route", () => {
+    expect(connectHash()).toBe("#/connect");
+  });
+
+  it("builds the connect route with fragment query params", () => {
+    expect(
+      connectHash({
+        server: "https://backend.example.ts.net",
+        token: "test-token",
+      }),
+    ).toBe(
+      "#/connect?server=https%3A%2F%2Fbackend.example.ts.net&token=test-token",
+    );
+  });
+});
+
 describe("navigateToSession", () => {
   beforeEach(() => {
     window.location.hash = "";
@@ -114,6 +145,33 @@ describe("navigateHome", () => {
     const dispatchSpy = vi.spyOn(window, "dispatchEvent");
     navigateHome(true);
     expect(spy).toHaveBeenCalled();
+    expect(dispatchSpy).toHaveBeenCalledWith(expect.any(HashChangeEvent));
+    spy.mockRestore();
+    dispatchSpy.mockRestore();
+  });
+});
+
+describe("navigateToConnect", () => {
+  beforeEach(() => {
+    window.location.hash = "";
+  });
+
+  it("sets the connect hash", () => {
+    navigateToConnect({ server: "https://backend.example.ts.net" });
+    expect(window.location.hash).toBe(
+      "#/connect?server=https%3A%2F%2Fbackend.example.ts.net",
+    );
+  });
+
+  it("uses replaceState when replace=true", () => {
+    const spy = vi.spyOn(history, "replaceState");
+    const dispatchSpy = vi.spyOn(window, "dispatchEvent");
+    navigateToConnect({ server: "https://backend.example.ts.net" }, true);
+    expect(spy).toHaveBeenCalledWith(
+      null,
+      "",
+      "#/connect?server=https%3A%2F%2Fbackend.example.ts.net",
+    );
     expect(dispatchSpy).toHaveBeenCalledWith(expect.any(HashChangeEvent));
     spy.mockRestore();
     dispatchSpy.mockRestore();

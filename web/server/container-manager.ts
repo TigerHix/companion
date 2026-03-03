@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 // ---------------------------------------------------------------------------
 
 export interface ContainerConfig {
-  /** Docker image to use (e.g. "the-companion:latest", "node:22-slim") */
+  /** Docker image to use (e.g. "moku:latest", "node:22-slim") */
   image: string;
   /** Container ports to expose (e.g. [3000, 8080]) */
   ports: number[];
@@ -55,7 +55,7 @@ const CONTAINER_BOOT_TIMEOUT_MS = 20_000;
 const WORKSPACE_COPY_TIMEOUT_MS = 15 * 60_000; // 15 min for large repos
 const IMAGE_PULL_TIMEOUT_MS = 300_000; // 5 min for pulling images
 
-const DOCKER_REGISTRY = "docker.io/stangirard";
+const DOCKER_REGISTRY = "docker.io/moku";
 
 function exec(cmd: string, opts?: ExecSyncOptionsWithStringEncoding): string {
   return execSync(cmd, { ...EXEC_OPTS, ...opts }).trim();
@@ -126,7 +126,7 @@ export class ContainerManager {
   /**
    * Create and start a container for a session.
    *
-   * - Mounts `~/.claude` read-only at `/companion-host-claude` (auth seed)
+   * - Mounts `~/.claude` read-only at `/moku-host-claude` (auth seed)
    * - Uses a writable tmpfs at `/root/.claude` for runtime state
    * - Mounts `hostCwd` at `/workspace`
    * - Publishes requested ports with auto-assigned host ports (`-p 0:PORT`)
@@ -136,7 +136,7 @@ export class ContainerManager {
     hostCwd: string,
     config: ContainerConfig,
   ): ContainerInfo {
-    const name = `companion-${sessionId.slice(0, 8)}`;
+    const name = `moku-${sessionId.slice(0, 8)}`;
     const homedir = process.env.HOME || process.env.USERPROFILE || "/root";
 
     // Validate port numbers
@@ -147,7 +147,7 @@ export class ContainerManager {
     }
 
     // Create a named volume for workspace isolation (each container gets its own copy)
-    const volumeName = `companion-ws-${sessionId.slice(0, 8)}`;
+    const volumeName = `moku-ws-${sessionId.slice(0, 8)}`;
     exec(`docker volume create ${shellEscape(volumeName)}`, {
       encoding: "utf-8",
       timeout: QUICK_EXEC_TIMEOUT_MS,
@@ -161,11 +161,11 @@ export class ContainerManager {
       // Desktop, but required explicitly on Linux)
       "--add-host=host.docker.internal:host-gateway",
       // Seed auth/config from host home, but keep runtime writes inside container.
-      "-v", `${homedir}/.claude:/companion-host-claude:ro`,
+      "-v", `${homedir}/.claude:/moku-host-claude:ro`,
       "--tmpfs", "/root/.claude",
       // Seed Codex auth/config from host (if present)
       ...(existsSync(join(homedir, ".codex"))
-        ? ["-v", `${homedir}/.codex:/companion-host-codex:ro`, "--tmpfs", "/root/.codex"]
+        ? ["-v", `${homedir}/.codex:/moku-host-codex:ro`, "--tmpfs", "/root/.codex"]
         : []),
       // Isolated workspace: named volume populated later via docker cp
       "-v", `${volumeName}:/workspace`,
@@ -178,7 +178,7 @@ export class ContainerManager {
     // can also write container-specific overrides (e.g. gpgsign=false).
     const gitconfigPath = join(homedir, ".gitconfig");
     if (existsSync(gitconfigPath)) {
-      args.push("-v", `${gitconfigPath}:/companion-host-gitconfig:ro`);
+      args.push("-v", `${gitconfigPath}:/moku-host-gitconfig:ro`);
     }
 
     // Port mappings: -p 0:{containerPort}
@@ -269,14 +269,14 @@ export class ContainerManager {
         [
           "mkdir -p /root/.claude",
           "for f in .credentials.json auth.json .auth.json credentials.json; do " +
-            "[ -f /companion-host-claude/$f ] && cp /companion-host-claude/$f /root/.claude/$f 2>/dev/null; done",
+            "[ -f /moku-host-claude/$f ] && cp /moku-host-claude/$f /root/.claude/$f 2>/dev/null; done",
           "for f in settings.json settings.local.json; do " +
-            "[ -f /companion-host-claude/$f ] && cp /companion-host-claude/$f /root/.claude/$f 2>/dev/null; done",
-          "[ -d /companion-host-claude/skills ] && cp -r /companion-host-claude/skills /root/.claude/skills 2>/dev/null",
+            "[ -f /moku-host-claude/$f ] && cp /moku-host-claude/$f /root/.claude/$f 2>/dev/null; done",
+          "[ -d /moku-host-claude/skills ] && cp -r /moku-host-claude/skills /root/.claude/skills 2>/dev/null",
           "true",
         ].join("; "),
       ]);
-    } catch { /* best-effort — container may not have /companion-host-claude mounted */ }
+    } catch { /* best-effort — container may not have /moku-host-claude mounted */ }
   }
 
   /**
@@ -289,16 +289,16 @@ export class ContainerManager {
       this.execInContainer(containerId, [
         "sh", "-lc",
         [
-          "[ -d /companion-host-codex ] || exit 0",
+          "[ -d /moku-host-codex ] || exit 0",
           "mkdir -p /root/.codex",
           "for f in auth.json config.toml models_cache.json version.json; do " +
-            "[ -f /companion-host-codex/$f ] && cp /companion-host-codex/$f /root/.codex/$f 2>/dev/null; done",
+            "[ -f /moku-host-codex/$f ] && cp /moku-host-codex/$f /root/.codex/$f 2>/dev/null; done",
           "for d in skills vendor_imports prompts rules; do " +
-            "[ -d /companion-host-codex/$d ] && cp -r /companion-host-codex/$d /root/.codex/$d 2>/dev/null; done",
+            "[ -d /moku-host-codex/$d ] && cp -r /moku-host-codex/$d /root/.codex/$d 2>/dev/null; done",
           "true",
         ].join("; "),
       ]);
-    } catch { /* best-effort — container may not have /companion-host-codex mounted */ }
+    } catch { /* best-effort — container may not have /moku-host-codex mounted */ }
   }
 
   /**
@@ -350,9 +350,9 @@ export class ContainerManager {
         "sh", "-lc",
         [
           // Import user.name and user.email from host gitconfig (if mounted)
-          "if [ -f /companion-host-gitconfig ]; then " +
-            "NAME=$(git config -f /companion-host-gitconfig user.name 2>/dev/null); " +
-            "EMAIL=$(git config -f /companion-host-gitconfig user.email 2>/dev/null); " +
+          "if [ -f /moku-host-gitconfig ]; then " +
+            "NAME=$(git config -f /moku-host-gitconfig user.name 2>/dev/null); " +
+            "EMAIL=$(git config -f /moku-host-gitconfig user.email 2>/dev/null); " +
             '[ -n "$NAME" ] && git config --global user.name "$NAME"; ' +
             '[ -n "$EMAIL" ] && git config --global user.email "$EMAIL"; ' +
           "fi",
@@ -818,7 +818,7 @@ export class ContainerManager {
    * Build a Docker image from a provided Dockerfile path.
    * Returns the build output log. Throws on failure.
    */
-  buildImage(dockerfilePath: string, tag: string = "the-companion:latest"): string {
+  buildImage(dockerfilePath: string, tag: string = "moku:latest"): string {
     const contextDir = dockerfilePath.replace(/\/[^/]+$/, "") || ".";
     try {
       const output = exec(
@@ -844,7 +844,7 @@ export class ContainerManager {
     onProgress?: (line: string) => void,
   ): Promise<{ success: boolean; log: string }> {
     // Write Dockerfile to temp dir
-    const buildDir = join(tmpdir(), `companion-build-${Date.now()}`);
+    const buildDir = join(tmpdir(), `moku-build-${Date.now()}`);
     mkdirSync(buildDir, { recursive: true });
     const dockerfilePath = join(buildDir, "Dockerfile");
     writeFileSync(dockerfilePath, dockerfileContent, "utf-8");
@@ -927,8 +927,8 @@ export class ContainerManager {
    * Return the Docker Hub remote path for a default image, or null for non-default images.
    */
   static getRegistryImage(localTag: string): string | null {
-    if (localTag === "the-companion:latest") {
-      return `${DOCKER_REGISTRY}/the-companion:latest`;
+    if (localTag === "moku:latest") {
+      return `${DOCKER_REGISTRY}/moku:latest`;
     }
     return null;
   }

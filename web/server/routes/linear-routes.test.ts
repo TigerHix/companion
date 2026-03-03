@@ -125,7 +125,7 @@ function makeIssueNode(overrides: Record<string, unknown> = {}) {
     branchName: "comp-1-test-issue",
     priorityLabel: "High",
     state: { name: "In Progress", type: "started" },
-    team: { id: "team-1", key: "COMP", name: "Companion" },
+    team: { id: "team-1", key: "COMP", name: "Moku" },
     ...overrides,
   };
 }
@@ -286,7 +286,7 @@ describe("GET /api/linear/connection", () => {
     mockFetch().mockResolvedValue(
       linearOk({
         viewer: { id: "user-1", name: "Test User", email: "test@example.com" },
-        teams: { nodes: [{ id: "team-1", key: "COMP", name: "Companion" }] },
+        teams: { nodes: [{ id: "team-1", key: "COMP", name: "Moku" }] },
       }),
     );
 
@@ -296,7 +296,7 @@ describe("GET /api/linear/connection", () => {
     expect(json.connected).toBe(true);
     expect(json.viewerName).toBe("Test User");
     expect(json.viewerEmail).toBe("test@example.com");
-    expect(json.teamName).toBe("Companion");
+    expect(json.teamName).toBe("Moku");
     expect(json.teamKey).toBe("COMP");
   });
 
@@ -348,7 +348,7 @@ describe("PUT /api/sessions/:id/linear-issue", () => {
       priorityLabel: "High",
       stateName: "In Progress",
       stateType: "started",
-      teamName: "Companion",
+      teamName: "Moku",
       teamKey: "COMP",
       teamId: "team-1",
       assigneeName: "John Doe",
@@ -502,7 +502,7 @@ describe("GET /api/sessions/:id/linear-issue", () => {
           branchName: "comp-1-updated",
           priorityLabel: "Urgent",
           state: { name: "In Progress", type: "started" },
-          team: { id: "team-1", key: "COMP", name: "Companion" },
+          team: { id: "team-1", key: "COMP", name: "Moku" },
           comments: {
             nodes: [
               {
@@ -773,7 +773,7 @@ describe("GET /api/linear/states", () => {
             {
               id: "team-1",
               key: "COMP",
-              name: "Companion",
+              name: "Moku",
               states: {
                 nodes: [
                   { id: "state-1", name: "Todo", type: "unstarted" },
@@ -878,7 +878,7 @@ describe("GET /api/linear/project-issues", () => {
               url: "https://linear.app/test",
               priorityLabel: "Medium",
               state: { name: "In Progress", type: "started" },
-              team: { key: "COMP", name: "Companion" },
+              team: { key: "COMP", name: "Moku" },
               assignee: { name: "Alice" },
               updatedAt: "2025-01-01T00:00:00Z",
             },
@@ -890,7 +890,7 @@ describe("GET /api/linear/project-issues", () => {
               url: "https://linear.app/test",
               priorityLabel: null,
               state: { name: "Backlog", type: "backlog" },
-              team: { key: "COMP", name: "Companion" },
+              team: { key: "COMP", name: "Moku" },
               assignee: null,
               updatedAt: null,
             },
@@ -902,7 +902,7 @@ describe("GET /api/linear/project-issues", () => {
               url: "https://linear.app/test",
               priorityLabel: "Low",
               state: { name: "Done", type: "completed" },
-              team: { key: "COMP", name: "Companion" },
+              team: { key: "COMP", name: "Moku" },
               assignee: { name: "Bob" },
               updatedAt: "2025-01-02",
             },

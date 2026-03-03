@@ -20,7 +20,7 @@ export interface LinearProjectMapping {
   updatedAt: number;
 }
 
-const DEFAULT_PATH = join(homedir(), ".companion", "linear-projects.json");
+const DEFAULT_PATH = join(homedir(), ".moku", "linear-projects.json");
 
 let loaded = false;
 let filePath = DEFAULT_PATH;

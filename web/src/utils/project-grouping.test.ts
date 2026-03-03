@@ -58,8 +58,8 @@ describe("extractProjectKey", () => {
 
   it("uses cwd when containerized repoRoot points to /workspace", () => {
     expect(
-      extractProjectKey("/home/user/projects/companion", "/workspace", true),
-    ).toBe("/home/user/projects/companion");
+      extractProjectKey("/home/user/projects/moku", "/workspace", true),
+    ).toBe("/home/user/projects/moku");
   });
 });
 
@@ -263,20 +263,20 @@ describe("groupSessionsByProject", () => {
     const sessions = [
       makeItem({
         id: "s1",
-        cwd: "/home/user/companion",
+        cwd: "/home/user/moku",
         repoRoot: "/workspace",
         isContainerized: true,
       }),
       makeItem({
         id: "s2",
-        cwd: "/home/user/companion",
+        cwd: "/home/user/moku",
         repoRoot: "/workspace/packages/app",
         isContainerized: true,
       }),
     ];
     const groups = groupSessionsByProject(sessions);
     expect(groups).toHaveLength(1);
-    expect(groups[0].key).toBe("/home/user/companion");
-    expect(groups[0].label).toBe("companion");
+    expect(groups[0].key).toBe("/home/user/moku");
+    expect(groups[0].label).toBe("moku");
   });
 });

@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import type { SessionState, PermissionRequest, ChatMessage, SdkSessionInfo, TaskItem, ProcessItem, ProcessStatus, McpServerDetail } from "./types.js";
 import type { PRStatusResponse, CreationProgressEvent } from "./api.js";
+import {
+  clearConnection as clearPersistedConnection,
+  loadInitialConnection,
+  saveConnection as persistConnection,
+  type StoredConnection,
+} from "./connection.js";
 
 /** Delete a key from a Map, returning the same reference if the key wasn't present. */
 function deleteFromMap<K, V>(map: Map<K, V>, key: K): Map<K, V> {
@@ -29,12 +35,12 @@ export type QuickTerminalPlacement = "top" | "right" | "bottom" | "left";
 
 export type DiffBase = "last-commit" | "default-branch";
 
-const AUTH_STORAGE_KEY = "moku_auth_token";
 const LAST_SESSION_STORAGE_KEY = "cc-last-session";
 const LEGACY_CURRENT_SESSION_STORAGE_KEY = "cc-current-session";
 
 interface AppState {
   // Auth
+  connection: StoredConnection | null;
   authToken: string | null;
   isAuthenticated: boolean;
 
@@ -120,14 +126,14 @@ interface AppState {
   sidebarOpen: boolean;
   infoPanelOpen: boolean;
   homeResetKey: number;
-  editorTabEnabled: boolean;
   activeTab: "chat" | "diff" | "terminal" | "processes" | "editor";
   chatTabReentryTickBySession: Map<string, number>;
   diffPanelSelectedFile: Map<string, string>;
 
   // Auth actions
-  setAuthToken: (token: string) => void;
-  logout: () => void;
+  setConnection: (connection: Omit<StoredConnection, "version"> | StoredConnection) => void;
+  updateConnection: (updates: Partial<Omit<StoredConnection, "version">>) => void;
+  logout: (options?: { forgetServerUrl?: boolean }) => void;
 
   // Actions
   setDarkMode: (v: boolean) => void;
@@ -199,8 +205,6 @@ interface AppState {
   setConnectionStatus: (sessionId: string, status: "connecting" | "connected" | "disconnected") => void;
   setCliConnected: (sessionId: string, connected: boolean) => void;
   setSessionStatus: (sessionId: string, status: "idle" | "running" | "compacting" | null) => void;
-
-  setEditorTabEnabled: (enabled: boolean) => void;
 
   // Diff panel actions
   setActiveTab: (tab: "chat" | "diff" | "terminal" | "processes" | "editor") => void;
@@ -319,14 +323,12 @@ function getInitialDiffBase(): DiffBase {
   return "last-commit";
 }
 
-function getInitialAuthToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(AUTH_STORAGE_KEY) || null;
-}
+const initialConnection = loadInitialConnection();
 
 export const useStore = create<AppState>((set) => ({
-  authToken: getInitialAuthToken(),
-  isAuthenticated: getInitialAuthToken() !== null,
+  connection: initialConnection,
+  authToken: initialConnection?.authToken ?? null,
+  isAuthenticated: initialConnection !== null,
   sessions: new Map(),
   sdkSessions: [],
   lastSessionId: getInitialLastSessionId(),
@@ -360,7 +362,6 @@ export const useStore = create<AppState>((set) => ({
   sidebarOpen: typeof window !== "undefined" ? window.innerWidth >= 768 : true,
   infoPanelOpen: false,
   homeResetKey: 0,
-  editorTabEnabled: false,
   activeTab: "chat",
   chatTabReentryTickBySession: new Map(),
   diffPanelSelectedFile: new Map(),
@@ -389,13 +390,22 @@ export const useStore = create<AppState>((set) => ({
   setSessionCreating: (creating, backend) => set({ sessionCreating: creating, sessionCreatingBackend: backend ?? null }),
   setCreationError: (error) => set({ creationError: error }),
 
-  setAuthToken: (token) => {
-    localStorage.setItem(AUTH_STORAGE_KEY, token);
-    set({ authToken: token, isAuthenticated: true });
+  setConnection: (connection) => {
+    const next = persistConnection(connection);
+    set({ connection: next, authToken: next.authToken, isAuthenticated: true });
   },
-  logout: () => {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-    set({ authToken: null, isAuthenticated: false });
+  updateConnection: (updates) =>
+    set((state) => {
+      if (!state.connection) return {};
+      const next = persistConnection({
+        ...state.connection,
+        ...updates,
+      });
+      return { connection: next, authToken: next.authToken, isAuthenticated: true };
+    }),
+  logout: (options) => {
+    clearPersistedConnection(options);
+    set({ connection: null, authToken: null, isAuthenticated: false });
   },
 
   setDarkMode: (v) => {
@@ -789,8 +799,6 @@ export const useStore = create<AppState>((set) => ({
       return { sessionStatus };
     }),
 
-  setEditorTabEnabled: (enabled) => set({ editorTabEnabled: enabled }),
-
   setActiveTab: (tab) => set({ activeTab: tab }),
   markChatTabReentry: (sessionId) =>
     set((s) => {
@@ -882,6 +890,9 @@ export const useStore = create<AppState>((set) => ({
 
   reset: () =>
     set({
+      connection: null,
+      authToken: null,
+      isAuthenticated: false,
       sessions: new Map(),
       sdkSessions: [],
       lastSessionId: null,
@@ -904,7 +915,6 @@ export const useStore = create<AppState>((set) => ({
       mcpServers: new Map(),
       toolProgress: new Map(),
       prStatus: new Map(),
-      editorTabEnabled: false,
       activeTab: "chat" as const,
       chatTabReentryTickBySession: new Map(),
       diffPanelSelectedFile: new Map(),

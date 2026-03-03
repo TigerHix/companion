@@ -183,7 +183,7 @@ describe("HomePage", () => {
           gitBranch: "main",
           slug: "snazzy-baking-tarjan",
           lastActivityAt: 2000,
-          sourceFile: "/Users/skolte/.claude/projects/-Users-skolte-Github-Private-companion/ac5b80ba-2927-4f20-84c2-6bbaf9afdeb3.jsonl",
+          sourceFile: "/Users/skolte/.claude/projects/-Users-skolte-Github-Private-moku/ac5b80ba-2927-4f20-84c2-6bbaf9afdeb3.jsonl",
         },
       ],
     });

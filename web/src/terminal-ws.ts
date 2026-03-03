@@ -1,3 +1,5 @@
+import { getTerminalWebSocketUrl } from "./connection.js";
+
 interface TerminalConnectionCallbacks {
   onData: (data: Uint8Array) => void;
   onExit: (exitCode: number) => void;
@@ -15,9 +17,7 @@ export function createTerminalConnection(
   terminalId: string,
   callbacks: TerminalConnectionCallbacks,
 ): TerminalConnection {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  const token = localStorage.getItem("moku_auth_token") || "";
-  const wsUrl = `${protocol}//${window.location.host}/ws/terminal/${terminalId}?token=${encodeURIComponent(token)}`;
+  const wsUrl = getTerminalWebSocketUrl(terminalId);
   const socket = new WebSocket(wsUrl);
   socket.binaryType = "arraybuffer";
 

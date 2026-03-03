@@ -4,7 +4,6 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 vi.mock("./auth-manager.js", () => ({
   verifyToken: vi.fn(() => true),
   getToken: vi.fn(() => "test-token-for-routes"),
-  getLanAddress: vi.fn(() => "192.168.1.100"),
   _resetForTest: vi.fn(),
 }));
 
@@ -41,7 +40,11 @@ vi.mock("node:fs", async (importOriginal) => {
   return {
     ...actual,
     existsSync: vi.fn(() => false),
-    readFileSync: vi.fn(() => ""),
+    readFileSync: vi.fn((path: string) => (
+      path.endsWith("package.json")
+        ? JSON.stringify({ version: "0.69.0" })
+        : ""
+    )),
   };
 });
 
@@ -78,7 +81,6 @@ vi.mock("./settings-manager.js", () => ({
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-    editorTabEnabled: false,
     aiValidationEnabled: false,
     aiValidationAutoApprove: true,
     aiValidationAutoDeny: true,
@@ -95,7 +97,6 @@ vi.mock("./settings-manager.js", () => ({
     linearArchiveTransition: patch.linearArchiveTransition ?? false,
     linearArchiveTransitionStateId: patch.linearArchiveTransitionStateId ?? "",
     linearArchiveTransitionStateName: patch.linearArchiveTransitionStateName ?? "",
-    editorTabEnabled: patch.editorTabEnabled ?? false,
     aiValidationEnabled: patch.aiValidationEnabled ?? false,
     aiValidationAutoApprove: patch.aiValidationAutoApprove ?? true,
     aiValidationAutoDeny: patch.aiValidationAutoDeny ?? true,
@@ -286,6 +287,23 @@ function createMockTracker() {
   } as any;
 }
 
+function createMockPublicInfo() {
+  return {
+    name: "Moku",
+    backendVersion: "1.2.3",
+    authMode: "bearer_token" as const,
+    deploymentMode: "tailscale-hosted-frontend" as const,
+    frontendUrl: "https://moku.sh",
+    canonicalBackendUrl: "https://node.example.ts.net",
+    allowedWebOrigins: ["https://moku.sh"],
+    capabilities: {
+      clientQrBootstrap: true,
+      inAppEditor: true,
+      hostedFrontendOnly: true,
+    },
+  };
+}
+
 // ─── Test setup ──────────────────────────────────────────────────────────────
 
 let app: Hono;
@@ -294,6 +312,7 @@ let bridge: ReturnType<typeof createMockBridge>;
 let sessionStore: ReturnType<typeof createMockStore>;
 let tracker: ReturnType<typeof createMockTracker>;
 let terminalManager: { getInfo: ReturnType<typeof vi.fn>; spawn: ReturnType<typeof vi.fn>; kill: ReturnType<typeof vi.fn> };
+let getPublicInfo: () => ReturnType<typeof createMockPublicInfo>;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -310,8 +329,9 @@ beforeEach(() => {
   sessionStore = createMockStore();
   tracker = createMockTracker();
   terminalManager = { getInfo: vi.fn(() => null), spawn: vi.fn(() => ""), kill: vi.fn() };
+  getPublicInfo = vi.fn(() => createMockPublicInfo()) as unknown as () => ReturnType<typeof createMockPublicInfo>;
   app = new Hono();
-  app.route("/api", createRoutes(launcher, bridge, sessionStore, tracker, terminalManager as any));
+  app.route("/api", createRoutes(launcher, bridge, sessionStore, tracker, terminalManager as any, getPublicInfo));
 
   // Default no-op mocks for container workspace isolation (called during container session creation)
   vi.spyOn(containerManager, "copyWorkspaceToContainer").mockResolvedValue(undefined);
@@ -552,7 +572,7 @@ describe("POST /api/sessions/create", () => {
       isWorktree: false,
     });
     vi.mocked(gitUtils.ensureWorktree).mockReturnValue({
-      worktreePath: "/home/.companion/worktrees/my-repo/feat-branch",
+      worktreePath: "/home/.moku/worktrees/my-repo/feat-branch",
       branch: "feat-branch",
       actualBranch: "feat-branch",
       isNew: true,
@@ -580,7 +600,7 @@ describe("POST /api/sessions/create", () => {
     // launcher should receive the worktree path as cwd
     expect(launcher.launch).toHaveBeenCalled();
     const launchOpts = launcher.launch.mock.calls[0][0];
-    expect(launchOpts.cwd).toBe("/home/.companion/worktrees/my-repo/feat-branch");
+    expect(launchOpts.cwd).toBe("/home/.moku/worktrees/my-repo/feat-branch");
     // Worktree mapping should be tracked
     expect(tracker.addMapping).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -588,21 +608,21 @@ describe("POST /api/sessions/create", () => {
         repoRoot: "/repo",
         branch: "feat-branch",
         actualBranch: "feat-branch",
-        worktreePath: "/home/.companion/worktrees/my-repo/feat-branch",
+        worktreePath: "/home/.moku/worktrees/my-repo/feat-branch",
       }),
     );
   });
 
   it("returns 503 when env has Docker image but container startup fails", async () => {
     vi.mocked(envManager.getEnv).mockReturnValue({
-      name: "Companion",
-      slug: "companion",
+      name: "Moku",
+      slug: "moku",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "the-companion:latest",
+      baseImage: "moku:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
     vi.spyOn(containerManager, "imageExists").mockReturnValueOnce(true);
     vi.spyOn(containerManager, "createContainer").mockImplementationOnce(() => {
       throw new Error("docker daemon timeout");
@@ -611,7 +631,7 @@ describe("POST /api/sessions/create", () => {
     const res = await app.request("/api/sessions/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cwd: "/test", envSlug: "companion" }),
+      body: JSON.stringify({ cwd: "/test", envSlug: "moku" }),
     });
 
     expect(res.status).toBe(503);
@@ -628,11 +648,11 @@ describe("POST /api/sessions/create", () => {
       name: "Codex Docker",
       slug: "codex-docker",
       variables: {},
-      baseImage: "the-companion:latest",
+      baseImage: "moku:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
 
     const res = await app.request("/api/sessions/create", {
       method: "POST",
@@ -652,16 +672,16 @@ describe("POST /api/sessions/create", () => {
       name: "Codex Docker",
       slug: "codex-docker",
       variables: { OPENAI_API_KEY: "sk-test" },
-      baseImage: "the-companion:latest",
+      baseImage: "moku:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
     vi.spyOn(containerManager, "imageExists").mockReturnValueOnce(true);
     const createSpy = vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-codex",
-      name: "companion-codex",
-      image: "the-companion:latest",
+      name: "moku-codex",
+      image: "moku:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -687,21 +707,21 @@ describe("POST /api/sessions/create", () => {
     );
   });
 
-  it("always exposes VS Code editor port on new containers", async () => {
+  it("does not add the removed external editor port to new containers", async () => {
     vi.mocked(envManager.getEnv).mockReturnValue({
-      name: "Companion",
-      slug: "companion",
+      name: "Moku",
+      slug: "moku",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "the-companion:latest",
+      baseImage: "moku:latest",
       createdAt: 1000,
       updatedAt: 1000,
       ports: [3000],
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
     const createSpy = vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-vscode",
-      name: "companion-vscode",
-      image: "the-companion:latest",
+      name: "moku-vscode",
+      image: "moku:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -712,38 +732,37 @@ describe("POST /api/sessions/create", () => {
     const res = await app.request("/api/sessions/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cwd: "/test", envSlug: "companion" }),
+      body: JSON.stringify({ cwd: "/test", envSlug: "moku" }),
     });
 
     expect(res.status).toBe(200);
     const config = createSpy.mock.calls[0][2];
-    expect(config.ports).toContain(3000);
-    expect(config.ports).toContain(13337);
+    expect(config.ports).toEqual([3000]);
   });
 
   it("waits for background pull when image is not ready", async () => {
     // imagePullManager reports the image is not ready initially,
     // but waitForReady resolves to true (background pull succeeds).
     vi.mocked(envManager.getEnv).mockReturnValue({
-      name: "Companion",
-      slug: "companion",
+      name: "Moku",
+      slug: "moku",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "the-companion:latest",
+      baseImage: "moku:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
     mockImagePullIsReady.mockReturnValue(false);
     mockImagePullGetState.mockReturnValue({
-      image: "the-companion:latest",
+      image: "moku:latest",
       status: "idle" as const,
       progress: [],
     });
     mockImagePullWaitForReady.mockResolvedValue(true);
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-1",
-      name: "companion-temp",
-      image: "the-companion:latest",
+      name: "moku-temp",
+      image: "moku:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -754,11 +773,11 @@ describe("POST /api/sessions/create", () => {
     const res = await app.request("/api/sessions/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cwd: "/test", envSlug: "companion" }),
+      body: JSON.stringify({ cwd: "/test", envSlug: "moku" }),
     });
 
     expect(res.status).toBe(200);
-    expect(mockImagePullEnsureImage).toHaveBeenCalledWith("the-companion:latest");
+    expect(mockImagePullEnsureImage).toHaveBeenCalledWith("moku:latest");
     expect(mockImagePullWaitForReady).toHaveBeenCalled();
     expect(launcher.launch).toHaveBeenCalled();
   });
@@ -769,17 +788,17 @@ describe("POST /api/sessions/create", () => {
       name: "WithInit",
       slug: "with-init",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "the-companion:latest",
+      baseImage: "moku:latest",
       initScript: "bun install && pip install -r requirements.txt",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
     vi.spyOn(containerManager, "imageExists").mockReturnValueOnce(true);
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-init",
-      name: "companion-init",
-      image: "the-companion:latest",
+      name: "moku-init",
+      image: "moku:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -811,17 +830,17 @@ describe("POST /api/sessions/create", () => {
       name: "FailInit",
       slug: "fail-init",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "the-companion:latest",
+      baseImage: "moku:latest",
       initScript: "exit 1",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
     vi.spyOn(containerManager, "imageExists").mockReturnValueOnce(true);
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-fail",
-      name: "companion-fail",
-      image: "the-companion:latest",
+      name: "moku-fail",
+      image: "moku:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -859,15 +878,15 @@ describe("POST /api/sessions/create", () => {
       name: "Docker",
       slug: "docker",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "the-companion:latest",
+      baseImage: "moku:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-git",
-      name: "companion-git",
-      image: "the-companion:latest",
+      name: "moku-git",
+      image: "moku:latest",
       portMappings: [],
       hostCwd: "/repo",
       containerCwd: "/workspace",
@@ -905,15 +924,15 @@ describe("POST /api/sessions/create", () => {
       name: "Docker",
       slug: "docker",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "the-companion:latest",
+      baseImage: "moku:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-nobranch",
-      name: "companion-nobranch",
-      image: "the-companion:latest",
+      name: "moku-nobranch",
+      image: "moku:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -945,15 +964,15 @@ describe("POST /api/sessions/create", () => {
       name: "Docker",
       slug: "docker",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "the-companion:latest",
+      baseImage: "moku:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-failcheckout",
-      name: "companion-failcheckout",
-      image: "the-companion:latest",
+      name: "moku-failcheckout",
+      image: "moku:latest",
       portMappings: [],
       hostCwd: "/repo",
       containerCwd: "/workspace",
@@ -1057,7 +1076,7 @@ describe("GET /api/sessions", () => {
     bridge.getAllSessions.mockReturnValue([
       {
         session_id: "s1",
-        cwd: "/home/ubuntu/companion",
+        cwd: "/home/ubuntu/moku",
       },
     ]);
 
@@ -1067,7 +1086,7 @@ describe("GET /api/sessions", () => {
     const json = await res.json();
     expect(json[0]).toMatchObject({
       sessionId: "s1",
-      cwd: "/home/ubuntu/companion",
+      cwd: "/home/ubuntu/moku",
     });
   });
 });
@@ -1181,95 +1200,6 @@ describe("GET /api/claude/sessions/:id/history", () => {
   });
 });
 
-describe("POST /api/sessions/:id/editor/start", () => {
-  it("returns unavailable when code-server is not installed on host", async () => {
-    launcher.getSession.mockReturnValue({
-      sessionId: "s1",
-      state: "running",
-      cwd: "/repo",
-    });
-    mockResolveBinary.mockImplementation((name: string) => (name === "code-server" ? null : null));
-
-    const res = await app.request("/api/sessions/s1/editor/start", { method: "POST" });
-
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json).toMatchObject({
-      available: false,
-      installed: false,
-      mode: "host",
-    });
-    expect(json.message).toContain("not installed");
-  });
-
-  it("starts host editor and returns a URL when code-server is available", async () => {
-    launcher.getSession.mockReturnValue({
-      sessionId: "s1",
-      state: "running",
-      cwd: "/repo/my app",
-    });
-    mockResolveBinary.mockImplementation((name: string) => (name === "code-server" ? "/usr/bin/code-server" : null));
-    // Mock fetch so the readiness poll resolves immediately instead of timing out
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("ok", { status: 200 }));
-
-    const res = await app.request("/api/sessions/s1/editor/start", { method: "POST" });
-
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json).toMatchObject({
-      available: true,
-      installed: true,
-      mode: "host",
-      url: "http://localhost:13338?folder=%2Frepo%2Fmy%20app",
-    });
-    expect(execSync).toHaveBeenCalledWith(
-      expect.stringContaining("--bind-addr 127.0.0.1:13338"),
-      expect.objectContaining({ timeout: 10_000 }),
-    );
-    fetchSpy.mockRestore();
-  });
-
-  it("starts container editor and returns mapped host URL", async () => {
-    launcher.getSession.mockReturnValue({
-      sessionId: "s1",
-      state: "running",
-      cwd: "/repo",
-      containerId: "cid-1",
-    });
-    vi.spyOn(containerManager, "getContainer").mockReturnValue({
-      containerId: "cid-1",
-      name: "companion-s1",
-      image: "the-companion:latest",
-      portMappings: [{ containerPort: 13337, hostPort: 49152 }],
-      hostCwd: "/repo",
-      containerCwd: "/workspace",
-      state: "running",
-    });
-    vi.spyOn(containerManager, "hasBinaryInContainer").mockReturnValue(true);
-    vi.spyOn(containerManager, "isContainerAlive").mockReturnValue("running");
-    const execSpy = vi.spyOn(containerManager, "execInContainer").mockReturnValue("");
-    // Mock fetch so the readiness poll resolves immediately instead of timing out
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("ok", { status: 200 }));
-
-    const res = await app.request("/api/sessions/s1/editor/start", { method: "POST" });
-
-    expect(res.status).toBe(200);
-    const json = await res.json();
-    expect(json).toMatchObject({
-      available: true,
-      installed: true,
-      mode: "container",
-      url: "http://localhost:49152?folder=%2Fworkspace",
-    });
-    expect(execSpy).toHaveBeenCalledWith(
-      "cid-1",
-      expect.arrayContaining(["sh", "-lc"]),
-      10_000,
-    );
-    fetchSpy.mockRestore();
-  });
-});
-
 describe("POST /api/sessions/:id/kill", () => {
   it("returns ok when session is killed", async () => {
     launcher.kill.mockResolvedValue(true);
@@ -1308,7 +1238,7 @@ describe("POST /api/sessions/:id/relaunch", () => {
   it("returns 503 with error when container is missing", async () => {
     launcher.relaunch.mockResolvedValue({
       ok: false,
-      error: 'Container "companion-gone" was removed externally. Please create a new session.',
+      error: 'Container "moku-gone" was removed externally. Please create a new session.',
     });
 
     const res = await app.request("/api/sessions/s1/relaunch", { method: "POST" });
@@ -1531,7 +1461,6 @@ describe("POST /api/sessions/:id/archive — Linear transition", () => {
       linearArchiveTransition: false,
       linearArchiveTransitionStateId: "",
       linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -1567,7 +1496,6 @@ describe("POST /api/sessions/:id/archive — Linear transition", () => {
       linearArchiveTransition: true,
       linearArchiveTransitionStateId: "state-custom",
       linearArchiveTransitionStateName: "Review",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -1596,7 +1524,6 @@ describe("POST /api/sessions/:id/archive — Linear transition", () => {
       linearArchiveTransition: false,
       linearArchiveTransitionStateId: "",
       linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -1673,7 +1600,6 @@ describe("GET /api/sessions/:id/archive-info", () => {
       linearArchiveTransition: true,
       linearArchiveTransitionStateId: "state-custom",
       linearArchiveTransitionStateName: "Review",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -1981,15 +1907,15 @@ describe("Saved prompts API", () => {
 describe("GET /api/images/:tag/status", () => {
   it("returns the pull state for an image", async () => {
     mockImagePullGetState.mockReturnValueOnce({
-      image: "the-companion:latest",
+      image: "moku:latest",
       status: "ready",
       progress: [],
     });
 
-    const res = await app.request("/api/images/the-companion%3Alatest/status");
+    const res = await app.request("/api/images/moku%3Alatest/status");
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.image).toBe("the-companion:latest");
+    expect(json.image).toBe("moku:latest");
     expect(json.status).toBe("ready");
   });
 });
@@ -1998,25 +1924,25 @@ describe("POST /api/images/:tag/pull", () => {
   it("triggers a pull and returns the current state", async () => {
     vi.spyOn(containerManager, "checkDocker").mockReturnValue(true);
     mockImagePullGetState.mockReturnValueOnce({
-      image: "the-companion:latest",
+      image: "moku:latest",
       status: "pulling",
       progress: [],
       startedAt: Date.now(),
     });
 
-    const res = await app.request("/api/images/the-companion%3Alatest/pull", {
+    const res = await app.request("/api/images/moku%3Alatest/pull", {
       method: "POST",
     });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.ok).toBe(true);
-    expect(mockImagePullPull).toHaveBeenCalledWith("the-companion:latest");
+    expect(mockImagePullPull).toHaveBeenCalledWith("moku:latest");
   });
 
   it("returns 503 when Docker is not available", async () => {
     vi.spyOn(containerManager, "checkDocker").mockReturnValue(false);
 
-    const res = await app.request("/api/images/the-companion%3Alatest/pull", {
+    const res = await app.request("/api/images/moku%3Alatest/pull", {
       method: "POST",
     });
     expect(res.status).toBe(503);
@@ -2039,7 +1965,6 @@ describe("GET /api/settings", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2059,7 +1984,6 @@ describe("GET /api/settings", () => {
       linearAutoTransitionStateName: "",
     linearArchiveTransition: false,
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2078,7 +2002,6 @@ describe("GET /api/settings", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2098,7 +2021,6 @@ describe("GET /api/settings", () => {
       linearAutoTransitionStateName: "",
     linearArchiveTransition: false,
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2119,7 +2041,6 @@ describe("PUT /api/settings", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2144,7 +2065,6 @@ describe("PUT /api/settings", () => {
       linearArchiveTransition: undefined,
       linearArchiveTransitionStateId: undefined,
       linearArchiveTransitionStateName: undefined,
-      editorTabEnabled: undefined,
       aiValidationEnabled: undefined,
       aiValidationAutoApprove: undefined,
       aiValidationAutoDeny: undefined,
@@ -2159,7 +2079,6 @@ describe("PUT /api/settings", () => {
       linearAutoTransitionStateName: "",
     linearArchiveTransition: false,
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2178,7 +2097,6 @@ describe("PUT /api/settings", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2200,7 +2118,6 @@ describe("PUT /api/settings", () => {
       linearAutoTransition: undefined,
       linearAutoTransitionStateId: undefined,
       linearAutoTransitionStateName: undefined,
-      editorTabEnabled: undefined,
     });
   });
 
@@ -2215,7 +2132,6 @@ describe("PUT /api/settings", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2237,7 +2153,6 @@ describe("PUT /api/settings", () => {
       linearAutoTransition: undefined,
       linearAutoTransitionStateId: undefined,
       linearAutoTransitionStateName: undefined,
-      editorTabEnabled: undefined,
     });
   });
 
@@ -2275,18 +2190,6 @@ describe("PUT /api/settings", () => {
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json).toEqual({ error: "anthropicApiKey must be a string" });
-  });
-
-  it("returns 400 for non-boolean editor tab setting", async () => {
-    const res = await app.request("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ editorTabEnabled: "yes" }),
-    });
-
-    expect(res.status).toBe(400);
-    const json = await res.json();
-    expect(json).toEqual({ error: "editorTabEnabled must be a boolean" });
   });
 
   // Rejects invalid updateChannel values that aren't "stable" or "prerelease"
@@ -2420,7 +2323,6 @@ describe("GET /api/linear/issues", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2445,7 +2347,6 @@ describe("GET /api/linear/issues", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2524,7 +2425,6 @@ describe("GET /api/linear/issues", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2610,7 +2510,6 @@ describe("GET /api/linear/issues", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2661,7 +2560,6 @@ describe("GET /api/linear/connection", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2686,7 +2584,6 @@ describe("GET /api/linear/connection", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2734,7 +2631,6 @@ describe("POST /api/linear/issues/:id/transition", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2764,7 +2660,6 @@ describe("POST /api/linear/issues/:id/transition", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2793,7 +2688,6 @@ describe("POST /api/linear/issues/:id/transition", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2823,7 +2717,6 @@ describe("POST /api/linear/issues/:id/transition", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2888,7 +2781,6 @@ describe("POST /api/linear/issues/:id/transition", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2932,7 +2824,6 @@ describe("GET /api/linear/projects", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -2957,7 +2848,6 @@ describe("GET /api/linear/projects", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -3013,7 +2903,6 @@ describe("GET /api/linear/project-issues", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -3038,7 +2927,6 @@ describe("GET /api/linear/project-issues", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -3109,7 +2997,6 @@ describe("GET /api/linear/project-issues", () => {
     linearArchiveTransition: false,
     linearArchiveTransitionStateId: "",
     linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -3333,7 +3220,7 @@ describe("GET /api/git/branches", () => {
 describe("POST /api/git/worktree", () => {
   it("creates a worktree", async () => {
     const result = {
-      worktreePath: "/home/.companion/worktrees/repo/feat",
+      worktreePath: "/home/.moku/worktrees/repo/feat",
       branch: "feat",
       actualBranch: "feat",
       isNew: true,
@@ -3490,62 +3377,62 @@ describe("GET /api/fs/home", () => {
 
   it("returns home as cwd when process.cwd() is the package root", async () => {
     const origCwd = process.cwd;
-    const origEnv = process.env.__COMPANION_PACKAGE_ROOT;
+    const origEnv = process.env.__MOKU_PACKAGE_ROOT;
     try {
-      process.env.__COMPANION_PACKAGE_ROOT = "/opt/companion";
-      process.cwd = () => "/opt/companion";
+      process.env.__MOKU_PACKAGE_ROOT = "/opt/moku";
+      process.cwd = () => "/opt/moku";
       const res = await app.request("/api/fs/home", { method: "GET" });
       const json = await res.json();
       expect(json.cwd).toBe(json.home);
     } finally {
       process.cwd = origCwd;
-      process.env.__COMPANION_PACKAGE_ROOT = origEnv;
+      process.env.__MOKU_PACKAGE_ROOT = origEnv;
     }
   });
 
   it("returns home as cwd when process.cwd() is inside the package root", async () => {
     const origCwd = process.cwd;
-    const origEnv = process.env.__COMPANION_PACKAGE_ROOT;
+    const origEnv = process.env.__MOKU_PACKAGE_ROOT;
     try {
-      process.env.__COMPANION_PACKAGE_ROOT = "/opt/companion";
-      process.cwd = () => "/opt/companion/node_modules/.bin";
+      process.env.__MOKU_PACKAGE_ROOT = "/opt/moku";
+      process.cwd = () => "/opt/moku/node_modules/.bin";
       const res = await app.request("/api/fs/home", { method: "GET" });
       const json = await res.json();
       expect(json.cwd).toBe(json.home);
     } finally {
       process.cwd = origCwd;
-      process.env.__COMPANION_PACKAGE_ROOT = origEnv;
+      process.env.__MOKU_PACKAGE_ROOT = origEnv;
     }
   });
 
   it("returns actual cwd when launched from a project directory", async () => {
     const origCwd = process.cwd;
-    const origEnv = process.env.__COMPANION_PACKAGE_ROOT;
+    const origEnv = process.env.__MOKU_PACKAGE_ROOT;
     try {
-      process.env.__COMPANION_PACKAGE_ROOT = "/opt/companion";
+      process.env.__MOKU_PACKAGE_ROOT = "/opt/moku";
       process.cwd = () => "/Users/testuser/my-project";
       const res = await app.request("/api/fs/home", { method: "GET" });
       const json = await res.json();
       expect(json.cwd).toBe("/Users/testuser/my-project");
     } finally {
       process.cwd = origCwd;
-      process.env.__COMPANION_PACKAGE_ROOT = origEnv;
+      process.env.__MOKU_PACKAGE_ROOT = origEnv;
     }
   });
 
   it("returns home as cwd when process.cwd() equals home directory", async () => {
     const { homedir } = await import("node:os");
     const origCwd = process.cwd;
-    const origEnv = process.env.__COMPANION_PACKAGE_ROOT;
+    const origEnv = process.env.__MOKU_PACKAGE_ROOT;
     try {
-      delete process.env.__COMPANION_PACKAGE_ROOT;
+      delete process.env.__MOKU_PACKAGE_ROOT;
       process.cwd = () => homedir();
       const res = await app.request("/api/fs/home", { method: "GET" });
       const json = await res.json();
       expect(json.cwd).toBe(json.home);
     } finally {
       process.cwd = origCwd;
-      process.env.__COMPANION_PACKAGE_ROOT = origEnv;
+      process.env.__MOKU_PACKAGE_ROOT = origEnv;
     }
   });
 });
@@ -4167,16 +4054,16 @@ describe("POST /api/sessions/create-stream", () => {
       name: "Docker",
       slug: "docker",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "the-companion:latest",
+      baseImage: "moku:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
     vi.spyOn(containerManager, "imageExists").mockReturnValueOnce(true);
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-stream",
-      name: "companion-stream",
-      image: "the-companion:latest",
+      name: "moku-stream",
+      image: "moku:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -4217,23 +4104,23 @@ describe("POST /api/sessions/create-stream", () => {
       name: "Docker",
       slug: "docker",
       variables: { ANTHROPIC_API_KEY: "key" },
-      baseImage: "the-companion:latest",
+      baseImage: "moku:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
     // Image not ready initially — pull manager will handle it
     mockImagePullIsReady.mockReturnValue(false);
     mockImagePullGetState.mockReturnValue({
-      image: "the-companion:latest",
+      image: "moku:latest",
       status: "idle" as const,
       progress: [],
     });
     mockImagePullWaitForReady.mockResolvedValue(true);
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-pulled",
-      name: "companion-pulled",
-      image: "the-companion:latest",
+      name: "moku-pulled",
+      image: "moku:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -4261,7 +4148,7 @@ describe("POST /api/sessions/create-stream", () => {
         containerCwd: "/workspace",
       }),
     );
-    expect(mockImagePullEnsureImage).toHaveBeenCalledWith("the-companion:latest");
+    expect(mockImagePullEnsureImage).toHaveBeenCalledWith("moku:latest");
     expect(mockImagePullWaitForReady).toHaveBeenCalled();
   });
 
@@ -4270,14 +4157,14 @@ describe("POST /api/sessions/create-stream", () => {
       name: "Docker",
       slug: "docker",
       variables: { ANTHROPIC_API_KEY: "key" },
-      baseImage: "the-companion:latest",
+      baseImage: "moku:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
     mockImagePullIsReady.mockReturnValue(false);
     mockImagePullGetState.mockReturnValue({
-      image: "the-companion:latest",
+      image: "moku:latest",
       status: "error" as const,
       progress: [],
       error: "Pull and build both failed",
@@ -4302,17 +4189,17 @@ describe("POST /api/sessions/create-stream", () => {
       name: "WithInit",
       slug: "with-init",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "the-companion:latest",
+      baseImage: "moku:latest",
       initScript: "npm install",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
     vi.spyOn(containerManager, "imageExists").mockReturnValueOnce(true);
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-init-stream",
-      name: "companion-init-stream",
-      image: "the-companion:latest",
+      name: "moku-init-stream",
+      image: "moku:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -4347,17 +4234,17 @@ describe("POST /api/sessions/create-stream", () => {
       name: "FailInit",
       slug: "fail-init",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "the-companion:latest",
+      baseImage: "moku:latest",
       initScript: "exit 1",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
     vi.spyOn(containerManager, "imageExists").mockReturnValueOnce(true);
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-fail-stream",
-      name: "companion-fail-stream",
-      image: "the-companion:latest",
+      name: "moku-fail-stream",
+      image: "moku:latest",
       portMappings: [],
       hostCwd: "/test",
       containerCwd: "/workspace",
@@ -4406,15 +4293,15 @@ describe("POST /api/sessions/create-stream", () => {
       name: "Docker",
       slug: "docker",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "the-companion:latest",
+      baseImage: "moku:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-git-stream",
-      name: "companion-git-stream",
-      image: "the-companion:latest",
+      name: "moku-git-stream",
+      image: "moku:latest",
       portMappings: [],
       hostCwd: "/repo",
       containerCwd: "/workspace",
@@ -4477,15 +4364,15 @@ describe("POST /api/sessions/create-stream", () => {
       name: "Docker",
       slug: "docker",
       variables: { CLAUDE_CODE_OAUTH_TOKEN: "token" },
-      baseImage: "the-companion:latest",
+      baseImage: "moku:latest",
       createdAt: 1000,
       updatedAt: 1000,
     } as any);
-    vi.mocked(envManager.getEffectiveImage).mockReturnValue("the-companion:latest");
+    vi.mocked(envManager.getEffectiveImage).mockReturnValue("moku:latest");
     vi.spyOn(containerManager, "createContainer").mockReturnValueOnce({
       containerId: "cid-fail-git",
-      name: "companion-fail-git",
-      image: "the-companion:latest",
+      name: "moku-fail-git",
+      image: "moku:latest",
       portMappings: [],
       hostCwd: "/repo",
       containerCwd: "/workspace",
@@ -4554,6 +4441,16 @@ describe("POST /api/auth/verify", () => {
     expect(res.status).toBe(401);
     const data = await res.json();
     expect(data.error).toContain("Invalid token");
+  });
+});
+
+describe("GET /api/public/info", () => {
+  it("returns the hosted frontend connection contract without auth", async () => {
+    const res = await app.request("/api/public/info", { method: "GET" });
+
+    expect(res.status).toBe(200);
+    expect(getPublicInfo).toHaveBeenCalledTimes(1);
+    await expect(res.json()).resolves.toEqual(createMockPublicInfo());
   });
 });
 
@@ -4766,14 +4663,14 @@ describe("POST /api/sessions/:id/processes/system/:pid/kill", () => {
     expect(res.status).toBe(404);
   });
 
-  it("refuses to kill the companion server process", async () => {
+  it("refuses to kill the Moku server process", async () => {
     launcher.getSession.mockReturnValue({ pid: 1234 });
     const res = await app.request(`/api/sessions/sess-1/processes/system/${process.pid}/kill`, {
       method: "POST",
     });
     expect(res.status).toBe(403);
     const data = await res.json();
-    expect(data.error).toContain("Cannot kill the Companion server");
+    expect(data.error).toContain("Cannot kill the Moku server");
   });
 
   it("refuses to kill the session's own CLI process", async () => {

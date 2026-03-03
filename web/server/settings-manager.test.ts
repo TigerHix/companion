@@ -31,10 +31,9 @@ describe("settings-manager", () => {
       linearAutoTransition: false,
       linearAutoTransitionStateId: "",
       linearAutoTransitionStateName: "",
-    linearArchiveTransition: false,
-    linearArchiveTransitionStateId: "",
-    linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
+      linearArchiveTransition: false,
+      linearArchiveTransitionStateId: "",
+      linearArchiveTransitionStateName: "",
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -77,10 +76,9 @@ describe("settings-manager", () => {
       linearAutoTransition: false,
       linearAutoTransitionStateId: "",
       linearAutoTransitionStateName: "",
-    linearArchiveTransition: false,
-    linearArchiveTransitionStateId: "",
-    linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
+      linearArchiveTransition: false,
+      linearArchiveTransitionStateId: "",
+      linearArchiveTransitionStateName: "",
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -130,10 +128,9 @@ describe("settings-manager", () => {
       linearAutoTransition: false,
       linearAutoTransitionStateId: "",
       linearAutoTransitionStateName: "",
-    linearArchiveTransition: false,
-    linearArchiveTransitionStateId: "",
-    linearArchiveTransitionStateName: "",
-      editorTabEnabled: false,
+      linearArchiveTransition: false,
+      linearArchiveTransitionStateId: "",
+      linearArchiveTransitionStateName: "",
       aiValidationEnabled: false,
       aiValidationAutoApprove: true,
       aiValidationAutoDeny: true,
@@ -162,11 +159,6 @@ describe("settings-manager", () => {
     expect(updated.anthropicApiKey).toBe("sk-ant-key");
     expect(updated.anthropicModel).toBe("claude-haiku-3");
     expect(updated.linearApiKey).toBe("lin_api_123");
-  });
-
-  it("updates editorTabEnabled", () => {
-    const updated = updateSettings({ editorTabEnabled: true });
-    expect(updated.editorTabEnabled).toBe(true);
   });
 
   it("updates updateChannel to prerelease", () => {

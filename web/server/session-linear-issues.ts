@@ -28,7 +28,7 @@ export interface StoredLinearIssue {
 
 // ─── Paths ───────────────────────────────────────────────────────────────────
 
-const DEFAULT_PATH = join(homedir(), ".companion", "session-linear-issues.json");
+const DEFAULT_PATH = join(homedir(), ".moku", "session-linear-issues.json");
 
 // ─── Store ───────────────────────────────────────────────────────────────────
 

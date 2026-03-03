@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { api, type AgentInfo, type AgentExport, type AgentExecution, type McpServerConfigAgent, type MokuEnv } from "../api.js";
+import { buildBackendUrl, getConnection } from "../connection.js";
 import { getModelsForBackend, getDefaultModel, getAgentModesForBackend, getDefaultAgentMode } from "../utils/backends.js";
 import { FolderPicker } from "./FolderPicker.js";
 import { timeAgo } from "../utils/time-ago.js";
@@ -176,8 +177,12 @@ function humanizeSchedule(expression: string, recurring: boolean): string {
 }
 
 function getWebhookUrl(agent: AgentInfo): string {
-  const base = window.location.origin;
-  return `${base}/api/agents/${encodeURIComponent(agent.id)}/webhook/${agent.triggers?.webhook?.secret || ""}`;
+  const connection = getConnection();
+  if (!connection) return "";
+  return buildBackendUrl(
+    `/api/agents/${encodeURIComponent(agent.id)}/webhook/${agent.triggers?.webhook?.secret || ""}`,
+    connection,
+  );
 }
 
 /** Count how many advanced features are configured */

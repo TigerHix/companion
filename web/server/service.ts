@@ -9,27 +9,26 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import { execSync } from "node:child_process";
 import { DEFAULT_PORT_PROD } from "./constants.js";
+import { DEFAULT_FRONTEND_URL } from "./hosted-frontend.js";
 import { getServicePath } from "./path-resolver.js";
 
 // ─── Shared Constants ───────────────────────────────────────────────────────────
 
-const COMPANION_DIR = join(homedir(), ".companion");
-const LOG_DIR = join(COMPANION_DIR, "logs");
-const STDOUT_LOG = join(LOG_DIR, "companion.log");
-const STDERR_LOG = join(LOG_DIR, "companion.error.log");
+const MOKU_DIR = join(homedir(), ".moku");
+const LOG_DIR = join(MOKU_DIR, "logs");
+const STDOUT_LOG = join(LOG_DIR, "moku.log");
+const STDERR_LOG = join(LOG_DIR, "moku.error.log");
 
 // ─── macOS (launchd) Constants ──────────────────────────────────────────────────
 
-const LABEL = "sh.thecompanion.app";
-const OLD_LABEL = "co.thevibecompany.companion";
+const LABEL = "sh.moku.app";
 const PLIST_DIR = join(homedir(), "Library", "LaunchAgents");
 const PLIST_PATH = join(PLIST_DIR, `${LABEL}.plist`);
-const OLD_PLIST_PATH = join(PLIST_DIR, `${OLD_LABEL}.plist`);
 
 // ─── Linux (systemd) Constants ──────────────────────────────────────────────────
 
 const SYSTEMD_DIR = join(homedir(), ".config", "systemd", "user");
-const UNIT_NAME = "the-companion.service";
+const UNIT_NAME = "moku.service";
 const UNIT_PATH = join(SYSTEMD_DIR, UNIT_NAME);
 
 // ─── Platform check ─────────────────────────────────────────────────────────────
@@ -129,7 +128,7 @@ export function generateSystemdUnit(opts: UnitOptions): string {
   const home = homedir();
 
   return `[Unit]
-Description=The Companion - Web UI for Claude Code
+Description=Moku - Web UI for Claude Code
 After=network.target
 
 [Service]
@@ -155,19 +154,19 @@ WantedBy=default.target
 
 function resolveBinPath(): string {
   try {
-    const binPath = execSync("which the-companion", { encoding: "utf-8" }).trim();
+    const binPath = execSync("which moku", { encoding: "utf-8" }).trim();
     if (binPath) return binPath;
   } catch {
     // not found globally
   }
 
-  console.error("the-companion must be installed globally for service mode.");
+  console.error("moku must be installed globally for service mode.");
   console.error("");
-  console.error("  bun install -g the-companion");
+  console.error("  bun install -g moku");
   console.error("");
   console.error("Then retry:");
   console.error("");
-  console.error("  the-companion install");
+  console.error("  moku install");
   process.exit(1);
 }
 
@@ -189,21 +188,10 @@ function removePlist(plistPath: string): void {
   }
 }
 
-function migrateLegacyInstallIfNeeded(): void {
-  if (!existsSync(OLD_PLIST_PATH)) return;
-
-  console.log("Found legacy The Vibe Companion service. Migrating...");
-  unloadLaunchdService(OLD_PLIST_PATH);
-  removePlist(OLD_PLIST_PATH);
-}
-
 function getInstalledLaunchdService():
   | { label: string; plistPath: string }
   | undefined {
   if (existsSync(PLIST_PATH)) return { label: LABEL, plistPath: PLIST_PATH };
-  if (existsSync(OLD_PLIST_PATH)) {
-    return { label: OLD_LABEL, plistPath: OLD_PLIST_PATH };
-  }
   return undefined;
 }
 
@@ -236,12 +224,22 @@ export async function install(opts?: { port?: number }): Promise<void> {
   return installLinux(opts);
 }
 
-async function installDarwin(opts?: { port?: number }): Promise<void> {
-  migrateLegacyInstallIfNeeded();
+function printInstallSuccess(details: { label: string; path: string }): void {
+  console.log("Moku has been installed as a background service.");
+  console.log("");
+  console.log(`  Frontend: ${DEFAULT_FRONTEND_URL}`);
+  console.log(`  Logs:     ${LOG_DIR}`);
+  console.log(`  ${details.label}: ${details.path}`);
+  console.log("");
+  console.log("The service will start automatically on login.");
+  console.log("Run 'moku logs' to see the backend URL and connect link.");
+  console.log("Use 'moku status' to check if it's running.");
+}
 
+async function installDarwin(opts?: { port?: number }): Promise<void> {
   if (existsSync(PLIST_PATH)) {
-    console.error("The Companion is already installed as a service.");
-    console.error("Run 'the-companion uninstall' first to reinstall.");
+    console.error("Moku is already installed as a service.");
+    console.error("Run 'moku uninstall' first to reinstall.");
     process.exit(1);
   }
 
@@ -268,20 +266,13 @@ async function installDarwin(opts?: { port?: number }): Promise<void> {
     process.exit(1);
   }
 
-  console.log("The Companion has been installed as a background service.");
-  console.log("");
-  console.log(`  URL:    http://localhost:${port}`);
-  console.log(`  Logs:   ${LOG_DIR}`);
-  console.log(`  Plist:  ${PLIST_PATH}`);
-  console.log("");
-  console.log("The service will start automatically on login.");
-  console.log("Use 'the-companion status' to check if it's running.");
+  printInstallSuccess({ label: "Plist", path: PLIST_PATH });
 }
 
 async function installLinux(opts?: { port?: number }): Promise<void> {
   if (isSystemdUnitInstalled()) {
-    console.error("The Companion is already installed as a service.");
-    console.error("Run 'the-companion uninstall' first to reinstall.");
+    console.error("Moku is already installed as a service.");
+    console.error("Run 'moku uninstall' first to reinstall.");
     process.exit(1);
   }
 
@@ -319,14 +310,7 @@ async function installLinux(opts?: { port?: number }): Promise<void> {
     console.warn("  sudo loginctl enable-linger $(whoami)");
   }
 
-  console.log("The Companion has been installed as a background service.");
-  console.log("");
-  console.log(`  URL:    http://localhost:${port}`);
-  console.log(`  Logs:   ${LOG_DIR}`);
-  console.log(`  Unit:   ${UNIT_PATH}`);
-  console.log("");
-  console.log("The service will start automatically on login.");
-  console.log("Use 'the-companion status' to check if it's running.");
+  printInstallSuccess({ label: "Unit", path: UNIT_PATH });
 }
 
 // ─── Uninstall ──────────────────────────────────────────────────────────────────
@@ -343,20 +327,20 @@ export async function uninstall(): Promise<void> {
 async function uninstallDarwin(): Promise<void> {
   const installedService = getInstalledLaunchdService();
   if (!installedService) {
-    console.log("The Companion is not installed as a service.");
+    console.log("Moku is not installed as a service.");
     return;
   }
 
   unloadLaunchdService(installedService.plistPath);
   removePlist(installedService.plistPath);
 
-  console.log("The Companion service has been removed.");
+  console.log("Moku service has been removed.");
   console.log(`Logs are preserved at ${LOG_DIR}`);
 }
 
 async function uninstallLinux(): Promise<void> {
   if (!isSystemdUnitInstalled()) {
-    console.log("The Companion is not installed as a service.");
+    console.log("Moku is not installed as a service.");
     return;
   }
 
@@ -378,7 +362,7 @@ async function uninstallLinux(): Promise<void> {
     // Best-effort reload
   }
 
-  console.log("The Companion service has been removed.");
+  console.log("Moku service has been removed.");
   console.log(`Logs are preserved at ${LOG_DIR}`);
 }
 
@@ -396,8 +380,8 @@ export async function start(): Promise<void> {
 async function startDarwin(): Promise<void> {
   const installedService = getInstalledLaunchdService();
   if (!installedService) {
-    console.log("The Companion is not installed as a service.");
-    console.log("Run 'the-companion install' first.");
+    console.log("Moku is not installed as a service.");
+    console.log("Run 'moku install' first.");
     return;
   }
 
@@ -423,7 +407,7 @@ async function startDarwin(): Promise<void> {
     }
   }
 
-  console.log("The Companion service has been started.");
+  console.log("Moku service has been started.");
 }
 
 async function startLinux(): Promise<void> {
@@ -446,7 +430,7 @@ async function startLinux(): Promise<void> {
     process.exit(1);
   }
 
-  console.log("The Companion service has been started.");
+  console.log("Moku service has been started.");
 }
 
 export async function stop(): Promise<void> {
@@ -461,7 +445,7 @@ export async function stop(): Promise<void> {
 async function stopDarwin(): Promise<void> {
   const installedService = getInstalledLaunchdService();
   if (!installedService) {
-    console.log("The Companion is not installed as a service.");
+    console.log("Moku is not installed as a service.");
     return;
   }
 
@@ -478,13 +462,13 @@ async function stopDarwin(): Promise<void> {
     unloadLaunchdService(installedService.plistPath);
   }
 
-  console.log("The Companion service has been stopped.");
-  console.log("Run 'the-companion restart' to start it again.");
+  console.log("Moku service has been stopped.");
+  console.log("Run 'moku restart' to start it again.");
 }
 
 async function stopLinux(): Promise<void> {
   if (!isSystemdUnitInstalled()) {
-    console.log("The Companion is not installed as a service.");
+    console.log("Moku is not installed as a service.");
     return;
   }
 
@@ -496,8 +480,8 @@ async function stopLinux(): Promise<void> {
     process.exit(1);
   }
 
-  console.log("The Companion service has been stopped.");
-  console.log("Run 'the-companion restart' to start it again.");
+  console.log("Moku service has been stopped.");
+  console.log("Run 'moku restart' to start it again.");
 }
 
 export async function restart(): Promise<void> {
@@ -512,7 +496,7 @@ export async function restart(): Promise<void> {
 async function restartDarwin(): Promise<void> {
   const installedService = getInstalledLaunchdService();
   if (!installedService) {
-    console.log("The Companion is not installed as a service.");
+    console.log("Moku is not installed as a service.");
     return;
   }
 
@@ -535,12 +519,12 @@ async function restartDarwin(): Promise<void> {
     }
   }
 
-  console.log("The Companion service has been restarted.");
+  console.log("Moku service has been restarted.");
 }
 
 async function restartLinux(): Promise<void> {
   if (!isSystemdUnitInstalled()) {
-    console.log("The Companion is not installed as a service.");
+    console.log("Moku is not installed as a service.");
     return;
   }
 
@@ -555,7 +539,7 @@ async function restartLinux(): Promise<void> {
     process.exit(1);
   }
 
-  console.log("The Companion service has been restarted.");
+  console.log("Moku service has been restarted.");
 }
 
 // ─── Status ─────────────────────────────────────────────────────────────────────
