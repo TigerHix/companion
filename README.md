@@ -58,9 +58,11 @@ vercel
 
 Or import the repo in the Vercel dashboard and keep the default root directory at the repository root. The checked-in config will:
 
-- run `bun install`
-- run `bun run build`
+- run `cd web && bun install`
+- run `cd web && bun run build`
 - publish `web/dist`
+
+After the first import, ordinary GitHub pushes trigger new deployments. You do not need the Vercel CLI for routine deploys.
 
 After you have a stable frontend URL, point the backend at it:
 
@@ -107,11 +109,11 @@ Important:
 
 ## Architecture (simple)
 ```text
-Browser / PWA (https://moku.sh)
+Browser / PWA (https://moku.sh or http://localhost:5174)
   <-> https://<machine>.<tailnet>.ts.net/api
   <-> wss://<machine>.<tailnet>.ts.net/ws/browser/:session
 Moku server (Bun + Hono)
-  <-> ws://localhost:3456/ws/cli/:session
+  <-> ws://localhost:<server-port>/ws/cli/:session
 Claude Code / Codex CLI
 ```
 
@@ -142,11 +144,20 @@ The token is used by the hosted frontend connect flow. `GET /api/public/info` st
 make dev
 ```
 
+This starts the backend on `http://localhost:3457` and the Vite frontend with HMR on [http://localhost:5174](http://localhost:5174).
+
 Manual:
 ```bash
 cd web
 bun install
 bun run dev
+```
+
+Or split the processes:
+```bash
+cd web
+bun run dev:api   # backend on :3457
+bun run dev:vite  # frontend on :5174
 ```
 
 Checks:
@@ -156,7 +167,7 @@ bun run typecheck
 bun run test
 ```
 
-For local frontend development, use the Vite app on [http://localhost:5174](http://localhost:5174). It connects to the backend on port `3456` using the same saved backend URL + token model as the hosted frontend.
+For local frontend development, use the Vite app on [http://localhost:5174](http://localhost:5174). It proxies `/api` and `/ws` to the backend on port `3457` while keeping the same saved backend URL + token model as the hosted frontend.
 
 ## Docs
 - Protocol reverse engineering: [`WEBSOCKET_PROTOCOL_REVERSED.md`](WEBSOCKET_PROTOCOL_REVERSED.md)

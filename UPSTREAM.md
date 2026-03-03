@@ -7,6 +7,7 @@ This repo (`moku`) is a private fork of [The Companion](https://github.com/The-V
 - `web/server/` is upstream-owned.
 - `web/bin/`, `web/package.json`, and backend startup/CLI packaging should stay close to upstream too.
 - `web/src/` is where moku-specific product and UI divergence belongs.
+- `README.md`, `vercel.json`, `web/dev.ts`, and `web/vite.config.ts` are moku-owned product/deploy files and should be reviewed manually during syncs.
 - If we do not want to expose an upstream backend capability, hide or remove it in the frontend instead of deleting backend code.
 - If a backend patch is truly required, keep it minimal, localized, and annotate it with `// moku: explain why this patch exists`.
 
@@ -30,8 +31,9 @@ Use these rules when merging upstream:
 
 - `web/server/`: take upstream by default.
 - `web/bin/`: take upstream by default.
-- `web/package.json`: take upstream backend/package changes by default.
+- `web/package.json`: take upstream backend/package changes by default, but preserve moku-specific build/deploy entries needed for the hosted frontend and Vercel.
 - `web/src/`: do not blindly merge; review with product intent in mind.
+- `README.md` and `vercel.json`: preserve moku's hosted-frontend and Vercel deployment story unless the user explicitly wants to change it.
 - Backend branding, feature flags, env vars, cookies, paths, service names, and route wiring should follow upstream unless a minimal `// moku: ...` patch is required.
 
 ## Backend Ownership
@@ -68,6 +70,22 @@ Use the frontend to:
 - ignore backend fields or APIs that exist upstream but are not part of the moku frontend
 
 Do not delete backend code just because the current frontend does not use it.
+
+## Hosted Frontend And Deploy Surface
+
+Moku intentionally diverges from upstream in its deployment model.
+
+Review these files manually during upstream syncs:
+
+- `README.md`
+- `vercel.json`
+- `web/dev.ts`
+- `web/vite.config.ts`
+- `web/server/hosted-frontend.ts`
+- hosted-frontend origin/public-info/onboarding wiring in `web/server/index.ts` and related routes
+- the saved backend connection model in `web/src/connection.ts`
+
+These files define the supported product path: static frontend on `https://moku.sh`, direct browser-to-backend Tailscale access, and normal GitHub-push Vercel deploys. Do not discard that behavior during a sync unless upstream has an equivalent implementation and the user wants to adopt it.
 
 ## Minimal Backend Patch Rule
 

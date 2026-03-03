@@ -10,11 +10,15 @@ It reverse-engineers the undocumented `--sdk-url` WebSocket protocol in the Clau
 ## Development Commands
 
 ```bash
-# Dev server (Hono backend on :3456 + Vite HMR on :5174)
+# Unified dev server (backend on :3457 + Vite HMR on :5174)
 cd web && bun install && bun run dev
 
 # Or from repo root
 make dev
+
+# Run backend and frontend separately
+cd web && bun run dev:api
+cd web && bun run dev:vite
 
 # Type checking
 cd web && bun run typecheck
@@ -54,19 +58,19 @@ All UI components used in the message/chat flow **must** be represented in the P
 ### Data Flow
 
 ```
-Browser (React) ←→ WebSocket ←→ Hono Server (Bun) ←→ WebSocket (NDJSON) ←→ Claude Code CLI
-     :5174              /ws/browser/:id        :3456        /ws/cli/:id         (--sdk-url)
+Hosted frontend / local Vite ←→ WebSocket ←→ Hono Server (Bun) ←→ WebSocket (NDJSON) ←→ Claude Code CLI
+ https://moku.sh or :5174        /ws/browser/:id   :3456 prod / :3457 dev        /ws/cli/:id         (--sdk-url)
 ```
 
-1. Browser sends a "create session" REST call to the server
-2. Server spawns `claude --sdk-url ws://localhost:3456/ws/cli/SESSION_ID` as a subprocess
+1. Browser sends a "create session" REST call to the configured backend
+2. Server spawns `claude --sdk-url ws://localhost:<server-port>/ws/cli/SESSION_ID` as a subprocess
 3. CLI connects back to the server over WebSocket using NDJSON protocol
 4. Server bridges messages between CLI WebSocket and browser WebSocket
 5. Tool calls arrive as `control_request` (subtype `can_use_tool`) — browser renders approval UI, server relays `control_response` back
 
 ### All code lives under `web/`
 
-- **`web/server/`** — Hono + Bun backend (runs on port 3456)
+- **`web/server/`** — Hono + Bun backend (port `3456` in production, `3457` in local dev)
   - `index.ts` — Server bootstrap, Bun.serve with dual WebSocket upgrade (CLI vs browser)
   - `ws-bridge.ts` — Core message router. Maintains per-session state (CLI socket, browser sockets, message history, pending permissions). Parses NDJSON from CLI, translates to typed JSON for browsers.
   - `cli-launcher.ts` — Spawns/kills/relaunches Claude Code CLI processes. Handles `--resume` for session recovery. Persists session state across server restarts.
@@ -76,6 +80,7 @@ Browser (React) ←→ WebSocket ←→ Hono Server (Bun) ←→ WebSocket (NDJS
   - `env-manager.ts` — CRUD for environment profiles stored in `~/.moku/envs/`.
 
 - **`web/src/`** — React 19 frontend
+  - `connection.ts` — Hosted-frontend connection model and persisted backend URL/token helpers.
   - `store.ts` — Zustand store. All state keyed by session ID (messages, streaming text, permissions, tasks, connection status).
   - `ws.ts` — Browser WebSocket client. Connects per-session, handles all incoming message types, auto-reconnects. Extracts task items from `TaskCreate`/`TaskUpdate`/`TodoWrite` tool calls.
   - `types.ts` — Re-exports server types + client-only types (`ChatMessage`, `TaskItem`, `SdkSessionInfo`).
