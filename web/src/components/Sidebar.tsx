@@ -504,7 +504,7 @@ export function Sidebar() {
   };
 
   return (
-    <ShadcnSidebar variant="floating">
+    <ShadcnSidebar variant="floating" className="box-border pt-safe pb-safe-only">
       {/* Header — logo + new session button */}
       <SidebarHeader>
         <div className="flex items-center gap-2 px-1">

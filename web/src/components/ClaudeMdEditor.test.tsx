@@ -86,6 +86,15 @@ describe("ClaudeMdEditor", () => {
     expect(screen.queryByText("Project instructions for Claude Code")).not.toBeInTheDocument();
   });
 
+  it("uses a safe-area aware fullscreen dialog shell", async () => {
+    render(<ClaudeMdEditor {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("CLAUDE.md")).toBeInTheDocument();
+    });
+    const content = document.querySelector('[data-slot="dialog-content"]');
+    expect(content).toHaveClass("dialog-inset-safe");
+  });
+
   // ─── 2. Axe accessibility ─────────────────────────────────────────────────
 
   it("passes axe accessibility checks", async () => {

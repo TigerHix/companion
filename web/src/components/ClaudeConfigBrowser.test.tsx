@@ -218,6 +218,24 @@ describe("ClaudeConfigBrowser", () => {
     });
   });
 
+  it("uses a safe-area aware shell for fullscreen config dialogs", async () => {
+    mockReadFile.mockResolvedValue({ content: '{"key":"value"}' });
+    render(<ClaudeConfigBrowser sessionId="s1" />);
+    await waitFor(() => {
+      expect(screen.getByText("Project (4)")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText("Project (4)"));
+    fireEvent.click(screen.getAllByText("settings.json")[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText("Read-only")).toBeInTheDocument();
+    });
+
+    const content = document.querySelector('[data-slot="dialog-content"]');
+    expect(content).toHaveClass("dialog-inset-safe");
+  });
+
   // Handles no cwd gracefully
   it("returns null when no cwd is available", () => {
     resetStore({

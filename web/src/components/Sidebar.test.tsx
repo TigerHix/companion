@@ -183,6 +183,13 @@ describe("Sidebar", () => {
     expect(screen.getByText("No sessions yet.")).toBeInTheDocument();
   });
 
+  it("applies safe-area padding to the sidebar shell", () => {
+    renderSidebar();
+    const shell = document.querySelector('[data-slot="sidebar-container"]');
+    expect(shell).toHaveClass("pt-safe");
+    expect(shell).toHaveClass("pb-safe-only");
+  });
+
   it("renders session items for active sessions", () => {
     const session = makeSession("s1");
     const sdk = makeSdkSession("s1", { model: "claude-sonnet-4-6" });

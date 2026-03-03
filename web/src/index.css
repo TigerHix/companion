@@ -421,9 +421,29 @@ select {
 .pb-safe-only {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+.dialog-inset-safe {
+  top: max(1rem, env(safe-area-inset-top, 0px));
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  left: max(1rem, env(safe-area-inset-left, 0px));
+}
 @media (min-width: 640px) {
   .pb-safe {
     padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  }
+  .dialog-inset-safe {
+    top: max(2rem, env(safe-area-inset-top, 0px));
+    right: max(2rem, env(safe-area-inset-right, 0px));
+    bottom: max(2rem, env(safe-area-inset-bottom, 0px));
+    left: max(2rem, env(safe-area-inset-left, 0px));
+  }
+}
+@media (min-width: 768px) {
+  .dialog-inset-safe {
+    top: max(5%, env(safe-area-inset-top, 0px));
+    right: max(10%, env(safe-area-inset-right, 0px));
+    bottom: max(5%, env(safe-area-inset-bottom, 0px));
+    left: max(10%, env(safe-area-inset-left, 0px));
   }
 }
 
@@ -1474,4 +1494,3 @@ select {
 .bg-primary .markdown-body a:hover {
   text-decoration-color: var(--primary-foreground);
 }
-

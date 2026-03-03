@@ -118,7 +118,7 @@ export function ClaudeMdEditor({ cwd, open, onClose }: ClaudeMdEditorProps) {
     >
       <DialogContent
         showCloseButton={false}
-        className="left-4 top-4 right-4 bottom-4 h-auto w-auto max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-2xl p-0 sm:left-8 sm:top-8 sm:right-8 sm:bottom-8 sm:max-w-none md:left-[10%] md:top-[5%] md:right-[10%] md:bottom-[5%]"
+        className="dialog-inset-safe h-auto w-auto max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-2xl p-0"
       >
         <div className="shrink-0 flex items-center justify-between px-4 sm:px-5 py-3 bg-card border-b border-border">
           <div className="flex items-center gap-2.5">
