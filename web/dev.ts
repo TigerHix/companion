@@ -13,6 +13,11 @@ const webDir = resolve(__dirname);
 const procs: Subprocess[] = [];
 let shuttingDown = false;
 
+function isBackendReadyLog(line: string): boolean {
+  return line.includes("Backend listening on http://")
+    || line.includes("Server running on http://");
+}
+
 function prefix(
   name: string,
   color: string,
@@ -78,7 +83,7 @@ async function start() {
     };
 
     markReady = (line: string) => {
-      if (line.includes("Server running on http://")) {
+      if (isBackendReadyLog(line)) {
         finish(true);
       }
     };

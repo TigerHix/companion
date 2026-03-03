@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { CodexAdapter, StdioTransport } from "./codex-adapter.js";
 import type { ICodexTransport } from "./codex-adapter.js";
 import type { BrowserIncomingMessage, BrowserOutgoingMessage } from "./session-types.js";
@@ -20,6 +20,7 @@ class MockWritableStream {
 
 class MockReadableStream {
   private controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+  private closed = false;
   readonly stream: ReadableStream<Uint8Array>;
 
   constructor() {
@@ -31,10 +32,13 @@ class MockReadableStream {
   }
 
   push(data: string) {
+    if (this.closed) return;
     this.controller?.enqueue(new TextEncoder().encode(data));
   }
 
   close() {
+    if (this.closed) return;
+    this.closed = true;
     this.controller?.close();
   }
 }
@@ -67,12 +71,21 @@ describe("CodexAdapter", () => {
   let proc: ReturnType<typeof createMockProcess>["proc"];
   let stdin: MockWritableStream;
   let stdout: MockReadableStream;
+  let stderr: MockReadableStream;
 
   beforeEach(() => {
+    vi.useRealTimers();
     const mock = createMockProcess();
     proc = mock.proc;
     stdin = mock.stdin;
     stdout = mock.stdout;
+    stderr = mock.stderr;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    stdout.close();
+    stderr.close();
   });
 
   it("sends initialize request on construction", async () => {
@@ -84,7 +97,13 @@ describe("CodexAdapter", () => {
     // Check stdin received the initialize request
     const allWritten = stdin.chunks.join("");
     expect(allWritten).toContain('"method":"initialize"');
-    expect(allWritten).toContain("thecompanion");
+    expect(allWritten).toContain('"name":"moku"');
+
+    // Finish initialization so the test does not leave a pending RPC timer behind.
+    stdout.push(JSON.stringify({ id: 1, result: { userAgent: "codex" } }) + "\n");
+    await new Promise((r) => setTimeout(r, 20));
+    stdout.push(JSON.stringify({ id: 2, result: { thread: { id: "thr_123" } } }) + "\n");
+    await new Promise((r) => setTimeout(r, 20));
   });
 
   it("translates agent message streaming to content_block_delta events", async () => {
@@ -1149,6 +1168,11 @@ describe("CodexAdapter", () => {
     expect(allWritten).not.toContain('"approvalPolicy":"unlessTrusted"');
     expect(allWritten).not.toContain('"approvalPolicy":"onFailure"');
     expect(allWritten).not.toContain('"approvalPolicy":"onRequest"');
+
+    mock.stdout.push(JSON.stringify({ id: 2, result: { thread: { id: "thr_123" } } }) + "\n");
+    await new Promise((r) => setTimeout(r, 20));
+    mock.stdout.close();
+    mock.stderr.close();
   });
 
   it("sends session_init to browser after successful initialization", async () => {
